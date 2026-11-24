@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Management;
 using System.Net;
 using System.Net.WebSockets;
@@ -22,8 +23,12 @@ var jsonOptions = new JsonSerializerOptions
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
 };
 
+// One instance only: a second copy (for example a manual start while the scheduled task runs) exits quietly.
+using var singleInstance = new Mutex(true, @"Global\LOQMonitor.SensorService", out var firstInstance);
+if (!firstInstance) return;
+
 using var cts = new CancellationTokenSource();
-Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
+try { Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); }; } catch { /* no console (windowless run) */ }
 
 var reader = new SensorReader();
 var clients = new ConcurrentDictionary<WebSocket, byte>();
@@ -31,7 +36,13 @@ string latestJson = "{}";
 
 var listener = new HttpListener();
 listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
-listener.Start();
+try { listener.Start(); }
+catch (Exception e)
+{
+    // Windowless run has no console, so record the failure next to the executable.
+    File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "service.log"), $"{DateTime.Now:s} listener start failed: {e.Message}{Environment.NewLine}");
+    return;
+}
 Console.WriteLine($"SensorService listening on ws://127.0.0.1:{Port}/ws  (Ctrl+C to stop)");
 
 _ = Task.Run(() => AcceptLoop(cts.Token));
@@ -126,6 +137,7 @@ sealed class SensorReader : IDisposable
         IsStorageEnabled = true, IsBatteryEnabled = true,
     };
     ManagementObject? _other;
+    PerformanceCounter? _cpuFreq, _cpuPerf;
 
     public SensorReader()
     {
@@ -136,6 +148,26 @@ sealed class SensorReader : IDisposable
             _other = s.Get().Cast<ManagementObject>().FirstOrDefault();
         }
         catch (Exception e) { Console.WriteLine("Lenovo WMI unavailable: " + e.Message); }
+        try
+        {
+            // Windows counters work with Memory Integrity on, unlike the LHM CPU driver.
+            _cpuFreq = new PerformanceCounter("Processor Information", "Processor Frequency", "_Total");
+            _cpuPerf = new PerformanceCounter("Processor Information", "% Processor Performance", "_Total");
+            _cpuFreq.NextValue(); _cpuPerf.NextValue(); // first sample of a rate counter is always 0
+        }
+        catch (Exception e) { Console.WriteLine("CPU clock counters unavailable: " + e.Message); }
+    }
+
+    /// Approximate CPU clock: nominal frequency scaled by the performance percentage.
+    float? CpuClockMHz()
+    {
+        try
+        {
+            if (_cpuFreq is null || _cpuPerf is null) return null;
+            var mhz = _cpuFreq.NextValue() * _cpuPerf.NextValue() / 100f;
+            return mhz > 0 ? MathF.Round(mhz) : null;
+        }
+        catch { return null; }
     }
 
     int? Feature(int id)
@@ -195,7 +227,10 @@ sealed class SensorReader : IDisposable
             Ts: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
             Cpu: new CpuInfo(
                 cpu?.Name, Round(cpu is null ? null : Val(cpu, SensorType.Load, "CPU Total")),
-                Round(cpuTemp), Feature(CpuFan), cpuLoads),
+                Round(cpuTemp), Feature(CpuFan),
+                // Average effective clock from LHM (needs PawnIO); Windows counters as fallback.
+                Round(cpu is null ? null : Val(cpu, SensorType.Clock, "Cores (Average Effective)")) ?? CpuClockMHz(),
+                Round(cpu is null ? null : Val(cpu, SensorType.Power, "Package")), cpuLoads),
             Gpu: new GpuInfo(
                 gpu?.Name,
                 Round(gpu is null ? null : Val(gpu, SensorType.Load, "GPU Core")),
@@ -222,11 +257,11 @@ sealed class SensorReader : IDisposable
                 Round(designed / 1000), Round(full / 1000)));
     }
 
-    public void Dispose() { try { _pc.Close(); } catch { } _other?.Dispose(); }
+    public void Dispose() { try { _pc.Close(); } catch { } _other?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }
 }
 
 record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery);
-record CpuInfo(string? Name, float? Load, float? TempC, int? FanRpm, float[] CoreLoads);
+record CpuInfo(string? Name, float? Load, float? TempC, int? FanRpm, float? ClockMHz, float? PowerW, float[] CoreLoads);
 record GpuInfo(string? Name, float? Load, float? TempC, float? HotspotC, float? VramTempC, int? FanRpm,
                float? PowerW, float? CoreClockMHz, float? MemClockMHz, float? VramUsedMB, float? VramTotalMB,
                float? PcieRxMBs, float? PcieTxMBs);

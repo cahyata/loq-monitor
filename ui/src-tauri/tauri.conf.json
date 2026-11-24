@@ -4,9 +4,12 @@
   "version": "0.1.0",
   "identifier": "local.loqmonitor.app",
   "build": {
-    "frontendDist": "../src"
+    "frontendDist": "../src",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "node dev-server.mjs"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "LOQ Monitor",

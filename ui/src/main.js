@@ -1,8 +1,8 @@
 "use strict";
 
 const WS_URL = "ws://127.0.0.1:47821/ws";
-const HISTORY = 90;                 // detik riwayat grafik
-const WARN_AT = 75, HOT_AT = 90;    // °C — samakan dengan tokens.css
+const HISTORY = 90;                 // seconds of chart history
+const WARN_AT = 75, HOT_AT = 90;    // °C, keep in sync with tokens.css
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -11,26 +11,61 @@ const fmt = (v, d = 0) => (v == null ? "--" : Number(v).toFixed(d));
 const tempClass = (t) => (t == null ? "" : t >= HOT_AT ? "hot" : t >= WARN_AT ? "warn" : "ok");
 const css = (name) => getComputedStyle(root).getPropertyValue(name).trim();
 
-/* ---------- preferensi (tema, FX) ---------- */
+/* ---------- preferences (theme, FX) ---------- */
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch { /* abaikan */ } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch { /* ignore */ } },
 };
 function applyPrefs() {
+  $("btnAlerts").classList.toggle("on", store.get("alerts", "on") === "on");
   root.classList.toggle("light", store.get("theme", "dark") === "light");
   root.classList.toggle("nofx", store.get("fx", "on") === "off");
   $("btnFx").classList.toggle("on", store.get("fx", "on") === "on");
 }
+$("btnAlerts").onclick = () => { store.set("alerts", store.get("alerts", "on") === "on" ? "off" : "on"); applyPrefs(); };
 $("btnFx").onclick = () => { store.set("fx", store.get("fx", "on") === "on" ? "off" : "on"); applyPrefs(); };
 $("btnTheme").onclick = () => { store.set("theme", store.get("theme", "dark") === "dark" ? "light" : "dark"); applyPrefs(); drawAll(); };
 applyPrefs();
 addEventListener("load", () => scrollTo(0, 0));
 
-/* hemat sumber daya: grid berhenti saat jendela tidak fokus */
+/* save resources: the grid stops while the window is unfocused */
 const syncIdle = () => root.classList.toggle("idle", !document.hasFocus());
 addEventListener("focus", syncIdle); addEventListener("blur", syncIdle); syncIdle();
 
-setInterval(() => { $("clock").textContent = new Date().toLocaleTimeString("id-ID", { hour12: false }); }, 1000);
+setInterval(() => { $("clock").textContent = new Date().toLocaleTimeString("en-GB", { hour12: false }); }, 1000);
+
+/* ---------- tray tooltip and critical-temperature alerts ---------- */
+// Outside Tauri (plain browser) there is no invoke, and both features do nothing.
+const invoke = window.__TAURI__?.core?.invoke;
+const ALERT_HOLD_MS = 10_000;        // value must stay at or above the limit this long
+const ALERT_COOLDOWN_MS = 600_000;   // minimum gap between two notifications for one sensor
+const ALERT_REARM_DELTA = 5;         // °C below the limit before the sensor can alert again
+const alertState = {};
+let lastTip = "";
+
+function checkAlert(key, label, value, limit) {
+  const st = (alertState[key] ??= { since: null, sent: 0, armed: true });
+  const now = Date.now();
+  if (value == null || value < limit) {
+    st.since = null;
+    if (value == null || value < limit - ALERT_REARM_DELTA) st.armed = true;
+    return;
+  }
+  st.since ??= now;
+  if (st.armed && now - st.since >= ALERT_HOLD_MS && now - st.sent >= ALERT_COOLDOWN_MS) {
+    st.armed = false; st.sent = now;
+    invoke("notify", { title: "LOQ Monitor: " + label + " is hot", body: `${label} reached ${fmt(value)}°C` }).catch(() => {});
+  }
+}
+function trayUpdate(s) {
+  if (!invoke) return;
+  const tip = `LOQ Monitor\nCPU ${fmt(s.cpu.tempC)}°C   GPU ${fmt(s.gpu.tempC)}°C`;
+  if (tip !== lastTip) { lastTip = tip; invoke("set_tooltip", { text: tip }).catch(() => {}); }
+  if (store.get("alerts", "on") !== "on") return;
+  checkAlert("cpu", "CPU", s.cpu.tempC, HOT_AT);
+  checkAlert("gpu", "GPU", s.gpu.tempC, HOT_AT);
+  checkAlert("hotspot", "GPU hotspot", s.gpu.hotspotC, 95);
+}
 
 /* ---------- helper render ---------- */
 function setTemp(el, tagEl, t) {
@@ -78,17 +113,17 @@ function push(series, v) {
 function logLines(s) {
   const out = [];
   const add = (lv, msg) => out.push([lv, msg]);
-  if (s.cpu.tempC >= HOT_AT) add("CRIT", `cpu.temp ${fmt(s.cpu.tempC)}°C — mendekati batas termal`);
+  if (s.cpu.tempC >= HOT_AT) add("CRIT", `cpu.temp ${fmt(s.cpu.tempC)}°C, near thermal limit`);
   else if (s.cpu.tempC >= WARN_AT) add("WARN", `cpu.temp ${fmt(s.cpu.tempC)}°C`);
   if (s.gpu.hotspotC >= 95) add("CRIT", `gpu.hotspot ${fmt(s.gpu.hotspotC)}°C`);
   else if (s.gpu.tempC >= HOT_AT) add("CRIT", `gpu.temp ${fmt(s.gpu.tempC)}°C`);
   else if (s.gpu.tempC >= WARN_AT) add("WARN", `gpu.temp ${fmt(s.gpu.tempC)}°C`);
   const vp = s.gpu.vramTotalMB ? (s.gpu.vramUsedMB / s.gpu.vramTotalMB) * 100 : 0;
-  if (vp >= 90) add("WARN", `vram ${fmt(vp)}% terpakai`);
-  if (s.ram.loadPct >= 90) add("WARN", `ram ${fmt(s.ram.loadPct)}% terpakai`);
+  if (vp >= 90) add("WARN", `vram ${fmt(vp)}% used`);
+  if (s.ram.loadPct >= 90) add("WARN", `ram ${fmt(s.ram.loadPct)}% used`);
   s.storage.forEach((d) => { if (d.tempC >= 70) add("WARN", `ssd ${d.name} ${fmt(d.tempC)}°C`); });
   if (s.battery && s.battery.levelPct < 20) add("WARN", `battery ${fmt(s.battery.levelPct)}%`);
-  if (!out.length) add("OK", "semua sensor dalam batas normal");
+  if (!out.length) add("OK", "all sensors within normal range");
   add("INFO", "ec.wmi link established");
   return out;
 }
@@ -96,15 +131,17 @@ function logLines(s) {
 function render(s) {
   const { cpu, gpu, ram } = s;
   push(hist.cpu, cpu.tempC); push(hist.gpu, gpu.tempC);
-  if (document.hidden) return; // jendela tersembunyi: simpan riwayat saja, tak perlu menggambar
+  trayUpdate(s); // runs while the window is hidden in the tray
+  if (document.hidden) return; // window hidden: keep the history, skip drawing
 
   // CPU
-  $("cpuName").textContent = cpu.name ?? "";
+  $("cpuName").textContent = cpu.name ? `${cpu.name} · ${cpu.coreLoads.length}T` : "";
   setTemp($("cpuTemp"), $("cpuTag"), cpu.tempC);
   setMeter("cpuLoadBar", cpu.load);
   setDd("cpuLoad", fmt(cpu.load) + "%");
   setDd("cpuFan", cpu.fanRpm != null ? cpu.fanRpm + " rpm" : "--");
-  setDd("cpuThr", String(cpu.coreLoads.length));
+  setDd("cpuPower", cpu.powerW != null ? fmt(cpu.powerW, 1) + " W" : "--");
+  setDd("cpuClock", cpu.clockMHz != null ? fmt(cpu.clockMHz) + " MHz" : "--");
   const cores = $("cores");
   if (cores.children.length !== cpu.coreLoads.length) {
     cores.replaceChildren(...cpu.coreLoads.map(() => document.createElement("i")));
@@ -187,7 +224,7 @@ function setLink(on) {
   const b = $("link");
   b.textContent = on ? "ONLINE" : "OFFLINE";
   b.className = on ? "on" : "";
-  $("sub").textContent = on ? "HARDWARE MONITOR" : "MENUNGGU SERVICE…";
+  $("sub").textContent = on ? "HARDWARE MONITOR" : "WAITING FOR SERVICE…";
 }
 function connect() {
   const ws = new WebSocket(WS_URL);

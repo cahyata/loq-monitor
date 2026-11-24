@@ -9,7 +9,8 @@ This document lists the source of each reading and its status on the test machin
 | CPU temperature | Lenovo EC (WMI), fallback LHM `Core (Tctl/Tdie)` | Works |
 | CPU total load and load per thread | LHM | Works |
 | CPU fan | Lenovo EC (WMI) | Works |
-| CPU clock and power | LHM | Reads 0 |
+| CPU package power | LHM `Package` (needs PawnIO) | Works |
+| CPU clock | LHM `Cores (Average Effective)` (needs PawnIO), fallback Windows counters | Works |
 | GPU temperature, hotspot, VRAM temperature | LHM | Works |
 | GPU load, power, core clock, memory clock | LHM | Works |
 | VRAM used and total | LHM | Works |
@@ -43,15 +44,13 @@ The service uses the GPU temperature from LHM and falls back to the EC value. Al
 
 ## Limitations
 
-### CPU clock and power
+### PawnIO driver
 
-LHM returns 0 for CPU clock and power. LHM 0.9.6 reads CPU registers through the PawnIO driver, which is not installed on the test machine, and Memory Integrity (HVCI) is on. The probable cause is the missing driver, but the combination was not tested one factor at a time. These options remain:
+LHM 0.9.6 reads CPU power and per-core clocks through the PawnIO driver ([namazso/PawnIO](https://github.com/namazso/PawnIO), version 2.2.0 on the test machine). Before PawnIO was installed, LHM returned 0 for both with Memory Integrity (HVCI) on; after installing it, with Memory Integrity still on, `Package` power read 44.1 W and the clocks were non-zero. Without PawnIO the service falls back to the Windows performance counters `Processor Frequency` and `% Processor Performance` for the clock, and CPU power is absent.
 
-1. Install PawnIO.
-2. Turn off Memory Integrity, which lowers system security.
-3. Read `LENOVO_GAMEZONE_DATA.GetCpuFrequency`. It returned the raw value 298193350 and its unit is unknown.
+Install it with `winget install --id namazso.PawnIO` from an administrator shell. The CPU temperature does not depend on the driver, because it comes from the Lenovo EC.
 
-The CPU temperature does not depend on this, because it comes from the Lenovo EC.
+`LENOVO_GAMEZONE_DATA.GetCpuFrequency` returned the raw value 298193350 and its unit is unknown. The service does not use it.
 
 ### Power and thermal mode
 

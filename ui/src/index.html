@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,8 +17,9 @@
       <span>SERVICE <b id="link">OFFLINE</b></span>
       <span id="clock">--:--:--</span>
       <span class="acts">
-        <button id="btnFx" title="Efek visual (grid, scanline)">FX</button>
-        <button id="btnTheme" title="Tema Dark / Light">THEME</button>
+        <button id="btnAlerts" title="Desktop notifications for critical temperatures">ALERTS</button>
+        <button id="btnFx" title="Visual effects (grid, scanlines)">FX</button>
+        <button id="btnTheme" title="Dark / Light theme">THEME</button>
       </span>
     </div>
 
@@ -34,7 +35,8 @@
         <dl>
           <div><dt>LOAD</dt><dd id="cpuLoad">--</dd></div>
           <div><dt>FAN</dt><dd id="cpuFan">--</dd></div>
-          <div><dt>THREADS</dt><dd id="cpuThr">--</dd></div>
+          <div><dt>CLOCK</dt><dd id="cpuClock">--</dd></div>
+          <div><dt>POWER</dt><dd id="cpuPower">--</dd></div>
         </dl>
         <div class="cores" id="cores"></div>
       </section>

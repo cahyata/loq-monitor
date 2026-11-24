@@ -4,6 +4,17 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+### Added
+- System tray icon with a Show and Quit menu and a tooltip with the CPU and GPU temperatures. The close button hides the window to the tray.
+- Desktop notification when CPU or GPU temperature stays at 90 °C or more, or the GPU hotspot at 95 °C or more, for 10 seconds. An ALERTS button toggles it.
+- `scripts/install-service.ps1` and `scripts/uninstall-service.ps1` register or remove a scheduled task that starts SensorService at logon with the highest run level.
+- CPU clock and CPU package power in the CPU panel. Power needs the PawnIO driver (see `docs/SENSORS.md`).
+- Dev mode with live reload: `npm run dev` in `ui/`.
+
+### Changed
+- SensorService runs without a console window and allows one instance.
+- The UI text is in English.
+
 ## [0.1.0] - 2026-11-24
 
 First release. Tested on a Lenovo LOQ 83JC (Ryzen 7 7435HS, RTX 4060 Laptop, Windows 11).
