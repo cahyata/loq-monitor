@@ -1,0 +1,16 @@
+# .NET
+bin/
+obj/
+out/
+*.user
+
+# Node / Tauri / Rust
+node_modules/
+ui/src-tauri/target/
+ui/src-tauri/gen/
+
+# OS / editor
+Thumbs.db
+.DS_Store
+.vs/
+.idea/

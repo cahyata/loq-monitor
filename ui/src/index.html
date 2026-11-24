@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LOQ//NET</title>
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="sky"></div>
+  <div id="floor"><div id="grid"></div></div>
+  <div id="scan"></div>
+
+  <div id="app">
+    <div id="hud">
+      <span>SERVICE <b id="link">OFFLINE</b></span>
+      <span id="clock">--:--:--</span>
+      <span class="acts">
+        <button id="btnFx" title="Efek visual (grid, scanline)">FX</button>
+        <button id="btnTheme" title="Tema Dark / Light">THEME</button>
+      </span>
+    </div>
+
+    <h1>LOQ//NET<span class="cur"></span></h1>
+    <p class="sub" id="sub">HARDWARE MONITOR</p>
+
+    <main>
+      <section class="panel pink" id="cpu">
+        <div class="ph"><span class="ptit">[ CPU ]</span><span class="dim" id="cpuName"></span></div>
+        <div class="hero"><span class="big" id="cpuTemp">--</span><span class="unit">°C</span><span class="tag" id="cpuTag">HOT</span></div>
+        <div class="meter"><i id="cpuLoadBar"></i></div>
+        <canvas id="cpuChart" height="46"></canvas>
+        <dl>
+          <div><dt>LOAD</dt><dd id="cpuLoad">--</dd></div>
+          <div><dt>FAN</dt><dd id="cpuFan">--</dd></div>
+          <div><dt>THREADS</dt><dd id="cpuThr">--</dd></div>
+        </dl>
+        <div class="cores" id="cores"></div>
+      </section>
+
+      <section class="panel" id="gpu">
+        <div class="ph"><span class="ptit">[ GPU ]</span><span class="dim" id="gpuName"></span></div>
+        <div class="hero"><span class="big" id="gpuTemp">--</span><span class="unit">°C</span><span class="tag" id="gpuTag">HOT</span></div>
+        <div class="meter"><i id="gpuLoadBar"></i></div>
+        <canvas id="gpuChart" height="46"></canvas>
+        <dl>
+          <div><dt>LOAD</dt><dd id="gpuLoad">--</dd></div>
+          <div><dt>HOTSPOT</dt><dd id="gpuHot">--</dd></div>
+          <div><dt>POWER</dt><dd id="gpuPower">--</dd></div>
+          <div><dt>FAN</dt><dd id="gpuFan">--</dd></div>
+          <div><dt>CLOCK</dt><dd id="gpuClock">--</dd></div>
+          <div><dt>VRAM°</dt><dd id="gpuVt">--</dd></div>
+          <div><dt>MEM CLK</dt><dd id="gpuMem">--</dd></div>
+          <div><dt>PCIE RX</dt><dd id="gpuRx">--</dd></div>
+          <div><dt>PCIE TX</dt><dd id="gpuTx">--</dd></div>
+        </dl>
+      </section>
+
+      <section class="panel mini yellow"><div class="ph"><span class="ptit">RAM</span></div>
+        <div class="v" id="ramV">--</div><div class="meter"><i id="ramBar"></i></div><div class="dim" id="ramSub"></div></section>
+      <section class="panel mini orange"><div class="ph"><span class="ptit">VRAM</span></div>
+        <div class="v" id="vramV">--</div><div class="meter"><i id="vramBar"></i></div><div class="dim" id="vramSub"></div></section>
+      <section class="panel mini green span2"><div class="ph"><span class="ptit">BATTERY</span></div>
+        <div class="v" id="batV">--</div><div class="meter"><i id="batBar"></i></div>
+        <div class="dim" id="batSub"></div><div class="dim" id="batRate"></div></section>
+
+      <section class="panel mini cyan span2"><div class="ph"><span class="ptit">STORAGE</span></div>
+        <div id="storage" class="disks"></div></section>
+      <section class="panel mini pinkb span2"><div class="ph"><span class="ptit">SYSTEM LOG</span></div>
+        <div id="log" class="log"></div></section>
+    </main>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

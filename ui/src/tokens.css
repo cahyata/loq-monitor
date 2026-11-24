@@ -1,0 +1,45 @@
+/* Design tokens — diselaraskan dengan sistem desain NeonNet (Dark Synthwave / Light Cyber Paper).
+   Ubah warna / font / bentuk di SINI saja. */
+:root {
+  --bg: #12062c;
+  --bg2: #0a0420;
+  --card: #190a38;
+  --line: #3a1a5e;
+  --pink: #ff2e97;
+  --pink2: #ff7bc0;
+  --cyan: #00e5ff;
+  --yellow: #ffd600;
+  --green: #35ffa0;
+  --orange: #ff9a3c;
+  --muted: #8a6fc0;
+  --text: #e8d8ff;
+  --border: rgba(138, 111, 192, .45);
+  --scan: rgba(0, 0, 0, .16);
+  --sky: linear-gradient(#12062c 0%, #2a0f55 55%, color-mix(in srgb, var(--pink) 24%, #12062c) 100%);
+
+  --mono: "Cascadia Mono", "Consolas", "Courier New", monospace;
+  --display: italic 900 1em Impact, "Arial Black", sans-serif;
+
+  --clip: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  --clip-sm: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+
+  /* batas suhu (°C) */
+  --warn-at: 75;
+  --hot-at: 90;
+}
+
+html.light {
+  --bg: #f4f2fa;
+  --bg2: #ffffff;
+  --card: #f0eafc;
+  --line: #d9cdf0;
+  --cyan: #0891b2;
+  --yellow: #a16b00;
+  --green: #0f9d63;
+  --orange: #d9720f;
+  --muted: #6b5a99;
+  --text: #2a1450;
+  --border: rgba(107, 90, 153, .45);
+  --scan: rgba(0, 0, 0, .04);
+  --sky: linear-gradient(#f4f2fa 0%, #e7dff7 55%, color-mix(in srgb, var(--pink) 16%, #f4f2fa) 100%);
+}

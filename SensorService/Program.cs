@@ -1,0 +1,235 @@
+﻿using System.Collections.Concurrent;
+using System.Management;
+using System.Net;
+using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using LibreHardwareMonitor.Hardware;
+
+const int Port = 47821;
+const int IntervalMs = 1000;
+
+// Origins allowed to open the WebSocket (Tauri production + dev server). Empty origin = non-browser client.
+var allowedOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+{
+    "", "tauri://localhost", "http://tauri.localhost", "https://tauri.localhost", "http://localhost:1420",
+};
+
+var jsonOptions = new JsonSerializerOptions
+{
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+};
+
+using var cts = new CancellationTokenSource();
+Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); };
+
+var reader = new SensorReader();
+var clients = new ConcurrentDictionary<WebSocket, byte>();
+string latestJson = "{}";
+
+var listener = new HttpListener();
+listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
+listener.Start();
+Console.WriteLine($"SensorService listening on ws://127.0.0.1:{Port}/ws  (Ctrl+C to stop)");
+
+_ = Task.Run(() => AcceptLoop(cts.Token));
+
+var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(IntervalMs));
+try
+{
+    do
+    {
+        var snap = reader.Read();
+        latestJson = JsonSerializer.Serialize(snap, jsonOptions);
+        if (!clients.IsEmpty) await Broadcast(latestJson);
+    }
+    while (await timer.WaitForNextTickAsync(cts.Token));
+}
+catch (OperationCanceledException) { }
+
+listener.Stop();
+reader.Dispose();
+return;
+
+async Task AcceptLoop(CancellationToken ct)
+{
+    while (!ct.IsCancellationRequested)
+    {
+        HttpListenerContext ctx;
+        try { ctx = await listener.GetContextAsync(); }
+        catch { return; }
+        _ = Task.Run(() => Handle(ctx, ct));
+    }
+}
+
+async Task Handle(HttpListenerContext ctx, CancellationToken ct)
+{
+    try
+    {
+        var origin = ctx.Request.Headers["Origin"] ?? "";
+        if (!allowedOrigins.Contains(origin)) { ctx.Response.StatusCode = 403; ctx.Response.Close(); return; }
+
+        var path = ctx.Request.Url?.AbsolutePath ?? "/";
+        if (ctx.Request.IsWebSocketRequest && path == "/ws")
+        {
+            var wsCtx = await ctx.AcceptWebSocketAsync(null);
+            var ws = wsCtx.WebSocket;
+            clients[ws] = 0;
+            await Send(ws, latestJson);
+            var buf = new byte[256];
+            while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
+            {
+                var r = await ws.ReceiveAsync(buf, ct);
+                if (r.MessageType == WebSocketMessageType.Close) break;
+            }
+            clients.TryRemove(ws, out _);
+            ws.Dispose();
+        }
+        else if (path == "/snapshot")
+        {
+            var bytes = Encoding.UTF8.GetBytes(latestJson);
+            ctx.Response.ContentType = "application/json";
+            ctx.Response.OutputStream.Write(bytes);
+            ctx.Response.Close();
+        }
+        else { ctx.Response.StatusCode = 404; ctx.Response.Close(); }
+    }
+    catch { try { ctx.Response.Abort(); } catch { } }
+}
+
+async Task Broadcast(string json)
+{
+    foreach (var ws in clients.Keys)
+    {
+        try { await Send(ws, json); }
+        catch { clients.TryRemove(ws, out _); }
+    }
+}
+
+static Task Send(WebSocket ws, string json) =>
+    ws.State == WebSocketState.Open
+        ? ws.SendAsync(Encoding.UTF8.GetBytes(json), WebSocketMessageType.Text, true, CancellationToken.None)
+        : Task.CompletedTask;
+
+// ============================================================================
+
+sealed class SensorReader : IDisposable
+{
+    // Lenovo capability IDs for LENOVO_OTHER_METHOD.GetFeatureValue (read-only).
+    const int CpuFan = 0x04030001, GpuFan = 0x04030002, CpuTemp = 0x05040000, GpuTemp = 0x05050000;
+
+    readonly Computer _pc = new()
+    {
+        IsCpuEnabled = true, IsGpuEnabled = true, IsMemoryEnabled = true,
+        IsStorageEnabled = true, IsBatteryEnabled = true,
+    };
+    ManagementObject? _other;
+
+    public SensorReader()
+    {
+        try { _pc.Open(); } catch (Exception e) { Console.WriteLine("LHM open failed: " + e.Message); }
+        try
+        {
+            using var s = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM LENOVO_OTHER_METHOD");
+            _other = s.Get().Cast<ManagementObject>().FirstOrDefault();
+        }
+        catch (Exception e) { Console.WriteLine("Lenovo WMI unavailable: " + e.Message); }
+    }
+
+    int? Feature(int id)
+    {
+        if (_other is null) return null;
+        try
+        {
+            var p = _other.GetMethodParameters("GetFeatureValue");
+            p["IDs"] = id;
+            var r = _other.InvokeMethod("GetFeatureValue", p, null);
+            return Convert.ToInt32(r?["value"]);
+        }
+        catch { return null; }
+    }
+
+    static float? Val(IHardware hw, SensorType t, string name) =>
+        hw.Sensors.FirstOrDefault(s => s.SensorType == t && s.Name == name)?.Value;
+
+    static float? MBs(float? v) => v.HasValue ? MathF.Round(v.Value / 1_000_000f, 1) : null;
+
+    static float? Round(float? v) => v.HasValue ? MathF.Round(v.Value, 1) : null;
+
+    public Snapshot Read()
+    {
+        foreach (var hw in _pc.Hardware) { hw.Update(); foreach (var sub in hw.SubHardware) sub.Update(); }
+
+        var cpu = _pc.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
+        var gpu = _pc.Hardware.FirstOrDefault(h => h.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd);
+        var mem = _pc.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory && h.Name == "Total Memory");
+        var bat = _pc.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Battery);
+
+        // CPU temp: Lenovo EC first (works with Memory Integrity on), LHM Tctl as fallback.
+        float? cpuTemp = Feature(CpuTemp);
+        if (cpuTemp is null or <= 0) { var t = cpu is null ? null : Val(cpu, SensorType.Temperature, "Core (Tctl/Tdie)"); cpuTemp = t > 0 ? t : null; }
+
+        float? gpuTemp = gpu is null ? null : Val(gpu, SensorType.Temperature, "GPU Core");
+        gpuTemp ??= Feature(GpuTemp);
+
+        var cpuLoads = cpu?.Sensors
+            .Where(s => s.SensorType == SensorType.Load && s.Name.StartsWith("CPU Core #"))
+            .OrderBy(s => int.Parse(s.Name[10..]))
+            .Select(s => Round(s.Value) ?? 0).ToArray() ?? [];
+
+        var storage = _pc.Hardware.Where(h => h.HardwareType == HardwareType.Storage).Select(h => new StorageInfo(
+            h.Name,
+            Round(Val(h, SensorType.Temperature, "Composite Temperature") ?? Val(h, SensorType.Temperature, "Temperature #1")),
+            Round(Val(h, SensorType.Load, "Used Space")),
+            Round(Val(h, SensorType.Level, "Life")),
+            MBs(Val(h, SensorType.Throughput, "Read Rate")),
+            MBs(Val(h, SensorType.Throughput, "Write Rate")),
+            Round(Val(h, SensorType.Load, "Total Activity")))).ToArray();
+
+        float? designed = bat is null ? null : Val(bat, SensorType.Energy, "Designed Capacity");
+        float? full = bat is null ? null : Val(bat, SensorType.Energy, "Fully-Charged Capacity");
+
+        return new Snapshot(
+            Ts: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Cpu: new CpuInfo(
+                cpu?.Name, Round(cpu is null ? null : Val(cpu, SensorType.Load, "CPU Total")),
+                Round(cpuTemp), Feature(CpuFan), cpuLoads),
+            Gpu: new GpuInfo(
+                gpu?.Name,
+                Round(gpu is null ? null : Val(gpu, SensorType.Load, "GPU Core")),
+                Round(gpuTemp),
+                Round(gpu is null ? null : Val(gpu, SensorType.Temperature, "GPU Hot Spot")),
+                Round(gpu is null ? null : Val(gpu, SensorType.Temperature, "GPU Memory Junction")),
+                Feature(GpuFan),
+                Round(gpu is null ? null : Val(gpu, SensorType.Power, "GPU Package")),
+                Round(gpu is null ? null : Val(gpu, SensorType.Clock, "GPU Core")),
+                Round(gpu is null ? null : Val(gpu, SensorType.Clock, "GPU Memory")),
+                Round(gpu is null ? null : Val(gpu, SensorType.SmallData, "GPU Memory Used")),
+                Round(gpu is null ? null : Val(gpu, SensorType.SmallData, "GPU Memory Total")),
+                MBs(gpu is null ? null : Val(gpu, SensorType.Throughput, "GPU PCIe Rx")),
+                MBs(gpu is null ? null : Val(gpu, SensorType.Throughput, "GPU PCIe Tx"))),
+            Ram: new RamInfo(
+                Round(mem is null ? null : Val(mem, SensorType.Load, "Memory")),
+                Round(mem is null ? null : Val(mem, SensorType.Data, "Memory Used")),
+                Round(mem is null ? null : Val(mem, SensorType.Data, "Memory Available"))),
+            Storage: storage,
+            Battery: bat is null ? null : new BatteryInfo(
+                Round(Val(bat, SensorType.Level, "Charge Level")),
+                Round(Val(bat, SensorType.Power, "Charge/Discharge Rate")),
+                Round(Val(bat, SensorType.Level, "Degradation Level")),
+                Round(designed / 1000), Round(full / 1000)));
+    }
+
+    public void Dispose() { try { _pc.Close(); } catch { } _other?.Dispose(); }
+}
+
+record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery);
+record CpuInfo(string? Name, float? Load, float? TempC, int? FanRpm, float[] CoreLoads);
+record GpuInfo(string? Name, float? Load, float? TempC, float? HotspotC, float? VramTempC, int? FanRpm,
+               float? PowerW, float? CoreClockMHz, float? MemClockMHz, float? VramUsedMB, float? VramTotalMB,
+               float? PcieRxMBs, float? PcieTxMBs);
+record RamInfo(float? LoadPct, float? UsedGB, float? AvailableGB);
+record StorageInfo(string Name, float? TempC, float? UsedPct, float? LifePct, float? ReadMBs, float? WriteMBs, float? ActivityPct);
+record BatteryInfo(float? LevelPct, float? RateW, float? DegradationPct, float? DesignedWh, float? FullWh);
