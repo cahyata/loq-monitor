@@ -403,3 +403,16 @@ dl.kv dd { font-size: 13px; font-weight: normal; color: var(--text-strong); over
 #overview > #rangeSeg { grid-column: 1 / -1; justify-self: end; margin: 0; }
 /* A focused control scrolls into view below the sticky tabs, not under them (WCAG 2.2 Focus Not Obscured). */
 #scroller { scroll-padding-top: 72px; }
+
+/* Network card on the Insights page */
+.netgrid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.netnow { display: flex; gap: 28px; font-size: 12px; letter-spacing: 1px; color: var(--text-muted); }
+.netnow b { display: inline-block; margin-left: 6px; font-size: 18px; letter-spacing: 0; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+.netnow span:first-child b { color: var(--accent-secondary); } .netnow span:last-child b { color: var(--accent-primary); }
+#insNetChart { height: 96px; }
+.netinfo h3.sub.first { margin-top: 0; padding-top: 0; border-top: 0; }
+.bars { letter-spacing: 2px; color: var(--accent-secondary); }
+.bars .off { color: var(--divider); }
+.ph .dim.ok { color: var(--success); } .ph .dim.warn { color: var(--highlight); } .ph .dim.hot { color: var(--accent-primary); }
+@media (max-width: 760px) { .netgrid { grid-template-columns: 1fr; } }
+#insightsTab .sysrow.net { grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr)); gap: 8px; }

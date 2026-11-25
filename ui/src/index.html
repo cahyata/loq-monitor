@@ -156,6 +156,24 @@
           <p class="note" id="insLimitNow"></p>
           <div class="systable" id="insLimits" role="table"></div>
         </section>
+        <section class="panel mini cyan wide">
+          <div class="ph"><h2 class="ptit">NETWORK</h2><span class="dim" id="insNetVerdict"></span></div>
+          <div class="netgrid">
+            <div class="netspeed">
+              <div class="netnow"><span>DOWNLOAD <b id="insDown">--</b></span><span>UPLOAD <b id="insUp">--</b></span></div>
+              <canvas id="insNetChart" height="96" role="img" aria-label="Download and upload speed, last 5 minutes"></canvas>
+              <div class="cap" id="insNetCap"></div>
+            </div>
+            <div class="netinfo">
+              <h3 class="sub first">WI-FI</h3>
+              <dl class="kv" id="insWifi"></dl>
+              <h3 class="sub">PING</h3>
+              <div class="systable" id="insPing" role="table"></div>
+            </div>
+          </div>
+          <p class="note" id="insNetNote"></p>
+          <p class="more"><button type="button" id="insNetMask" class="act"></button></p>
+        </section>
         <section class="panel mini green wide">
           <div class="ph"><h2 class="ptit">THIS SESSION</h2><span class="dim" id="insSessionLen"></span></div>
           <div class="systable" id="insStats" role="table"></div>

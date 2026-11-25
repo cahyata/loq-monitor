@@ -9,7 +9,7 @@
    only while this tab is open. Shares $, store, sendWs, tf, deg, GPU_LIMITS and limitsOf with main.js. */
 
 var Insights = (() => {   // var, so a failure while loading this file cannot break the typeof checks in main.js
-  let active = false, last = null, procKey = store.get("insproc", "cpu"), askedProcs = false, askedAt = 0;
+  let active = false, last = null, procKey = store.get("insproc", "cpu"), askedProcs = false, askedNet = false, askedAt = 0;
   let prevAt = 0;
 
   /** One bucket of statistics per measured value. */
@@ -52,6 +52,20 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     return { w: parts(s), estimated: false, note: "CPU and GPU only. Use the laptop on battery once and this page learns the power of the rest." };
   }
 
+  /* ---- network speed history (last 5 minutes), kept from every snapshot ---- */
+  const VIRTUAL = /vmware|virtualbox|hyper-v|vethernet|openvpn|wireguard|tap-|loopback|bluetooth|wan miniport/i;
+  const netHist = [];
+  const NET_KEEP = 300;
+  function netRates(s) {
+    let d = 0, u = 0;
+    for (const h of s.hardware ?? []) {
+      if (h.type !== "Network" || VIRTUAL.test(h.name)) continue;
+      for (const x of h.sensors) { if (x.name === "Download Speed") d += x.value || 0; else if (x.name === "Upload Speed") u += x.value || 0; }
+    }
+    return { d, u };
+  }
+  const rate = (b) => (b >= 1e6 ? (b / 1e6).toFixed(b >= 1e7 ? 0 : 1) + " MB/s" : Math.round(b / 1e3) + " KB/s");
+
   /** Called for every snapshot. */
   function update(s) {
     last = s;
@@ -67,6 +81,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
       if (day.date !== dayKey()) day = { date: dayKey(), wh, limitSec: {} };
       if (now - savedAt > 30000) saveDay();
     }
+    netHist.push(netRates(s)); if (netHist.length > NET_KEEP) netHist.shift();
     const st = sess.stats;
     add(st.cpuTemp, s.cpu?.tempC); add(st.gpuTemp, s.gpu?.tempC); add(st.cpuLoad, s.cpu?.load); add(st.gpuLoad, s.gpu?.load);
     add(st.gpuPower, s.gpu?.powerW); add(st.ram, s.ram?.usedGB);
@@ -74,11 +89,11 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   }
 
   /* ---- what the service should measure ---- */
-  const wantProcs = () => active && !document.hidden;
+  const wantNow = () => active && !document.hidden;
   function syncProcs() {
-    const want = wantProcs();
-    if (want === askedProcs) return;
-    askedProcs = want; askedAt = Date.now(); sendWs(want ? "procs-on" : "procs-off");
+    const want = wantNow();
+    if (want !== askedProcs) { askedProcs = want; askedAt = Date.now(); sendWs(want ? "procs-on" : "procs-off"); }
+    if (want !== askedNet) { askedNet = want; sendWs(want ? "net-on" : "net-off"); }
   }
   document.addEventListener("visibilitychange", syncProcs);
 
@@ -149,6 +164,108 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
                      : [el("p", "note", "No limit has held the GPU back so far today.")]));
   }
 
+  /* ---- network card ---- */
+  let netMask = store.get("insmask", "on") === "on";
+  const hideIf = (t) => (netMask ? "hidden" : t);
+  const BAR_COUNT = 5;
+  function bars(pct) {
+    const on = Math.max(1, Math.min(BAR_COUNT, Math.ceil(pct / 20)));
+    const wrap = el("span", "bars"); wrap.setAttribute("aria-hidden", "true");
+    for (let i = 0; i < BAR_COUNT; i++) wrap.append(el("span", i < on ? null : "off", "\u25AE"));
+    return wrap;
+  }
+
+  /** A round number above the peak, for the top of the speed chart. */
+  function niceTop(peak) {
+    const exp = 10 ** Math.floor(Math.log10(peak)), m = peak / exp;
+    return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * exp;
+  }
+
+  function paintNetChart() {
+    const cv = $("insNetChart"), dpr = window.devicePixelRatio || 1;
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (!w) return;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+    const cs = getComputedStyle(document.documentElement);
+    const cyan = cs.getPropertyValue("--accent-secondary").trim(), pink = cs.getPropertyValue("--accent-primary").trim(), grid = cs.getPropertyValue("--divider").trim(), muted = cs.getPropertyValue("--text-muted").trim();
+    const peak = Math.max(1e5, ...netHist.map((p) => Math.max(p.d, p.u)));
+    const top = niceTop(peak);
+    const L = 58, R = 4, T = 8, B = 4, pw = w - L - R, ph = h - T - B;
+    g.font = "11px " + (cs.getPropertyValue("--font-mono").trim() || "monospace"); g.textBaseline = "middle"; g.lineWidth = 1;
+    for (const f of [0, 0.5, 1]) {
+      const y = T + ph * (1 - f);
+      g.strokeStyle = grid; g.beginPath(); g.moveTo(L, y); g.lineTo(w - R, y); g.stroke();
+      g.fillStyle = muted; g.fillText(rate(top * f), 0, Math.min(h - 6, Math.max(8, y)));
+    }
+    const x = (i) => L + (pw * i) / (NET_KEEP - 1), y = (v) => T + ph * (1 - Math.min(1, v / top));
+    const off = NET_KEEP - netHist.length;
+    for (const [key, color, fill] of [["u", pink, false], ["d", cyan, true]]) {
+      if (!netHist.length) break;
+      g.beginPath();
+      netHist.forEach((p, i) => (i ? g.lineTo(x(i + off), y(p[key])) : g.moveTo(x(i + off), y(p[key]))));
+      g.strokeStyle = color; g.lineWidth = 1.5; g.stroke();
+      if (fill) { g.lineTo(x(netHist.length - 1 + off), T + ph); g.lineTo(x(off), T + ph); g.closePath(); g.globalAlpha = 0.15; g.fillStyle = color; g.fill(); g.globalAlpha = 1; }
+    }
+    const peakD = Math.max(0, ...netHist.map((p) => p.d)), peakU = Math.max(0, ...netHist.map((p) => p.u));
+    $("insNetCap").textContent = `last ${netHist.length < 60 ? netHist.length + " s" : Math.floor(netHist.length / 60) + " min"} \u00B7 peak down ${rate(peakD)} \u00B7 peak up ${rate(peakU)}`;
+    cv.setAttribute("aria-label", "Download and upload speed. " + $("insNetCap").textContent);
+  }
+
+  /** One sentence for the verdict, worst problem first. Router trouble outranks DNS trouble. */
+  function verdict(n) {
+    const g = n.gateway, d = n.dns;
+    if (!g) return { level: "", label: "No connection", text: "No network with a gateway was found. Check the cable or the Wi-Fi." };
+    if (g.lossPct >= 10 || (g.avgMs ?? 0) > 100) return { level: "hot", label: "Problem", text: "The router drops replies or answers slowly. The problem is on your side: the Wi-Fi signal, the router, or this laptop's network adapter." };
+    if ((g.avgMs ?? 0) > 30 || (g.jitterMs ?? 0) > 15 || g.lossPct > 0) return { level: "warn", label: "Unsteady", text: "The connection to the router is not steady. On Wi-Fi this usually means a weak signal or interference. Try moving closer or using the 5 GHz band." };
+    if (d && d.ip !== g.ip && (d.lossPct >= 10 || (d.avgMs ?? 0) > 150)) return { level: "warn", label: "DNS slow", text: "The router is fine, but the DNS server is slow or does not answer. Pages may take long to start loading. Try another DNS server." };
+    return { level: "ok", label: "Looks good", text: "The router answers quickly and steadily. If something online is slow, the cause is beyond your router: your provider or the site itself." };
+  }
+
+  function paintNetwork(s) {
+    const r = netRates(s);
+    $("insDown").textContent = rate(r.d); $("insUp").textContent = rate(r.u);
+    $("insDown").title = ((r.d * 8) / 1e6).toFixed(1) + " Mbps"; $("insUp").title = ((r.u * 8) / 1e6).toFixed(1) + " Mbps";
+    paintNetChart();
+    $("insNetMask").textContent = netMask ? "SHOW NETWORK NAME AND ADDRESSES" : "HIDE NETWORK NAME AND ADDRESSES";
+
+    const n = s.network, wifi = $("insWifi"), ping = $("insPing"), vd = $("insNetVerdict");
+    if (!n) {
+      const old = askedAt && Date.now() - askedAt > 12000;
+      vd.textContent = ""; vd.className = "dim"; wifi.replaceChildren(); ping.replaceChildren();
+      $("insNetNote").textContent = old ? "No data. The sensor service that is running is older than this app and cannot measure the network." : "Measuring... the first numbers appear in a few seconds.";
+      return;
+    }
+    const v = verdict(n);
+    vd.textContent = v.label; vd.className = "dim " + v.level;
+    $("insNetNote").textContent = v.text + (n.adapter ? " Measured through " + n.adapter + "." : "");
+
+    if (n.wifi) {
+      const w = n.wifi, q = w.signalPct, word = q >= 80 ? "Excellent" : q >= 60 ? "Good" : q >= 40 ? "Fair" : "Weak";
+      const sig = el("dd"); sig.append(bars(q), document.createTextNode("  " + q + " %  " + word));
+      wifi.replaceChildren(
+        el("dt", null, "Network"), el("dd", null, hideIf(w.ssid)),
+        el("dt", null, "Signal"), sig,
+        el("dt", null, "Link speed"), el("dd", null, w.rxMbps + " down, " + w.txMbps + " up Mbps"),
+        el("dt", null, "Standard"), el("dd", null, w.standard),
+        el("dt", null, "Channel"), el("dd", null, w.channel ? w.channel + (w.band ? " (" + w.band + ")" : "") : "--"));
+    } else {
+      wifi.replaceChildren(el("dt", null, "Wi-Fi"), el("dd", null, "Not connected by Wi-Fi."));
+    }
+
+    const row = (cells, head) => {
+      const x = el("div", "sysrow net" + (head ? " head" : "")); x.setAttribute("role", "row"); x.style.setProperty("--cols", String(cells.length));
+      cells.forEach((c) => { const sp = el("span", null, c); sp.setAttribute("role", head ? "columnheader" : "cell"); x.append(sp); });
+      return x;
+    };
+    const ms = (x) => (x == null ? "--" : x < 1 ? "<1 ms" : (Number.isInteger(x) ? x : x.toFixed(1)) + " ms");
+    const line = (label, p) => (p ? row([label, p.rttMs == null ? "lost" : ms(p.rttMs), ms(p.avgMs), ms(p.jitterMs), p.lossPct + " %"]) : null);
+    const rows = [row(["TARGET", "NOW", "AVERAGE", "JITTER", "LOSS"], true), line("Router" + (netMask ? "" : " " + (n.gateway?.ip ?? "")), n.gateway)];
+    if (n.dns && n.dns.ip !== n.gateway?.ip) rows.push(line("DNS" + (netMask ? "" : " " + n.dns.ip), n.dns));
+    ping.replaceChildren(...rows.filter(Boolean));
+    if (n.dns && n.dns.ip === n.gateway?.ip) ping.append(el("p", "note", "The DNS server is the router, so one measurement covers both."));
+  }
+
   function paintStats() {
     $("insSessionLen").textContent = "Running for " + clock((Date.now() - sess.start) / 1000);
     const st = sess.stats, T = (b, k) => (b.n ? tf(k === "avg" ? b.sum / b.n : b[k], 0) + deg() : "--");
@@ -163,7 +280,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
 
   function paint() {
     if (!last) return;
-    paintProcs(last); paintPower(last); paintLimits(last); paintStats();
+    paintProcs(last); paintPower(last); paintLimits(last); paintNetwork(last); paintStats();
   }
 
   /* ---- controls ---- */
@@ -174,6 +291,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   };
   document.querySelectorAll("#insProcSeg button").forEach((b) => { b.onclick = () => setKey(b.dataset.k); });
   setKey(procKey in FORMATS ? procKey : "cpu");
+  $("insNetMask").onclick = () => { netMask = !netMask; store.set("insmask", netMask ? "on" : "off"); if (last) paintNetwork(last); };
   $("insReset").onclick = () => { sess = fresh(); if (last) paint(); };
   $("insTariff").onclick = () => $("btnSettings").click();
   addEventListener("beforeunload", saveDay);
@@ -182,7 +300,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     setActive(on) { active = on; syncProcs(); if (on) paint(); },
     update,
     /** After a reconnect the service has forgotten what this window asked for. */
-    resync() { askedProcs = false; syncProcs(); },
+    resync() { askedProcs = false; askedNet = false; syncProcs(); },
   };
 })();
 Insights.setActive(store.get("tab", "overview") === "insights");   // the saved tab was restored before this file loaded

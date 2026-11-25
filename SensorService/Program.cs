@@ -36,6 +36,7 @@ try { Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); }; } 
 var reader = new SensorReader();
 var fps = new FpsMeter();
 var procs = new ProcessSampler();
+var net = new NetProbe();
 var clients = new ConcurrentDictionary<WebSocket, byte>();
 string latestJson = "{}";
 string? systemJson = null;      // the System page data, read once because it takes a second or two
@@ -60,7 +61,7 @@ try
     do
     {
         fps.Tick();
-        var snap = reader.Read() with { Fps = fps.Current(), Processes = procs.Current };
+        var snap = reader.Read() with { Fps = fps.Current(), Processes = procs.Current, Network = net.Current };
         latestJson = JsonSerializer.Serialize(snap, jsonOptions);
         if (!clients.IsEmpty) await Broadcast(latestJson);
     }
@@ -72,6 +73,7 @@ listener.Stop();
 reader.Dispose();
 fps.Dispose();
 procs.Dispose();
+net.Dispose();
 return;
 
 async Task AcceptLoop(CancellationToken ct)
@@ -102,6 +104,7 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
             var buf = new byte[256];
             var wantsFps = false;
             var wantsProcs = false;
+            var wantsNet = false;
             try
             {
                 while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
@@ -119,10 +122,12 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
                         case "fps-off": if (wantsFps) { wantsFps = false; fps.Release(); } break;
                         case "procs-on": if (!wantsProcs) { wantsProcs = true; procs.Acquire(); } break;
                         case "procs-off": if (wantsProcs) { wantsProcs = false; procs.Release(); } break;
+                        case "net-on": if (!wantsNet) { wantsNet = true; net.Acquire(); } break;
+                        case "net-off": if (wantsNet) { wantsNet = false; net.Release(); } break;
                     }
                 }
             }
-            finally { if (wantsFps) fps.Release(); if (wantsProcs) procs.Release(); }
+            finally { if (wantsFps) fps.Release(); if (wantsProcs) procs.Release(); if (wantsNet) net.Release(); }
             clients.TryRemove(ws, out _);
             ws.Dispose();
         }
@@ -457,7 +462,7 @@ sealed class SensorReader : IDisposable
     public void Dispose() { try { _pc.Close(); } catch { } _featureArgs?.Dispose(); _nvml.Dispose(); _other?.Dispose(); _zone?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }
 }
 
-record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode, List<HwInfo> Hardware, FpsInfo? Fps = null, ProcessInfo? Processes = null);
+record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode, List<HwInfo> Hardware, FpsInfo? Fps = null, ProcessInfo? Processes = null, NetworkInfo? Network = null);
 record HwInfo(string Name, string Type, SensorInfo[] Sensors);
 record SensorInfo(string Type, string Name, float? Value, float? Min, float? Max);
 record CpuInfo(string? Name, float? Load, float? TempC, int? FanRpm, float? ClockMHz, float? PowerW, float[] CoreLoads);

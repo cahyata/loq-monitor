@@ -4,6 +4,9 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+### Added
+- A NETWORK card on the Insights tab. It graphs download and upload speed for the last five minutes, shows the Wi-Fi network, signal strength (with bars and a word), link speed, standard and channel, and measures ping to the router and the DNS server (now, average, jitter, loss). A verdict says whether the router connection looks good, is unsteady or has a problem, and explains the likely cause. The network name and addresses are hidden by default. The service reads the Wi-Fi link from the Windows WLAN API and pings only the router and DNS server it already uses, and only while the Insights tab is open.
+
 ### Changed
 - Layout pass over every page. The tabs stay in view while a page scrolls, and each page opens at its top. The history selector moved from the tab bar to the top of the Overview charts. The CPU and GPU panel titles lost their brackets to match the other panels. Tabs show their key in a tooltip.
 - The Overlay page puts the preview and the appearance settings side by side, with the preview pinned while the settings scroll, and groups the settings into Placement, Look and Style. The page is a third shorter.
