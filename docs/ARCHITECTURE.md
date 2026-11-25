@@ -45,7 +45,9 @@ The overlay is a second Tauri window (`overlay`, page `overlay.html`). Rust crea
 
 The UI keeps one hour of history (one sample per second, in memory only). The temperature charts show the last 1 minute, 10 minutes or 1 hour with the warm and hot limit lines and a min, average and max caption. When a CPU or GPU temperature or the GPU hotspot stays at or above its limit for 30 seconds, a banner appears with Snooze and Dismiss buttons.
 
-The app has two tabs. Overview shows the panels. Detailed (`detail.js`) lists every sensor in `hardware`, grouped by hardware and sensor type with value, minimum and maximum, a filter box, and expand and collapse controls. It sorts by default order, name or value, hides virtual and idle network adapters on request, and has a Reset min/max button that sends `reset-minmax`. It refreshes only the sections that are open.
+The window has a title bar and a pinned row of pages. The title bar carries the read only status (service link, Lenovo power mode, alerts, clock) and the window controls. The pinned row holds the pages as one joined control (Overview, Insights, Detailed, System, then Overlay set apart) and the MINI and SETTINGS buttons. The status summary line sits under it and scrolls with the content. Keys 1 to 5 open the pages in that order.
+
+Overview shows the panels. Insights (`insights.js`) ranks programs, shows power and energy, GPU limits, the network and session statistics. System (`system.js`) shows the machine facts from `/system`. Overlay (`overlayui.js`) configures the game overlay. Detailed (`detail.js`) lists every sensor in `hardware`, grouped by hardware and sensor type with value, minimum and maximum, a filter box, and expand and collapse controls. It sorts by default order, name or value, hides virtual and idle network adapters on request, and has a Reset min/max button that sends `reset-minmax`. It refreshes only the sections that are open.
 
 `ds-tokens.css` is generated from the NeonNet design system (`neon-design-system`) and must not be edited by hand. `tokens.css` holds only the values that system does not define.
 
@@ -85,7 +87,7 @@ The records in `SensorService/Program.cs` define this schema. A numeric field is
 | Decision | Reason |
 |---|---|
 | Tauri v2 for the UI | It renders with the WebView2 runtime installed on Windows and bundles no browser engine. |
-| Plain HTML, CSS and JavaScript | The app has one screen, so a framework and a frontend build step add nothing. |
+| Plain HTML, CSS and JavaScript | The app has few screens, so a framework and a frontend build step add nothing. |
 | Separate service and UI processes | Only the service needs administrator rights, so the UI runs without them. |
 | WebSocket on loopback | Further clients, such as an overlay, can read the same stream without changes to the service. |
 | Everything in the snapshot | The Detailed tab reads `hardware` from the same stream, so the service has one output path and no extra endpoint. |
