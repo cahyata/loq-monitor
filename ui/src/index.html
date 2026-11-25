@@ -40,13 +40,14 @@
 
   <div id="scroller">
   <div id="app">
+    <div id="announce" class="sr-only" role="status" aria-live="polite"></div>
     <div id="hud">
       <span>SERVICE <b id="link">OFFLINE</b></span>
       <span>MODE <b id="mode">--</b></span>
       <span id="clock">--:--:--</span>
       <span class="acts">
-        <button id="btnAlerts" title="Desktop notifications for critical temperatures">ALERTS</button>
-        <button id="btnFx" title="Visual effects (grid, scanlines)">FX</button>
+        <button id="btnAlerts" aria-pressed="true" title="Desktop notifications for critical temperatures">ALERTS</button>
+        <button id="btnFx" aria-pressed="true" title="Visual effects (grid, scanlines)">FX</button>
         <button id="btnTheme" title="Theme: follow system, dark or light (T)">THEME</button>
         <button id="btnMini" title="Small always-on-top window">MINI</button>
         <button id="btnHelp" title="Keyboard shortcuts (?)">KEYS</button>
@@ -54,7 +55,7 @@
       </span>
     </div>
 
-    <div id="heat" role="status" hidden>
+    <div id="heat" hidden>
       <span id="heatMsg"></span>
       <span class="hb"><button id="heatSnooze">SNOOZE 30 MIN</button><button id="heatDismiss">DISMISS</button></span>
     </div>
@@ -69,16 +70,16 @@
     <h1>LOQ//NET<span class="cur"></span></h1>
     <p class="sub" id="sub">HARDWARE MONITOR</p>
 
-    <nav id="tabs" role="tablist"><button id="tabOverview" role="tab" class="on">OVERVIEW</button><button id="tabDetail" role="tab">DETAILED</button></nav>
-    <main id="overview">
+    <nav id="tabs" role="tablist" aria-label="Views"><button id="tabOverview" role="tab" class="on" aria-selected="true" aria-controls="overview" aria-keyshortcuts="1">OVERVIEW</button><button id="tabDetail" role="tab" aria-selected="false" aria-controls="detail" aria-keyshortcuts="2">DETAILED</button></nav>
+    <main id="overview" aria-labelledby="tabOverview">
       <div class="rangebar"><span>TEMPERATURE HISTORY</span>
-        <span class="seg" role="group" aria-label="History range"><button data-r="60">1 MIN</button><button data-r="600">10 MIN</button><button data-r="3600">1 HOUR</button></span>
+        <span class="seg" role="group" aria-label="History range"><button data-r="60" aria-pressed="false">1 MIN</button><button data-r="600" aria-pressed="false">10 MIN</button><button data-r="3600" aria-pressed="false">1 HOUR</button></span>
       </div>
       <section class="panel pink" id="cpu">
-        <div class="ph"><span class="ptit">[ CPU ]</span><span class="dim" id="cpuName"></span></div>
+        <div class="ph"><h2 class="ptit">[ CPU ]</h2><span class="dim" id="cpuName"></span></div>
         <div class="hero"><span class="big" id="cpuTemp">--</span><span class="unit u-deg">°C</span><span class="tag" id="cpuTag" title="CPU temperature status. Limits are in Settings.">--</span></div>
         <div class="meter"><i id="cpuLoadBar"></i></div>
-        <canvas id="cpuChart" height="72"></canvas>
+        <canvas id="cpuChart" height="72" role="img" aria-label="CPU temperature history"></canvas>
         <div class="cap" id="cpuCap"></div>
         <dl>
           <div><dt title="Share of CPU time in use, averaged over all threads">LOAD</dt><dd id="cpuLoad">--</dd></div>
@@ -90,10 +91,10 @@
       </section>
 
       <section class="panel" id="gpu">
-        <div class="ph"><span class="ptit">[ GPU ]</span><span class="dim" id="gpuName"></span></div>
+        <div class="ph"><h2 class="ptit">[ GPU ]</h2><span class="dim" id="gpuName"></span></div>
         <div class="hero"><span class="big" id="gpuTemp">--</span><span class="unit u-deg">°C</span><span class="tag" id="gpuTag" title="GPU temperature status. Limits are in Settings.">--</span></div>
         <div class="meter"><i id="gpuLoadBar"></i></div>
-        <canvas id="gpuChart" height="72"></canvas>
+        <canvas id="gpuChart" height="72" role="img" aria-label="GPU temperature history"></canvas>
         <div class="cap" id="gpuCap"></div>
         <dl>
           <div><dt title="GPU core utilization">LOAD</dt><dd id="gpuLoad">--</dd></div>
@@ -108,22 +109,22 @@
         </dl>
       </section>
 
-      <section class="panel mini yellow"><div class="ph"><span class="ptit">RAM</span></div>
+      <section class="panel mini yellow"><div class="ph"><h2 class="ptit">RAM</h2></div>
         <div class="v" id="ramV">--</div><div class="meter"><i id="ramBar"></i></div><div class="dim" id="ramSub"></div></section>
-      <section class="panel mini orange"><div class="ph"><span class="ptit">VRAM</span></div>
+      <section class="panel mini orange"><div class="ph"><h2 class="ptit">VRAM</h2></div>
         <div class="v" id="vramV">--</div><div class="meter"><i id="vramBar"></i></div><div class="dim" id="vramSub"></div></section>
-      <section class="panel mini green span2"><div class="ph"><span class="ptit">BATTERY</span></div>
+      <section class="panel mini green span2"><div class="ph"><h2 class="ptit">BATTERY</h2></div>
         <div class="v" id="batV">--</div><div class="meter"><i id="batBar"></i></div>
         <div class="dim" id="batSub"></div><div class="dim" id="batRate"></div></section>
 
-      <section class="panel mini cyan span2"><div class="ph"><span class="ptit">STORAGE</span></div>
+      <section class="panel mini cyan span2"><div class="ph"><h2 class="ptit">STORAGE</h2></div>
         <div id="storage" class="disks"></div></section>
-      <section class="panel mini pinkb span2"><div class="ph"><span class="ptit">SYSTEM LOG</span></div>
+      <section class="panel mini pinkb span2"><div class="ph"><h2 class="ptit">SYSTEM LOG</h2></div>
         <div id="log" class="log"></div></section>
-      <section class="panel mini yellow wide" id="favPanel" hidden><div class="ph"><span class="ptit">FAVORITES</span><span class="dim">pin sensors with the star in the Detailed tab</span></div>
+      <section class="panel mini yellow wide" id="favPanel" hidden><div class="ph"><h2 class="ptit">FAVORITES</h2><span class="dim">pin sensors with the star in the Detailed tab</span></div>
         <div id="favList" class="favs"></div></section>
     </main>
-    <section id="detail" hidden>
+    <section id="detail" role="tabpanel" aria-labelledby="tabDetail" hidden>
       <div class="dtools"><input id="dfilter" type="search" placeholder="Filter sensors" aria-label="Filter sensors"><select id="dsort" aria-label="Sort sensors"><option value="default">SORT: DEFAULT</option><option value="name">SORT: NAME</option><option value="value">SORT: VALUE</option></select>
         <label class="chk"><input id="dhide" type="checkbox" checked> HIDE VIRTUAL / IDLE NETWORK</label>
         <button id="dreset" title="Restart minimum and maximum tracking for every sensor">RESET MIN/MAX</button>
@@ -141,6 +142,7 @@
       <label><span>Hot at (<span class="dlg-deg">°C</span>)<small>Turns pink and raises the alert</small></span><input id="cfgHot" type="number"></label>
       <label><span>GPU hotspot limit (<span class="dlg-deg">°C</span>)<small>Separate alert for the hottest GPU point</small></span><input id="cfgSpot" type="number"></label>
       <label><span>Alert delay (s)<small>How long it must stay hot first</small></span><input id="cfgHold" type="number"></label>
+      <label><span>Keyboard shortcuts<small>Single-key shortcuts such as 1, 2, T, U and M</small></span><input id="cfgKeys" type="checkbox" checked></label>
       <p class="err" id="cfgErr" role="status"></p>
       <div class="btns"><button type="button" id="cfgReset">RESET</button><button type="button" id="cfgCancel">CANCEL</button><button type="submit" class="go" id="cfgSave">SAVE</button></div>
     </form>

@@ -47,11 +47,13 @@ function cycleTheme() {
 
 function applyPrefs() {
   $("btnAlerts").classList.toggle("on", store.get("alerts", "on") === "on");
+  $("btnAlerts").setAttribute("aria-pressed", String(store.get("alerts", "on") === "on"));
   const t = themePref();
   root.classList.toggle("light", t === "light" || (t === "system" && systemLight.matches));
   $("btnTheme").textContent = "THEME: " + THEME_LABEL[t];
   root.classList.toggle("nofx", store.get("fx", "on") === "off");
   $("btnFx").classList.toggle("on", store.get("fx", "on") === "on");
+  $("btnFx").setAttribute("aria-pressed", String(store.get("fx", "on") === "on"));
 }
 $("btnAlerts").onclick = () => { store.set("alerts", store.get("alerts", "on") === "on" ? "off" : "on"); applyPrefs(); };
 $("btnFx").onclick = () => { store.set("fx", store.get("fx", "on") === "on" ? "off" : "on"); applyPrefs(); };
@@ -150,6 +152,13 @@ function heatUpdate(s) {
   $("heat").hidden = !show;
   if (show) $("heatMsg").textContent = "Running hot: " + live.map((x) => x[1]).join(", ") + ". Check airflow, power mode and dust.";
   heat.live = live.map((x) => x[0]);
+  // The banner text changes every second, so it is not a live region. A screen reader hears it only
+  // when the banner appears or the set of hot sensors changes.
+  const sig = show ? heat.live.join() : "";
+  if (sig !== heat.sig) {
+    heat.sig = sig;
+    $("announce").textContent = show ? "Running hot: " + live.map((x) => x[1].replace(/ for .*/, "")).join(", ") + "." : "";
+  }
 }
 $("heatDismiss").onclick = () => { (heat.live ?? []).forEach((k) => { heat[k].dismissed = true; }); $("heat").hidden = true; };
 $("heatSnooze").onclick = () => { heat.snoozeUntil = Date.now() + SNOOZE_MS; $("heat").hidden = true; };
@@ -211,24 +220,25 @@ function drawChart(canvas, series, color) {
   ctx.fillStyle = g; ctx.fill();
 }
 const RANGE_NAMES = { 60: "1 min", 600: "10 min", 3600: "1 hour" };
-function caption(el, series) {
+function caption(el, series, canvas, name) {
   const n = Math.min(series.length, range);
   if (!n) { el.textContent = ""; return; }
   let lo = Infinity, hi = -Infinity, sum = 0;
   for (let i = series.length - n; i < series.length; i++) { const v = series[i]; if (v < lo) lo = v; if (v > hi) hi = v; sum += v; }
   const span = n < range ? (n < 60 ? n + " s" : Math.floor(n / 60) + " min") : RANGE_NAMES[range];
   el.textContent = `last ${span} · min ${tf(lo)}\u00B0 · avg ${tf(sum / n)}\u00B0 · max ${tf(hi)}\u00B0`;
+  canvas.setAttribute("aria-label", `${name} temperature history, ${el.textContent.replace(/\u00B0/g, " degrees")}`);
 }
 function drawAll() {
   drawChart($("cpuChart"), hist.cpu, css("--accent-primary"));
   drawChart($("gpuChart"), hist.gpu, css("--accent-secondary"));
-  caption($("cpuCap"), hist.cpu); caption($("gpuCap"), hist.gpu);
+  caption($("cpuCap"), hist.cpu, $("cpuChart"), "CPU"); caption($("gpuCap"), hist.gpu, $("gpuChart"), "GPU");
 }
 document.querySelectorAll(".seg button").forEach((b) => {
-  b.classList.toggle("on", +b.dataset.r === range);
+  b.classList.toggle("on", +b.dataset.r === range); b.setAttribute("aria-pressed", String(+b.dataset.r === range));
   b.onclick = () => {
     range = +b.dataset.r; store.set("range", String(range));
-    document.querySelectorAll(".seg button").forEach((x) => x.classList.toggle("on", x === b));
+    document.querySelectorAll(".seg button").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
     drawAll();
   };
 });
@@ -366,13 +376,20 @@ function setBig(id, value, unit) {
 
 /* ---------- WebSocket + auto-reconnect, offline screen ---------- */
 let retry = 0, ws = null, retryTimer = null, offlineTimer = null;
+function showOffline(show) {
+  const was = !$("offline").hidden;
+  $("offline").hidden = !show;
+  $("scroller").inert = show;                      // the page behind the overlay cannot take focus
+  if (show && !was) $("btnStart").focus();
+  if (!show && was) $("btnTheme").focus({ preventScroll: true });
+}
 function setLink(on) {
   const b = $("link");
   b.textContent = on ? "ONLINE" : "OFFLINE";
   b.className = on ? "on" : "";
   $("sub").textContent = on ? "HARDWARE MONITOR" : "WAITING FOR SERVICE…";
-  if (on) { clearTimeout(offlineTimer); offlineTimer = null; $("offline").hidden = true; }
-  else if (!offlineTimer) offlineTimer = setTimeout(() => { $("offline").hidden = false; }, 3000); // brief drops stay quiet; reconnect attempts must not restart this timer
+  if (on) { clearTimeout(offlineTimer); offlineTimer = null; showOffline(false); }
+  else if (!offlineTimer) offlineTimer = setTimeout(() => showOffline(true), 3000); // brief drops stay quiet; reconnect attempts must not restart this timer
 }
 function connect() {
   clearTimeout(retryTimer);
@@ -399,7 +416,7 @@ const cfgIds = { warn: "cfgWarn", hot: "cfgHot", spot: "cfgSpot", hold: "cfgHold
 const TEMP_KEYS = ["warn", "hot", "spot"];
 let dlgUnit = unit;
 function fillCfg(src, u) {
-  dlgUnit = u; $("cfgUnit").value = u;
+  dlgUnit = u; $("cfgUnit").value = u; $("cfgKeys").checked = keysOn;
   document.querySelectorAll(".dlg-deg").forEach((e) => { e.textContent = "\u00B0" + u; });
   for (const [k, id] of Object.entries(cfgIds)) $(id).value = TEMP_KEYS.includes(k) ? Math.round(conv(src[k], u)) : src[k];
   $("cfgErr").textContent = "";
@@ -419,6 +436,7 @@ $("settingsForm").onsubmit = (e) => {
   for (const k of TEMP_KEYS) v[k] = Math.round(unconv(v[k], dlgUnit) * 10) / 10;   // back to °C
   if (v.warn >= v.hot) { e.preventDefault(); $("cfgErr").textContent = "Warm must be lower than Hot."; return; }
   if (TEMP_KEYS.some((k) => v[k] < 30 || v[k] > 120) || v.hold < 0 || v.hold > 300) { e.preventDefault(); $("cfgErr").textContent = "Limits must be 30 to 120 \u00B0C (86 to 248 \u00B0F) and the delay 0 to 300 s."; return; }
+  keysOn = $("cfgKeys").checked; store.set("keys", keysOn ? "on" : "off");
   if (dlgUnit !== unit) setUnit(dlgUnit);
   Object.assign(CFG, v);
   for (const k of Object.keys(v)) store.set("cfg." + k, String(v[k]));
@@ -461,9 +479,10 @@ $("btnFull").onclick = () => setMini(false);
 })();
 
 /* ---------- keyboard shortcuts ---------- */
+let keysOn = store.get("keys", "on") === "on";   // single-key shortcuts can be turned off (WCAG 2.1.4)
 const typing = (t) => t && (t.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(t.tagName));
 addEventListener("keydown", (e) => {
-  if (e.ctrlKey || e.altKey || e.metaKey || typing(e.target) || document.querySelector("dialog[open]")) return;
+  if (!keysOn || e.ctrlKey || e.altKey || e.metaKey || typing(e.target) || document.querySelector("dialog[open]")) return;
   const k = e.key.toLowerCase();
   if (k === "escape" && miniOn) { setMini(false); return; }
   if (k === "m") { setMini(!miniOn); return; }
@@ -478,3 +497,11 @@ addEventListener("keydown", (e) => {
 });
 $("btnHelp").onclick = () => $("help").showModal();
 $("helpClose").onclick = () => $("help").close();
+
+/* ---------- close a dialog by clicking outside it ---------- */
+for (const d of [$("settings"), $("help")]) {
+  d.addEventListener("click", (e) => {
+    const r = d.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) d.close();
+  });
+}

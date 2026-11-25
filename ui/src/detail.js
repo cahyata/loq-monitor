@@ -52,14 +52,14 @@ const Detail = (() => {
       sm.append(a, b); d.append(sm);
       if (sort === "name") rows.sort((p, q) => p.x.name.localeCompare(q.x.name, undefined, { numeric: true }));
       [...new Set(rows.map((r) => r.x.type))].sort((p, q) => rank(p) - rank(q)).forEach((t) => {
-        const g = document.createElement("div"); g.className = "grp";
+        const g = document.createElement("div"); g.className = "grp"; g.setAttribute("role", "table"); g.setAttribute("aria-label", (h.name + " " + (NAMES[t] ?? t)).trim());
         const h4 = document.createElement("h4"); h4.textContent = NAMES[t] ?? t; h4.title = SensorHelp.group(t); g.append(h4);
-        const head = document.createElement("div"); head.className = "srow head";
-        ["SENSOR", "VALUE", "MIN", "MAX"].forEach((c) => { const s = document.createElement("span"); s.textContent = c; s.title = SensorHelp.column(c); head.append(s); });
+        const head = document.createElement("div"); head.className = "srow head"; head.setAttribute("role", "row");
+        ["SENSOR", "VALUE", "MIN", "MAX"].forEach((c) => { const s = document.createElement("span"); s.textContent = c; s.title = SensorHelp.column(c); s.setAttribute("role", "columnheader"); head.append(s); });
         g.append(head);
         rows.filter((r) => r.x.type === t).forEach(({ x, i }) => {
-          const r = document.createElement("div"); r.className = "srow"; r.dataset.i = i;
-          ["nm", "val", "mm", "mm"].forEach((c) => { const s = document.createElement("span"); s.className = c; r.append(s); });
+          const r = document.createElement("div"); r.className = "srow"; r.dataset.i = i; r.setAttribute("role", "row");
+          ["nm", "val", "mm", "mm"].forEach((c) => { const s = document.createElement("span"); s.className = c; s.setAttribute("role", "cell"); r.append(s); });
           const key = x.key ?? Pins.key(h, x);
           const pin = document.createElement("button");
           pin.type = "button"; pin.className = "pin";
@@ -111,6 +111,8 @@ const Detail = (() => {
     $("overview").hidden = detail; $("detail").hidden = !detail;
     $("tabOverview").classList.toggle("on", !detail);
     $("tabDetail").classList.toggle("on", detail);
+    $("tabOverview").setAttribute("aria-selected", String(!detail));
+    $("tabDetail").setAttribute("aria-selected", String(detail));
     store.set("tab", detail ? "detail" : "overview");
     if (detail) { sig = ""; if (last) refresh(last); } else drawAll();
   }
