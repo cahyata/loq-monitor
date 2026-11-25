@@ -21,6 +21,19 @@ fn notify(app: AppHandle, title: String, body: String) {
   let _ = app.notification().builder().title(title).body(body).show();
 }
 
+/// Starts the SensorService scheduled task (the user owns it, so no elevation is needed).
+#[tauri::command]
+fn start_service() -> Result<(), String> {
+  use std::os::windows::process::CommandExt;
+  const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+  let out = std::process::Command::new("schtasks")
+    .args(["/run", "/tn", "LOQ Monitor Service"])
+    .creation_flags(CREATE_NO_WINDOW)
+    .output()
+    .map_err(|e| e.to_string())?;
+  if out.status.success() { Ok(()) } else { Err(String::from_utf8_lossy(&out.stderr).trim().to_string()) }
+}
+
 fn show_main(app: &AppHandle) {
   if let Some(w) = app.get_webview_window("main") {
     let _ = w.show();
@@ -33,7 +46,7 @@ fn show_main(app: &AppHandle) {
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_notification::init())
-    .invoke_handler(tauri::generate_handler![set_tooltip, notify])
+    .invoke_handler(tauri::generate_handler![set_tooltip, notify, start_service])
     .on_window_event(|window, event| {
       // The close button hides the window to the tray. "Quit" in the tray menu exits.
       if let WindowEvent::CloseRequested { api, .. } = event {

@@ -40,7 +40,7 @@ html.nofx #sky { inset: 0; }
 #hud b.on { color: var(--success); }
 #clock { color: var(--accent-secondary); }
 .acts { display: flex; gap: 6px; }
-.acts button { font: bold 10px var(--font-mono); letter-spacing: 1px; color: var(--text-muted); background: none; border: 1px solid var(--text-muted); padding: 2px 8px; cursor: pointer; }
+.acts button { font: bold 11px var(--font-mono); letter-spacing: 1px; color: var(--text-muted); background: none; border: 1px solid var(--text-muted); padding: 2px 8px; cursor: pointer; }
 .acts button:hover { border-color: var(--accent-secondary); color: var(--accent-secondary); }
 .acts button.on { background: var(--success); border-color: var(--success); color: var(--surface-inset); }
 
@@ -78,8 +78,8 @@ main { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 html.light .big { text-shadow: 2px 2px 0 color-mix(in srgb, var(--c, var(--text)) 30%, transparent); }
 .unit { font-size: 18px; color: var(--text-muted); }
 .big.ok { --c: var(--success); } .big.warn { --c: var(--highlight); } .big.hot { --c: var(--accent-primary); }
-.tag { display: none; margin-left: 8px; align-self: center; font-size: 9px; font-weight: bold; color: var(--surface-inset); background: var(--accent-primary); padding: 1px 5px; letter-spacing: .7px; animation: blink 1.2s steps(1) infinite; }
-.tag.show { display: inline-block; }
+.tag { display: inline-block; margin-left: 8px; align-self: center; font-size: 11px; font-weight: bold; color: var(--surface-inset); padding: 1px 7px; letter-spacing: 1px; }
+.tag.ok { background: var(--success); } .tag.warn { background: var(--highlight); } .tag.hot { background: var(--accent-primary); animation: blink 1.2s steps(1) infinite; }
 
 .meter { height: 6px; background: var(--surface-inset); border: 1px solid var(--border); margin: 8px 0 4px; position: relative; }
 .meter i { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, var(--accent-secondary), var(--accent-primary)); transition: width .4s ease; }
@@ -87,7 +87,7 @@ html.light .big { text-shadow: 2px 2px 0 color-mix(in srgb, var(--c, var(--text)
 canvas { width: 100%; height: 40px; display: block; margin: 4px 0 8px; }
 
 dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 12px; }
-dt { font-size: 9px; letter-spacing: 1.5px; color: var(--text-muted); }
+dt { cursor: help; font-size: 11px; letter-spacing: 1.5px; color: var(--text-muted); }
 dd { font-size: 14px; font-weight: bold; color: var(--text); font-variant-numeric: tabular-nums; }
 #cpu dl { grid-template-columns: repeat(4, 1fr); }
 dd.warn { color: var(--highlight); } dd.hot { color: var(--accent-primary); }
@@ -130,10 +130,10 @@ dd.warn { color: var(--highlight); } dd.hot { color: var(--accent-primary); }
 .hw[open] > summary::before { content: "-"; }
 .hw > summary .dim { margin-left: auto; }
 .grp { padding: 0 12px 6px; }
-.grp h4 { font-size: 10px; letter-spacing: 1.5px; color: var(--accent-primary); margin: 8px 0 2px; }
+.grp h4 { font-size: 11px; letter-spacing: 1.5px; color: var(--accent-primary); margin: 8px 0 2px; }
 .srow { display: grid; grid-template-columns: minmax(0, 1fr) 110px 110px 110px; gap: 8px; padding: 1px 0; font-size: 12px; font-variant-numeric: tabular-nums; border-bottom: 1px solid color-mix(in srgb, var(--divider) 50%, transparent); }
 .srow span:nth-child(n+2) { text-align: right; }
-.srow.head { color: var(--text-muted); font-size: 10px; letter-spacing: 1.5px; border-bottom-color: var(--divider); }
+.srow.head { color: var(--text-muted); font-size: 11px; letter-spacing: 1.5px; border-bottom-color: var(--divider); }
 .srow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .srow .val { color: var(--text-strong); font-weight: bold; }
 .srow .val.warn { color: var(--highlight); } .srow .val.hot { color: var(--accent-primary); }
@@ -148,7 +148,7 @@ dd.warn { color: var(--highlight); } dd.hot { color: var(--accent-primary); }
 #titlebar img { pointer-events: none; }
 #titlebar .ttl { font: italic 900 15px Impact, "Arial Black", sans-serif; letter-spacing: 3px; color: var(--accent-secondary);
   text-shadow: 2px 2px 0 color-mix(in srgb, var(--accent-primary) 55%, transparent); }
-#titlebar .path { font: 10px var(--font-mono); letter-spacing: 2px; color: var(--text-muted); }
+#titlebar .path { font: 11px var(--font-mono); letter-spacing: 2px; color: var(--text-muted); }
 #titlebar .wc { margin-left: auto; display: flex; gap: 6px; }
 #titlebar .wc button { width: 30px; height: 20px; font: bold 12px/1 var(--font-mono); color: var(--accent-secondary); background: none; cursor: pointer;
   border: 1px solid var(--accent-secondary); clip-path: var(--clip-sm); display: grid; place-items: center; padding: 0; }
@@ -162,3 +162,36 @@ html, body { overflow: hidden; height: 100%; }
 #scroller::-webkit-scrollbar-track { background: var(--surface-inset); border-left: 1px solid var(--divider); }
 #scroller::-webkit-scrollbar-thumb { background: var(--accent-secondary); border: 3px solid var(--surface-inset); }
 #scroller::-webkit-scrollbar-thumb:hover { background: var(--accent-primary); }
+
+/* ---------- settings, mini mode, offline screen ---------- */
+dialog#settings { margin: auto; color: var(--text); background: var(--surface-raised); border: 1px solid var(--border); border-top: 2px solid var(--accent-primary); padding: 16px 20px; min-width: 340px; clip-path: var(--clip); }
+dialog#settings::backdrop { background: color-mix(in srgb, var(--surface-inset) 70%, transparent); }
+dialog#settings h2 { font: italic 900 20px Impact, "Arial Black", sans-serif; letter-spacing: 2px; color: var(--accent-secondary); margin-bottom: 10px; }
+dialog#settings label { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0; font-size: 12px; }
+dialog#settings label small { display: block; color: var(--text-muted); font-size: 11px; }
+dialog#settings input { width: 80px; font: 13px var(--font-mono); color: var(--text-strong); background: var(--surface-inset); border: 1px solid var(--border); padding: 3px 6px; text-align: right; -webkit-user-select: text; user-select: text; }
+dialog#settings input:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent-secondary); }
+dialog#settings .err { color: var(--danger); min-height: 1.4em; font-size: 12px; }
+dialog#settings .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+dialog#settings .btns button, #offline button, #btnFull { font: bold 11px var(--font-mono); letter-spacing: 1.5px; color: var(--accent-secondary); background: none; border: 1px solid var(--accent-secondary); padding: 4px 14px; cursor: pointer; }
+dialog#settings .btns button:hover, #offline button:hover, #btnFull:hover { background: var(--accent-secondary); color: var(--surface-inset); }
+dialog#settings .btns button.go { background: var(--accent-secondary); color: var(--surface-inset); }
+
+#miniview { display: none; }
+html.mini #app > :not(#miniview) { display: none; }
+html.mini #miniview { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: baseline; padding: 4px 2px; }
+html.mini #app { padding: 6px 10px; }
+html.mini #titlebar .path { display: none; }
+#miniview .ml { color: var(--text-muted); font-size: 11px; letter-spacing: 1.5px; }
+#miniview .mv { font: italic 900 30px/1 Impact, "Arial Black", sans-serif; color: var(--c, var(--text)); }
+#miniview .mv.ok { --c: var(--success); } #miniview .mv.warn { --c: var(--highlight); } #miniview .mv.hot { --c: var(--accent-primary); }
+#miniview .mp { color: var(--text); font-weight: bold; text-align: right; }
+#miniview .mf { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 11px; color: var(--text-muted); }
+
+#offline { position: fixed; top: 36px; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; place-items: center; background: color-mix(in srgb, var(--surface) 88%, transparent); }
+#offline[hidden], html.mini #offline { display: none; }
+#offline .box { max-width: 460px; padding: 20px 24px; background: var(--surface-raised); border: 1px solid var(--border); border-top: 2px solid var(--danger); clip-path: var(--clip); text-align: left; }
+#offline h2 { font: italic 900 24px Impact, "Arial Black", sans-serif; letter-spacing: 2px; color: var(--danger); margin-bottom: 8px; }
+#offline p { margin: 6px 0; font-size: 12px; }
+#offline code { color: var(--accent-secondary); }
+#offline .btns { display: flex; gap: 8px; margin-top: 12px; }

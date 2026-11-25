@@ -2,16 +2,17 @@
 
 const WS_URL = "ws://127.0.0.1:47821/ws";
 const HISTORY = 90;                 // seconds of chart history
-const WARN_AT = 75, HOT_AT = 90;    // °C, keep in sync with tokens.css
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
 const hist = { cpu: [], gpu: [] };
 const fmt = (v, d = 0) => (v == null ? "--" : Number(v).toFixed(d));
-const tempClass = (t) => (t == null ? "" : t >= HOT_AT ? "hot" : t >= WARN_AT ? "warn" : "ok");
+const tempClass = (t) => (t == null ? "" : t >= CFG.hot ? "hot" : t >= CFG.warn ? "warn" : "ok");
 const css = (name) => getComputedStyle(root).getPropertyValue(name).trim();
 
-/* ---------- preferences (theme, FX) ---------- */
+/* ---------- preferences (theme, FX) and limits ---------- */
+const DEFAULTS = { warn: 75, hot: 90, spot: 95, hold: 10 }; // °C, °C, °C, seconds
+const CFG = { ...DEFAULTS };
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* ignore */ } },
@@ -26,6 +27,7 @@ $("btnAlerts").onclick = () => { store.set("alerts", store.get("alerts", "on") =
 $("btnFx").onclick = () => { store.set("fx", store.get("fx", "on") === "on" ? "off" : "on"); applyPrefs(); };
 $("btnTheme").onclick = () => { store.set("theme", store.get("theme", "dark") === "dark" ? "light" : "dark"); applyPrefs(); drawAll(); };
 applyPrefs();
+for (const k of Object.keys(DEFAULTS)) { const v = parseFloat(store.get("cfg." + k, "")); if (Number.isFinite(v)) CFG[k] = v; }
 addEventListener("load", () => scrollTo(0, 0));
 
 /* save resources: the grid stops while the window is unfocused */
@@ -37,7 +39,6 @@ setInterval(() => { $("clock").textContent = new Date().toLocaleTimeString("en-G
 /* ---------- tray tooltip and critical-temperature alerts ---------- */
 // Outside Tauri (plain browser) there is no invoke, and both features do nothing.
 const invoke = window.__TAURI__?.core?.invoke;
-const ALERT_HOLD_MS = 10_000;        // value must stay at or above the limit this long
 const ALERT_COOLDOWN_MS = 600_000;   // minimum gap between two notifications for one sensor
 const ALERT_REARM_DELTA = 5;         // °C below the limit before the sensor can alert again
 const alertState = {};
@@ -52,7 +53,7 @@ function checkAlert(key, label, value, limit) {
     return;
   }
   st.since ??= now;
-  if (st.armed && now - st.since >= ALERT_HOLD_MS && now - st.sent >= ALERT_COOLDOWN_MS) {
+  if (st.armed && now - st.since >= CFG.hold * 1000 && now - st.sent >= ALERT_COOLDOWN_MS) {
     st.armed = false; st.sent = now;
     invoke("notify", { title: "LOQ Monitor: " + label + " is hot", body: `${label} reached ${fmt(value)}°C` }).catch(() => {});
   }
@@ -62,16 +63,18 @@ function trayUpdate(s) {
   const tip = `LOQ Monitor\nCPU ${fmt(s.cpu.tempC)}°C   GPU ${fmt(s.gpu.tempC)}°C`;
   if (tip !== lastTip) { lastTip = tip; invoke("set_tooltip", { text: tip }).catch(() => {}); }
   if (store.get("alerts", "on") !== "on") return;
-  checkAlert("cpu", "CPU", s.cpu.tempC, HOT_AT);
-  checkAlert("gpu", "GPU", s.gpu.tempC, HOT_AT);
-  checkAlert("hotspot", "GPU hotspot", s.gpu.hotspotC, 95);
+  checkAlert("cpu", "CPU", s.cpu.tempC, CFG.hot);
+  checkAlert("gpu", "GPU", s.gpu.tempC, CFG.hot);
+  checkAlert("hotspot", "GPU hotspot", s.gpu.hotspotC, CFG.spot);
 }
 
 /* ---------- helper render ---------- */
 function setTemp(el, tagEl, t) {
   el.textContent = fmt(t);
   el.className = "big " + tempClass(t);
-  tagEl.classList.toggle("show", t != null && t >= HOT_AT);
+  const c = tempClass(t);
+  tagEl.textContent = c === "hot" ? "HOT" : c === "warn" ? "WARM" : c === "ok" ? "NORMAL" : "--";
+  tagEl.className = "tag " + c;
 }
 function setMeter(barId, pct) {
   const bar = $(barId);
@@ -113,11 +116,11 @@ function push(series, v) {
 function logLines(s) {
   const out = [];
   const add = (lv, msg) => out.push([lv, msg]);
-  if (s.cpu.tempC >= HOT_AT) add("CRIT", `cpu.temp ${fmt(s.cpu.tempC)}°C, near thermal limit`);
-  else if (s.cpu.tempC >= WARN_AT) add("WARN", `cpu.temp ${fmt(s.cpu.tempC)}°C`);
-  if (s.gpu.hotspotC >= 95) add("CRIT", `gpu.hotspot ${fmt(s.gpu.hotspotC)}°C`);
-  else if (s.gpu.tempC >= HOT_AT) add("CRIT", `gpu.temp ${fmt(s.gpu.tempC)}°C`);
-  else if (s.gpu.tempC >= WARN_AT) add("WARN", `gpu.temp ${fmt(s.gpu.tempC)}°C`);
+  if (s.cpu.tempC >= CFG.hot) add("CRIT", `cpu.temp ${fmt(s.cpu.tempC)}°C, near thermal limit`);
+  else if (s.cpu.tempC >= CFG.warn) add("WARN", `cpu.temp ${fmt(s.cpu.tempC)}°C`);
+  if (s.gpu.hotspotC >= CFG.spot) add("CRIT", `gpu.hotspot ${fmt(s.gpu.hotspotC)}°C`);
+  else if (s.gpu.tempC >= CFG.hot) add("CRIT", `gpu.temp ${fmt(s.gpu.tempC)}°C`);
+  else if (s.gpu.tempC >= CFG.warn) add("WARN", `gpu.temp ${fmt(s.gpu.tempC)}°C`);
   const vp = s.gpu.vramTotalMB ? (s.gpu.vramUsedMB / s.gpu.vramTotalMB) * 100 : 0;
   if (vp >= 90) add("WARN", `vram ${fmt(vp)}% used`);
   if (s.ram.loadPct >= 90) add("WARN", `ram ${fmt(s.ram.loadPct)}% used`);
@@ -128,14 +131,25 @@ function logLines(s) {
   return out;
 }
 
+function updateMini(s) {
+  const t = (id, v) => { const e = $(id); e.textContent = fmt(v) + "°"; e.className = "mv " + tempClass(v); };
+  t("mCpu", s.cpu.tempC); t("mGpu", s.gpu.tempC);
+  $("mCpuL").textContent = fmt(s.cpu.load) + "%";
+  $("mGpuL").textContent = fmt(s.gpu.load) + "%";
+  $("mRam").textContent = fmt(s.ram.loadPct) + "%";
+  $("mMode").textContent = MODES[s.powerMode] ?? "--";
+}
+
 const MODES = { 1: "QUIET", 2: "BALANCED", 3: "PERFORMANCE", 224: "CUSTOM", 255: "CUSTOM" };
 
 function render(s) {
+  lastRendered = s;
   const { cpu, gpu, ram } = s;
   push(hist.cpu, cpu.tempC); push(hist.gpu, gpu.tempC);
   if (typeof Detail !== "undefined") Detail.update(s);
   trayUpdate(s); // runs while the window is hidden in the tray
   if (document.hidden) return; // window hidden: keep the history, skip drawing
+  if (miniOn) { updateMini(s); return; }
 
   // CPU
   $("cpuName").textContent = cpu.name ? `${cpu.name} · ${cpu.coreLoads.length}T` : "";
@@ -157,7 +171,7 @@ function render(s) {
   setTemp($("gpuTemp"), $("gpuTag"), gpu.tempC);
   setMeter("gpuLoadBar", gpu.load);
   setDd("gpuLoad", fmt(gpu.load) + "%");
-  setDd("gpuHot", fmt(gpu.hotspotC) + "°C", gpu.hotspotC >= 95 ? "hot" : gpu.hotspotC >= HOT_AT ? "warn" : "");
+  setDd("gpuHot", fmt(gpu.hotspotC) + "°C", gpu.hotspotC >= CFG.spot ? "hot" : gpu.hotspotC >= CFG.hot ? "warn" : "");
   setDd("gpuPower", fmt(gpu.powerW) + " W");
   setDd("gpuFan", gpu.fanRpm != null ? gpu.fanRpm + " rpm" : "--");
   setDd("gpuClock", fmt(gpu.coreClockMHz) + " MHz");
@@ -222,22 +236,75 @@ function setBig(id, value, unit) {
   el.replaceChildren(document.createTextNode(value), small);
 }
 
-/* ---------- WebSocket + auto-reconnect ---------- */
-let retry = 0;
+/* ---------- WebSocket + auto-reconnect, offline screen ---------- */
+let retry = 0, ws = null, retryTimer = null, offlineTimer = null;
 function setLink(on) {
   const b = $("link");
   b.textContent = on ? "ONLINE" : "OFFLINE";
   b.className = on ? "on" : "";
   $("sub").textContent = on ? "HARDWARE MONITOR" : "WAITING FOR SERVICE…";
+  if (on) { clearTimeout(offlineTimer); offlineTimer = null; $("offline").hidden = true; }
+  else if (!offlineTimer) offlineTimer = setTimeout(() => { $("offline").hidden = false; }, 3000); // brief drops stay quiet; reconnect attempts must not restart this timer
 }
 function connect() {
-  const ws = new WebSocket(WS_URL);
+  clearTimeout(retryTimer);
+  ws = new WebSocket(WS_URL);
+  const mine = ws;
   ws.onopen = () => { retry = 0; setLink(true); };
   ws.onmessage = (e) => { try { render(JSON.parse(e.data)); } catch (err) { console.error(err); } };
-  ws.onclose = () => { setLink(false); setTimeout(connect, Math.min(5000, 1000 + retry++ * 500)); };
-  ws.onerror = () => ws.close();
+  ws.onclose = () => { if (mine !== ws) return; setLink(false); retryTimer = setTimeout(connect, Math.min(5000, 1000 + retry++ * 500)); };
+  ws.onerror = () => mine.close();
 }
 connect();
+$("btnRetry").onclick = () => { $("offlineMsg").textContent = "Trying now…"; try { ws.onclose = null; ws.close(); } catch { /* already closed */ } connect(); };
+$("btnStart").onclick = () => {
+  if (!invoke) { $("offlineMsg").textContent = "Starting the service needs the desktop app."; return; }
+  $("offlineMsg").textContent = "Starting the service…";
+  invoke("start_service").then(() => { $("offlineMsg").textContent = "Service started. Reconnecting…"; setTimeout(() => $("btnRetry").click(), 2500); })
+    .catch((e) => { $("offlineMsg").textContent = "Could not start it: " + e; });
+};
+
+/* ---------- settings dialog ---------- */
+const dlg = $("settings");
+const cfgIds = { warn: "cfgWarn", hot: "cfgHot", spot: "cfgSpot", hold: "cfgHold" };
+function fillCfg(src) { for (const [k, id] of Object.entries(cfgIds)) $(id).value = src[k]; $("cfgErr").textContent = ""; }
+$("btnSettings").onclick = () => { fillCfg(CFG); dlg.showModal(); };
+$("cfgCancel").onclick = () => dlg.close();
+$("cfgReset").onclick = () => fillCfg(DEFAULTS);
+$("settingsForm").onsubmit = (e) => {
+  const v = {}; for (const [k, id] of Object.entries(cfgIds)) v[k] = parseFloat($(id).value);
+  if (Object.values(v).some((x) => !Number.isFinite(x))) { e.preventDefault(); $("cfgErr").textContent = "Fill in every field with a number."; return; }
+  if (v.warn >= v.hot) { e.preventDefault(); $("cfgErr").textContent = "Warm must be lower than Hot."; return; }
+  Object.assign(CFG, v);
+  for (const k of Object.keys(v)) store.set("cfg." + k, String(v[k]));
+  Object.keys(alertState).forEach((k) => delete alertState[k]);
+  if (lastRendered) render(lastRendered);
+};
+
+/* ---------- mini mode: small always-on-top window ---------- */
+let miniOn = false, fullSize = null, lastRendered = null;
+async function setMini(on) {
+  const T = window.__TAURI__, w = T?.window?.getCurrentWindow?.();
+  miniOn = on; root.classList.toggle("mini", on);
+  if (!w) return;
+  const LS = T.dpi?.LogicalSize ?? T.window?.LogicalSize;
+  try {
+    if (on) {
+      fullSize = { w: innerWidth, h: innerHeight };
+      await w.unmaximize();
+      await w.setMinSize(new LS(220, 150));
+      await w.setSize(new LS(280, 190));
+      await w.setAlwaysOnTop(true);
+    } else {
+      await w.setAlwaysOnTop(false);
+      await w.setMinSize(new LS(760, 560));
+      await w.setSize(new LS(fullSize?.w ?? 1040, fullSize?.h ?? 780));
+    }
+  } catch (e) { console.error(e); }
+  if (lastRendered) render(lastRendered);
+}
+$("btnMini").onclick = () => setMini(true);
+$("btnFull").onclick = () => setMini(false);
 
 /* ---------- custom title bar (window has no native frame) ---------- */
 (() => {

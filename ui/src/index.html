@@ -23,6 +23,16 @@
     </span>
   </header>
 
+  <div id="offline" hidden>
+    <div class="box" role="alert">
+      <h2>SERVICE OFFLINE</h2>
+      <p>The app cannot reach SensorService, the background program that reads the sensors.</p>
+      <p>Press START SERVICE. If it stays offline, run <code>scripts\install-service.ps1</code> once as administrator.</p>
+      <p class="dim" id="offlineMsg">Retrying automatically.</p>
+      <div class="btns"><button id="btnStart">START SERVICE</button><button id="btnRetry">RETRY NOW</button></div>
+    </div>
+  </div>
+
   <div id="scroller">
   <div id="app">
     <div id="hud">
@@ -33,7 +43,16 @@
         <button id="btnAlerts" title="Desktop notifications for critical temperatures">ALERTS</button>
         <button id="btnFx" title="Visual effects (grid, scanlines)">FX</button>
         <button id="btnTheme" title="Dark / Light theme">THEME</button>
+        <button id="btnMini" title="Small always-on-top window">MINI</button>
+        <button id="btnSettings" title="Temperature limits and alert timing">SETTINGS</button>
       </span>
+    </div>
+
+    <div id="miniview" aria-live="off">
+      <span class="ml">CPU</span><span class="mv" id="mCpu">--</span><span class="mp" id="mCpuL">--</span>
+      <span class="ml">GPU</span><span class="mv" id="mGpu">--</span><span class="mp" id="mGpuL">--</span>
+      <span class="ml">RAM</span><span class="mv" id="mRam">--</span><span class="mp" id="mMode">--</span>
+      <div class="mf"><span>Always on top</span><button id="btnFull">FULL VIEW</button></div>
     </div>
 
     <h1>LOQ//NET<span class="cur"></span></h1>
@@ -43,33 +62,33 @@
     <main id="overview">
       <section class="panel pink" id="cpu">
         <div class="ph"><span class="ptit">[ CPU ]</span><span class="dim" id="cpuName"></span></div>
-        <div class="hero"><span class="big" id="cpuTemp">--</span><span class="unit">°C</span><span class="tag" id="cpuTag">HOT</span></div>
+        <div class="hero"><span class="big" id="cpuTemp">--</span><span class="unit">°C</span><span class="tag" id="cpuTag" title="CPU temperature status. Limits are in Settings.">--</span></div>
         <div class="meter"><i id="cpuLoadBar"></i></div>
         <canvas id="cpuChart" height="46"></canvas>
         <dl>
-          <div><dt>LOAD</dt><dd id="cpuLoad">--</dd></div>
-          <div><dt>FAN</dt><dd id="cpuFan">--</dd></div>
-          <div><dt>CLOCK</dt><dd id="cpuClock">--</dd></div>
-          <div><dt>POWER</dt><dd id="cpuPower">--</dd></div>
+          <div><dt title="Share of CPU time in use, averaged over all threads">LOAD</dt><dd id="cpuLoad">--</dd></div>
+          <div><dt title="CPU fan speed, read from the laptop embedded controller">FAN</dt><dd id="cpuFan">--</dd></div>
+          <div><dt title="Average effective core clock. Boost is normal under load">CLOCK</dt><dd id="cpuClock">--</dd></div>
+          <div><dt title="CPU package power draw in watts (needs the PawnIO driver)">POWER</dt><dd id="cpuPower">--</dd></div>
         </dl>
         <div class="cores" id="cores"></div>
       </section>
 
       <section class="panel" id="gpu">
         <div class="ph"><span class="ptit">[ GPU ]</span><span class="dim" id="gpuName"></span></div>
-        <div class="hero"><span class="big" id="gpuTemp">--</span><span class="unit">°C</span><span class="tag" id="gpuTag">HOT</span></div>
+        <div class="hero"><span class="big" id="gpuTemp">--</span><span class="unit">°C</span><span class="tag" id="gpuTag" title="GPU temperature status. Limits are in Settings.">--</span></div>
         <div class="meter"><i id="gpuLoadBar"></i></div>
         <canvas id="gpuChart" height="46"></canvas>
         <dl>
-          <div><dt>LOAD</dt><dd id="gpuLoad">--</dd></div>
-          <div><dt>HOTSPOT</dt><dd id="gpuHot">--</dd></div>
-          <div><dt>POWER</dt><dd id="gpuPower">--</dd></div>
-          <div><dt>FAN</dt><dd id="gpuFan">--</dd></div>
-          <div><dt>CLOCK</dt><dd id="gpuClock">--</dd></div>
-          <div><dt>VRAM°</dt><dd id="gpuVt">--</dd></div>
-          <div><dt>MEM CLK</dt><dd id="gpuMem">--</dd></div>
-          <div><dt>PCIE RX</dt><dd id="gpuRx">--</dd></div>
-          <div><dt>PCIE TX</dt><dd id="gpuTx">--</dd></div>
+          <div><dt title="GPU core utilization">LOAD</dt><dd id="gpuLoad">--</dd></div>
+          <div><dt title="Hottest point on the GPU die. Usually 5 to 15 degrees above the core temperature">HOTSPOT</dt><dd id="gpuHot">--</dd></div>
+          <div><dt title="GPU board power draw in watts">POWER</dt><dd id="gpuPower">--</dd></div>
+          <div><dt title="GPU fan speed">FAN</dt><dd id="gpuFan">--</dd></div>
+          <div><dt title="GPU core clock">CLOCK</dt><dd id="gpuClock">--</dd></div>
+          <div><dt title="Video memory temperature">VRAM°</dt><dd id="gpuVt">--</dd></div>
+          <div><dt title="Video memory clock">MEM CLK</dt><dd id="gpuMem">--</dd></div>
+          <div><dt title="Data the GPU receives from the system over the PCIe bus">PCIE RX</dt><dd id="gpuRx">--</dd></div>
+          <div><dt title="Data the GPU sends to the system over the PCIe bus">PCIE TX</dt><dd id="gpuTx">--</dd></div>
         </dl>
       </section>
 
@@ -92,6 +111,18 @@
     </section>
   </div>
   </div>
+
+  <dialog id="settings" aria-label="Settings">
+    <form method="dialog" id="settingsForm">
+      <h2>SETTINGS</h2>
+      <label><span>Warm at (°C)<small>Temperature turns yellow</small></span><input id="cfgWarn" type="number" min="40" max="110" step="1"></label>
+      <label><span>Hot at (°C)<small>Turns pink and raises the alert</small></span><input id="cfgHot" type="number" min="40" max="110" step="1"></label>
+      <label><span>GPU hotspot limit (°C)<small>Separate alert for the hottest GPU point</small></span><input id="cfgSpot" type="number" min="40" max="120" step="1"></label>
+      <label><span>Alert delay (s)<small>How long it must stay hot first</small></span><input id="cfgHold" type="number" min="0" max="300" step="1"></label>
+      <p class="err" id="cfgErr" role="status"></p>
+      <div class="btns"><button type="button" id="cfgReset">RESET</button><button type="button" id="cfgCancel">CANCEL</button><button type="submit" class="go" id="cfgSave">SAVE</button></div>
+    </form>
+  </dialog>
 
   <script src="main.js"></script>
   <script src="detail.js"></script>

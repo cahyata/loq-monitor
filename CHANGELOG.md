@@ -10,12 +10,19 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 - `scripts/install-service.ps1` and `scripts/uninstall-service.ps1` register or remove a scheduled task that starts SensorService at logon with the highest run level.
 - CPU clock and CPU package power in the CPU panel. Power needs the PawnIO driver (see `docs/SENSORS.md`).
 - DETAILED tab next to OVERVIEW: every sensor (LibreHardwareMonitor, Lenovo EC, ACPI thermal zones, network) grouped by hardware with value, min and max, a filter box, and expand or collapse controls. The snapshot gains a `hardware` array.
+- Status chip next to each temperature (NORMAL, WARM, HOT) so state does not depend on colour alone.
+- Tooltips on the CPU and GPU labels that explain each reading.
+- SETTINGS dialog for the warm, hot and GPU hotspot limits and the alert delay, saved between launches.
+- MINI button: a small always-on-top window with CPU, GPU and RAM, and a FULL VIEW button to return.
+- Offline screen with START SERVICE (runs the scheduled task without elevation) and RETRY NOW.
 - Lenovo power mode (Quiet, Balanced, Performance, Custom) in the top bar, read-only.
 - Dev mode with live reload: `npm run dev` in `ui/`.
 
 ### Changed
 - SensorService runs without a console window and allows one instance.
 - The UI text is in English.
+- Labels are at least 11 px, as the design system requires.
+- The window uses a custom NeonNet title bar and scrolls below it.
 
 ## [0.1.0] - 2026-11-24
 
