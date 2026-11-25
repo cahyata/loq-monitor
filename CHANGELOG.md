@@ -4,6 +4,8 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-25
+
 ### Changed
 - The window uses about one eighth of the CPU on the Overview tab (40 % of a core before, about 5 % now). The bars grow with `transform` and no longer animate, which stops the layout and GPU work that ran on every frame.
 - The service reads the Lenovo values once per tick and refreshes the power mode, the ACPI zones and the battery power less often. One tick takes 159 ms instead of 260 ms. See `docs/PERFORMANCE.md`.
