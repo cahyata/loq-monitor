@@ -18,7 +18,7 @@ LibreHardwareMonitorLib is used unmodified, as a library. MPL-2.0 is a file-leve
 
 | Component | Used for | License |
 |---|---|---|
-| [PawnIO](https://github.com/namazso/PawnIO) driver | CPU package power and effective clock | Not bundled. The installer fetches it with `winget`. See its project for terms. |
+| [PawnIO](https://github.com/namazso/PawnIO) driver | CPU package power and effective clock | GPL-2.0-or-later with a linking exception for independent modules that talk to the driver only through its device IO control interface. Not bundled: the installer fetches it with `winget`, and LOQ Monitor reaches it only through LibreHardwareMonitorLib. The license text is in the `COPYING` file of the repository. |
 
 ## Design
 

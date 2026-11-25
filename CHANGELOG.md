@@ -6,7 +6,6 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ### Added
 - The NSIS installer bundles the sensor service (self-contained), asks whether it starts at sign in, installs the PawnIO driver with winget when missing, and registers the scheduled task. `install-service.ps1` has a new `-NoAutoStart` switch.
-- Fixed: the SHOW OVERLAY button did nothing because the window was built on the main thread. The command is now async and reports errors.
 - System tray icon with a Show and Quit menu and a tooltip with the CPU and GPU temperatures. The close button hides the window to the tray.
 - Desktop notification when CPU or GPU temperature stays at 90 °C or more, or the GPU hotspot at 95 °C or more, for 10 seconds. An ALERTS button toggles it.
 - `scripts/install-service.ps1` and `scripts/uninstall-service.ps1` register or remove a scheduled task that starts SensorService at logon with the highest run level.
@@ -46,6 +45,17 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 - Single-key shortcuts can be turned off in SETTINGS.
 - Labels are at least 11 px, as the design system requires.
 - The window uses a custom NeonNet title bar and scrolls below it.
+
+### Fixed
+- The SHOW OVERLAY button did nothing, because the window was built on the main thread. The command is now async and reports an error when the window cannot be created.
+- CPU clock and CPU package power are available. They need the PawnIO driver, which the installer now installs.
+
+### Known issues
+- Motherboard temperature and system fan speed always read 0 on the test machine.
+- The sign of the battery charge and discharge rate is unverified.
+- The game overlay does not draw over exclusive fullscreen games, and it shows no FPS.
+
+See `docs/SENSORS.md` for the causes of the sensor issues.
 
 ## [0.1.0] - 2026-11-24
 
