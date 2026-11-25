@@ -37,7 +37,7 @@ html.nofx #sky { inset: 0; }
 @media (prefers-reduced-motion: reduce) { #grid { animation: none; } .cur, .tag { animation: none !important; } }
 
 /* ---------- HUD and title ---------- */
-#app { position: relative; z-index: 2; padding: 10px 18px 18px; max-width: 1100px; margin: 0 auto; }
+#app { position: relative; z-index: 2; padding: 8px 18px 18px; max-width: 1240px; margin: 0 auto; }
 #hud { display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 11px; letter-spacing: 1px; }
 #hud b { color: var(--highlight); font-weight: normal; }
 #hud b.on { color: var(--success); }
@@ -72,8 +72,8 @@ main { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 .span2 { grid-column: span 2; }
 .mini.pinkb { border-top-color: var(--accent-primary); }
 .ph { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
-.ptit { color: var(--highlight); font-size: 11px; font-weight: bold; letter-spacing: 1.5px; white-space: nowrap; }
-.dim { color: var(--text-muted); font-size: 11px; }
+.ptit { color: var(--highlight); font-size: 12px; font-weight: bold; letter-spacing: 1.5px; white-space: nowrap; }
+.dim { color: var(--text-muted); font-size: 12px; }
 
 .hero { display: flex; align-items: baseline; gap: 4px; }
 .big { font: italic 900 64px/1 Impact, "Arial Black", sans-serif; font-variant-numeric: tabular-nums; color: var(--c, var(--text)); transition: color .3s;
@@ -82,20 +82,24 @@ html.light .big { text-shadow: 2px 2px 0 color-mix(in srgb, var(--c, var(--text)
 .unit { font-size: 18px; color: var(--text-muted); }
 .big.ok { --c: var(--success); } .big.warn { --c: var(--highlight); } .big.hot { --c: var(--accent-primary); }
 .tag { display: inline-block; margin-left: 8px; align-self: center; font-size: 11px; font-weight: bold; color: var(--surface-inset); padding: 1px 7px; letter-spacing: 1px; }
-.tag.ok { background: var(--success); } .tag.warn { background: var(--highlight); } .tag.hot { background: var(--accent-primary); animation: blink 1.2s steps(1) infinite; }
+.tag.ok { background: var(--success); } .tag.warn { background: var(--highlight); } .tag.hot { background: var(--accent-primary); }
+.hero .tag.hot { animation: blink 1.2s steps(1) infinite; }   /* only the temperature chips blink */
 
 .meter { height: 6px; background: var(--surface-inset); border: 1px solid var(--border); margin: 8px 0 4px; position: relative; }
-.meter i { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, var(--accent-secondary), var(--accent-primary)); transition: width .4s ease; }
-.meter.over i { background: var(--accent-primary); }
-canvas { width: 100%; height: 40px; display: block; margin: 4px 0 8px; }
+.meter i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent-secondary); transition: width .4s ease; }
+/* bar colour carries the status: cyan normal, green healthy battery, yellow high, pink critical */
+.meter.load i, .meter.st-ok i { background: var(--accent-secondary); }
+.meter.st-good i { background: var(--success); } .meter.st-warn i { background: var(--highlight); } .meter.st-hot i { background: var(--accent-primary); }
+canvas { width: 100%; height: 40px; display: block; margin: 4px 0 6px; }
 
 dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 12px; }
-dt { cursor: help; font-size: 11px; letter-spacing: 1.5px; color: var(--text-muted); }
-dd { font-size: 14px; font-weight: bold; color: var(--text); font-variant-numeric: tabular-nums; }
-#cpu dl { grid-template-columns: repeat(4, 1fr); }
+dt { cursor: help; font-size: 12px; letter-spacing: 1px; color: var(--text-muted); }
+dd { font-size: 15px; font-weight: bold; color: var(--text); font-variant-numeric: tabular-nums; }
+#cpu dl { grid-template-columns: repeat(3, 1fr); }
+#gpu dl { grid-template-columns: repeat(4, 1fr); }
 dd.warn { color: var(--highlight); } dd.hot { color: var(--accent-primary); }
 
-.cores { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; margin-top: 8px; height: 24px; align-items: end; }
+.cores { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; margin-top: 4px; flex: 1; min-height: 44px; align-items: end; }
 .cores i { display: block; background: var(--accent-secondary); min-height: 2px; transition: height .4s; opacity: .85; }
 
 .v { font: italic 900 26px/1.1 Impact, "Arial Black", sans-serif; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
@@ -107,11 +111,11 @@ dd.warn { color: var(--highlight); } dd.hot { color: var(--accent-primary); }
 .disk .t { font: italic 900 20px/1 Impact, "Arial Black", sans-serif; }
 .disk .t.ok { color: var(--success); } .disk .t.warn { color: var(--highlight); } .disk .t.hot { color: var(--accent-primary); }
 .disk .meter { margin: 6px 0 3px; height: 5px; }
-.disk .ln { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); }
+.disk .ln { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); }
 .disk .ln b { color: var(--text); font-weight: bold; }
 .disk .ln b.warn { color: var(--highlight); } .disk .ln b.hot { color: var(--accent-primary); }
 
-.log { font-size: 12px; line-height: 1.6; }
+.log { font-size: 13px; line-height: 1.7; }
 .log .lv { font-weight: bold; margin-right: 8px; }
 .log .WARN { color: var(--highlight); } .log .CRIT { color: var(--accent-primary); } .log .INFO { color: var(--accent-secondary); } .log .OK { color: var(--success); }
 
@@ -214,8 +218,8 @@ html.mini #titlebar .path { display: none; }
 .seg button, .dtools select, .dtools label.chk { font: bold 11px var(--font-mono); letter-spacing: 1px; color: var(--text-muted); background: none; border: 1px solid var(--border); padding: 3px 10px; cursor: pointer; }
 .seg button:hover, .dtools select:hover { color: var(--accent-secondary); border-color: var(--accent-secondary); }
 .seg button.on { color: var(--surface-inset); background: var(--accent-secondary); border-color: var(--accent-secondary); }
-#cpuChart, #gpuChart { height: 72px; }
-.cap { color: var(--text-muted); font-size: 11px; margin: -4px 0 8px; min-height: 1.4em; }
+#cpuChart, #gpuChart { height: 96px; }
+.cap { color: var(--text-muted); font-size: 12px; margin: -4px 0 8px; min-height: 1.4em; }
 .cap b { color: var(--text); font-weight: bold; }
 .dtools { flex-wrap: wrap; align-items: center; }
 .dtools select { background: var(--surface-inset); color: var(--text); }
@@ -253,3 +257,22 @@ dialog#settings .btns button, dialog#help .btns button, #offline button, #btnFul
 .dtools input, .dtools select, .dtools button, .dtools label.chk, .seg button, #tabs button,
 dialog#settings input, dialog#settings select { border-color: var(--text-muted); }
 dialog#settings input[type="checkbox"] { width: auto; }
+
+/* ---------- overview layout pass ---------- */
+#toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin: 4px 0 12px; }
+#toolbar #tabs { margin: 0; }
+#summary { flex: 1; min-width: 240px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text); }
+#summary .tag { margin-left: 0; flex-shrink: 0; }
+#rangeSeg { align-items: center; }
+#rangeSeg[hidden] { display: none; }
+.seglab { color: var(--text-muted); font-size: 12px; letter-spacing: 1.5px; margin-right: 4px; }
+.loadrow { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin: 10px 0 4px; font-size: 12px; letter-spacing: 1px; color: var(--text-muted); }
+.loadrow .meter { margin: 0; }
+.loadrow b { color: var(--text-strong); font-size: 14px; min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+#cpu, #gpu { display: flex; flex-direction: column; }
+#gpu dl { margin-top: auto; }
+.lab { color: var(--text-muted); font-size: 12px; letter-spacing: 1px; margin-top: 12px; }
+.vrow { display: flex; align-items: center; gap: 10px; }
+.vrow .tag { margin-left: 0; }
+#ramSub, #vramSub, #batSub, #batRate { color: var(--text); font-size: 12px; }
+.disk .ln .tag { margin-left: 6px; font-size: 11px; padding: 0 5px; }

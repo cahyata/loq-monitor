@@ -67,37 +67,36 @@
       <div class="mf"><span>Always on top</span><button id="btnFull">FULL VIEW</button></div>
     </div>
 
-    <h1>LOQ//NET<span class="cur"></span></h1>
-    <p class="sub" id="sub">HARDWARE MONITOR</p>
+    <h1 class="sr-only">LOQ//NET hardware monitor, <span id="sub">HARDWARE MONITOR</span></h1>
 
-    <nav id="tabs" role="tablist" aria-label="Views"><button id="tabOverview" role="tab" class="on" aria-selected="true" aria-controls="overview" aria-keyshortcuts="1">OVERVIEW</button><button id="tabDetail" role="tab" aria-selected="false" aria-controls="detail" aria-keyshortcuts="2">DETAILED</button></nav>
+    <div id="toolbar">
+      <nav id="tabs" role="tablist" aria-label="Views"><button id="tabOverview" role="tab" class="on" aria-selected="true" aria-controls="overview" aria-keyshortcuts="1">OVERVIEW</button><button id="tabDetail" role="tab" aria-selected="false" aria-controls="detail" aria-keyshortcuts="2">DETAILED</button></nav>
+      <div id="summary"><span class="tag ok" id="sumTag">--</span><span id="sumText">Waiting for data</span></div>
+      <span class="seg" id="rangeSeg" role="group" aria-label="Temperature history range"><span class="seglab">HISTORY</span><button data-r="60" aria-pressed="false">1 MIN</button><button data-r="600" aria-pressed="false">10 MIN</button><button data-r="3600" aria-pressed="false">1 HOUR</button></span>
+    </div>
     <main id="overview" aria-labelledby="tabOverview">
-      <div class="rangebar"><span>TEMPERATURE HISTORY</span>
-        <span class="seg" role="group" aria-label="History range"><button data-r="60" aria-pressed="false">1 MIN</button><button data-r="600" aria-pressed="false">10 MIN</button><button data-r="3600" aria-pressed="false">1 HOUR</button></span>
-      </div>
       <section class="panel pink" id="cpu">
         <div class="ph"><h2 class="ptit">[ CPU ]</h2><span class="dim" id="cpuName"></span></div>
         <div class="hero"><span class="big" id="cpuTemp">--</span><span class="unit u-deg">°C</span><span class="tag" id="cpuTag" title="CPU temperature status. Limits are in Settings.">--</span></div>
-        <div class="meter"><i id="cpuLoadBar"></i></div>
-        <canvas id="cpuChart" height="72" role="img" aria-label="CPU temperature history"></canvas>
+        <div class="loadrow"><span>LOAD</span><div class="meter load"><i id="cpuLoadBar"></i></div><b id="cpuLoad">--</b></div>
+        <canvas id="cpuChart" height="96" role="img" aria-label="CPU temperature history"></canvas>
         <div class="cap" id="cpuCap"></div>
         <dl>
-          <div><dt title="Share of CPU time in use, averaged over all threads">LOAD</dt><dd id="cpuLoad">--</dd></div>
           <div><dt title="CPU fan speed, read from the laptop embedded controller">FAN</dt><dd id="cpuFan">--</dd></div>
           <div><dt title="Average effective core clock. Boost is normal under load">CLOCK</dt><dd id="cpuClock">--</dd></div>
           <div><dt title="CPU package power draw in watts (needs the PawnIO driver)">POWER</dt><dd id="cpuPower">--</dd></div>
         </dl>
-        <div class="cores" id="cores"></div>
+        <div class="lab" title="Load of each processor thread">PER-THREAD LOAD</div>
+        <div class="cores" id="cores" aria-hidden="true"></div>
       </section>
 
       <section class="panel" id="gpu">
         <div class="ph"><h2 class="ptit">[ GPU ]</h2><span class="dim" id="gpuName"></span></div>
         <div class="hero"><span class="big" id="gpuTemp">--</span><span class="unit u-deg">°C</span><span class="tag" id="gpuTag" title="GPU temperature status. Limits are in Settings.">--</span></div>
-        <div class="meter"><i id="gpuLoadBar"></i></div>
-        <canvas id="gpuChart" height="72" role="img" aria-label="GPU temperature history"></canvas>
+        <div class="loadrow"><span>LOAD</span><div class="meter load"><i id="gpuLoadBar"></i></div><b id="gpuLoad">--</b></div>
+        <canvas id="gpuChart" height="96" role="img" aria-label="GPU temperature history"></canvas>
         <div class="cap" id="gpuCap"></div>
         <dl>
-          <div><dt title="GPU core utilization">LOAD</dt><dd id="gpuLoad">--</dd></div>
           <div><dt title="Hottest point on the GPU die. Usually 5 to 15 degrees above the core temperature">HOTSPOT</dt><dd id="gpuHot">--</dd></div>
           <div><dt title="GPU board power draw in watts">POWER</dt><dd id="gpuPower">--</dd></div>
           <div><dt title="GPU fan speed">FAN</dt><dd id="gpuFan">--</dd></div>
@@ -110,11 +109,11 @@
       </section>
 
       <section class="panel mini yellow"><div class="ph"><h2 class="ptit">RAM</h2></div>
-        <div class="v" id="ramV">--</div><div class="meter"><i id="ramBar"></i></div><div class="dim" id="ramSub"></div></section>
+        <div class="vrow"><div class="v" id="ramV">--</div><span class="tag ok" id="ramTag" title="Memory use status">--</span></div><div class="meter"><i id="ramBar"></i></div><div class="dim" id="ramSub"></div></section>
       <section class="panel mini orange"><div class="ph"><h2 class="ptit">VRAM</h2></div>
-        <div class="v" id="vramV">--</div><div class="meter"><i id="vramBar"></i></div><div class="dim" id="vramSub"></div></section>
+        <div class="vrow"><div class="v" id="vramV">--</div><span class="tag ok" id="vramTag" title="Video memory use status">--</span></div><div class="meter"><i id="vramBar"></i></div><div class="dim" id="vramSub"></div></section>
       <section class="panel mini green span2"><div class="ph"><h2 class="ptit">BATTERY</h2></div>
-        <div class="v" id="batV">--</div><div class="meter"><i id="batBar"></i></div>
+        <div class="vrow"><div class="v" id="batV">--</div><span class="tag ok" id="batTag" title="Battery level status">--</span></div><div class="meter"><i id="batBar"></i></div>
         <div class="dim" id="batSub"></div><div class="dim" id="batRate"></div></section>
 
       <section class="panel mini cyan span2"><div class="ph"><h2 class="ptit">STORAGE</h2></div>

@@ -109,6 +109,7 @@ const Detail = (() => {
   function setTab(detail) {
     on = detail;
     $("overview").hidden = detail; $("detail").hidden = !detail;
+    $("rangeSeg").hidden = detail;       // the history range only applies to the Overview charts
     $("tabOverview").classList.toggle("on", !detail);
     $("tabDetail").classList.toggle("on", detail);
     $("tabOverview").setAttribute("aria-selected", String(!detail));

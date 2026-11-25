@@ -171,11 +171,20 @@ function setTemp(el, tagEl, t) {
   tagEl.textContent = c === "hot" ? "HOT" : c === "warn" ? "WARM" : c === "ok" ? "NORMAL" : "--";
   tagEl.className = "tag " + c;
 }
-function setMeter(barId, pct) {
+/* status of a "how full" reading: RAM, video memory, drive space. Battery has its own rule. */
+const capState = (p) => (p >= 90 ? "hot" : p >= 80 ? "warn" : "ok");
+const batState = (p) => (p < 15 ? "hot" : p < 30 ? "warn" : "good");
+const ssdState = (t) => (t == null ? "" : t >= 80 ? "hot" : t >= 70 ? "warn" : "ok");
+const CAP_LABEL = { ok: "OK", warn: "HIGH", hot: "CRITICAL" };
+const BAT_LABEL = { good: "OK", warn: "LOW", hot: "CRITICAL" };
+function setMeter(barId, pct, state = "load") {
   const bar = $(barId);
-  const p = Math.max(0, Math.min(100, pct ?? 0));
-  bar.style.width = p + "%";
-  bar.parentElement.classList.toggle("over", p >= 90);
+  bar.style.width = Math.max(0, Math.min(100, pct ?? 0)) + "%";
+  bar.parentElement.className = "meter " + (state === "load" ? "load" : "st-" + state);
+}
+function setChip(el, state, labels) {
+  el.textContent = labels[state] ?? "--";
+  el.className = "tag " + (state === "good" ? "ok" : state);
 }
 function setDd(id, text, cls = "") { const e = $(id); e.textContent = text; e.className = cls; }
 
@@ -187,29 +196,40 @@ function drawChart(canvas, series, color) {
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  const min = 30, max = 100;
-  const py = (v) => h - ((Math.min(max, Math.max(min, v)) - min) / (max - min)) * (h - 6) - 3;
-
-  // limit lines with their values
-  ctx.font = "11px " + css("--font-mono"); ctx.textBaseline = "bottom"; ctx.textAlign = "right";
-  ctx.lineWidth = 1;
-  [[CFG.warn, css("--highlight")], [CFG.hot, css("--danger")]].forEach(([t, c]) => {
-    const y = Math.round(py(t)) + 0.5;
-    ctx.setLineDash([4, 4]); ctx.strokeStyle = c; ctx.globalAlpha = 0.7;
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-    ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.fillStyle = c; ctx.fillText(Math.round(conv(t)) + "\u00B0", w - 2, y - 1);
-  });
 
   const n = Math.min(series.length, range);
-  if (n < 2) return;
   const data = series.slice(series.length - n);
-  const bucket = Math.max(1, Math.ceil(n / Math.max(1, w)));        // average samples so a 1 hour range stays light
+  // The scale follows the data but always includes both limits, rounded to tidy 5 degree steps.
+  let lo = CFG.warn - 5, hi = CFG.hot + 5;
+  for (const v of data) { if (v - 4 < lo) lo = v - 4; if (v + 4 > hi) hi = v + 4; }
+  lo = Math.floor(lo / 5) * 5; hi = Math.ceil(hi / 5) * 5;
+  if (hi - lo < 30) lo = hi - 30;
+  const padL = 36, padT = 7, padB = 7, pw = w - padL;
+  const py = (v) => padT + (1 - (Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo)) * (h - padT - padB);
+
+  // axis labels live in a left gutter so they never sit on the data line
+  ctx.font = "11px " + css("--font-mono"); ctx.textBaseline = "middle"; ctx.textAlign = "right";
+  const muted = css("--text-muted"), ticks = [];
+  const mark = (v, c, line) => {
+    const y = py(v);
+    if (ticks.some((t) => Math.abs(t - y) < 15)) return;       // skip a label that would overlap another
+    ticks.push(y);
+    if (line) { ctx.setLineDash([4, 4]); ctx.strokeStyle = c; ctx.globalAlpha = 0.75; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL, Math.round(y) + 0.5); ctx.lineTo(w, Math.round(y) + 0.5); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
+    ctx.fillStyle = c; ctx.fillText(Math.round(conv(v)) + "\u00B0", padL - 6, y);
+  };
+  mark(CFG.hot, css("--danger"), true);
+  mark(CFG.warn, css("--highlight"), true);
+  mark(hi, muted, false); mark(lo, muted, false);
+
+  if (n < 2) return;
+  const bucket = Math.max(1, Math.ceil(n / Math.max(1, pw)));        // average samples so a 1 hour range stays light
   const pts = [];
   for (let k = 0; k * bucket < n; k++) {
     const part = data.slice(k * bucket, (k + 1) * bucket);
     const v = part.reduce((a, b) => a + b, 0) / part.length;
     const j = k * bucket + (part.length - 1) / 2;
-    pts.push([(j / (n - 1)) * w, py(v)]); // the range is a maximum: a short history fills the width
+    pts.push([padL + (j / (n - 1)) * pw, py(v)]); // the range is a maximum: a short history fills the width
   }
   ctx.beginPath();
   pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
@@ -259,8 +279,12 @@ function logLines(s) {
   const vp = s.gpu.vramTotalMB ? (s.gpu.vramUsedMB / s.gpu.vramTotalMB) * 100 : 0;
   if (vp >= 90) add("WARN", `vram ${fmt(vp)}% used`);
   if (s.ram.loadPct >= 90) add("WARN", `ram ${fmt(s.ram.loadPct)}% used`);
-  s.storage.forEach((d) => { if (d.tempC >= 70) add("WARN", `ssd ${d.name} ${tdeg(d.tempC)}`); });
-  if (s.battery && s.battery.levelPct < 20) add("WARN", `battery ${fmt(s.battery.levelPct)}%`);
+  s.storage.forEach((d) => {
+    const st = ssdState(d.tempC);
+    if (st === "hot") add("CRIT", `ssd ${d.name} ${tdeg(d.tempC)}`); else if (st === "warn") add("WARN", `ssd ${d.name} ${tdeg(d.tempC)}`);
+    if ((d.usedPct ?? 0) >= 90) add("WARN", `ssd ${d.name} ${fmt(d.usedPct)}% full`);
+  });
+  if (s.battery && batState(s.battery.levelPct) !== "good") add(batState(s.battery.levelPct) === "hot" ? "CRIT" : "WARN", `battery ${fmt(s.battery.levelPct)}%`);
   if (!out.length) add("OK", "all sensors within normal range");
   add("INFO", "ec.wmi link established");
   return out;
@@ -273,6 +297,34 @@ function updateMini(s) {
   $("mGpuL").textContent = fmt(s.gpu.load) + "%";
   $("mRam").textContent = fmt(s.ram.loadPct) + "%";
   $("mMode").textContent = MODES[s.powerMode] ?? "--";
+}
+
+/* One line that says whether anything needs attention, so the answer does not hide in the log. */
+function summaryOf(s) {
+  const hot = [], watch = [];
+  const temp = (label, v, warn, crit) => { if (v == null) return; if (v >= crit) hot.push(`${label} ${tf(v)}\u00B0`); else if (v >= warn) watch.push(`${label} ${tf(v)}\u00B0`); };
+  temp("CPU", s.cpu.tempC, CFG.warn, CFG.hot); temp("GPU", s.gpu.tempC, CFG.warn, CFG.hot);
+  if (s.gpu.hotspotC != null && s.gpu.hotspotC >= CFG.spot) hot.push(`GPU hotspot ${tf(s.gpu.hotspotC)}\u00B0`);
+  const cap = (label, p) => { const st = capState(p); if (st === "hot") hot.push(`${label} ${fmt(p)}%`); else if (st === "warn") watch.push(`${label} ${fmt(p)}%`); };
+  cap("RAM", s.ram.loadPct);
+  if (s.gpu.vramTotalMB) cap("VRAM", (s.gpu.vramUsedMB / s.gpu.vramTotalMB) * 100);
+  s.storage.forEach((d) => {
+    const st = ssdState(d.tempC);
+    if (st === "hot") hot.push(`SSD ${tf(d.tempC)}\u00B0`); else if (st === "warn") watch.push(`SSD ${tf(d.tempC)}\u00B0`);
+    if ((d.usedPct ?? 0) >= 90) watch.push(`SSD ${fmt(d.usedPct)}% full`);
+  });
+  if (s.battery) { const b = batState(s.battery.levelPct); if (b === "hot") hot.push(`Battery ${fmt(s.battery.levelPct)}%`); else if (b === "warn") watch.push(`Battery ${fmt(s.battery.levelPct)}%`); }
+  const parts = [];
+  if (hot.length) parts.push("Hot or critical: " + hot.join(", "));
+  if (watch.length) parts.push("Watch: " + watch.join(", "));
+  const level = hot.length ? "hot" : watch.length ? "warn" : "ok";
+  return { level, text: parts.join("  \u00B7  ") || "Everything is within normal range" };
+}
+function renderSummary(s) {
+  const { level, text } = summaryOf(s);
+  $("sumTag").textContent = level === "hot" ? "ATTENTION" : level === "warn" ? "WATCH" : "ALL NORMAL";
+  $("sumTag").className = "tag " + level;
+  $("sumText").textContent = text;
 }
 
 const MODES = { 1: "QUIET", 2: "BALANCED", 3: "PERFORMANCE", 224: "CUSTOM", 255: "CUSTOM" };
@@ -292,6 +344,7 @@ function render(s) {
   setTemp($("cpuTemp"), $("cpuTag"), cpu.tempC);
   setMeter("cpuLoadBar", cpu.load);
   setDd("cpuLoad", fmt(cpu.load) + "%");
+  renderSummary(s);
   setDd("cpuFan", cpu.fanRpm != null ? cpu.fanRpm + " rpm" : "--");
   setDd("cpuPower", cpu.powerW != null ? fmt(cpu.powerW, 1) + " W" : "--");
   setDd("cpuClock", cpu.clockMHz != null ? fmt(cpu.clockMHz) + " MHz" : "--");
@@ -319,19 +372,21 @@ function render(s) {
 
   // RAM / VRAM
   setBig("ramV", fmt(ram.usedGB, 1), `GB · ${fmt(ram.loadPct)}%`);
-  setMeter("ramBar", ram.loadPct);
+  const rs = capState(ram.loadPct);
+  setMeter("ramBar", ram.loadPct, rs); setChip($("ramTag"), rs, CAP_LABEL);
   $("ramSub").textContent = `free ${fmt(ram.availableGB, 1)} GB`;
   const vp = gpu.vramTotalMB ? (gpu.vramUsedMB / gpu.vramTotalMB) * 100 : 0;
   setBig("vramV", fmt(gpu.vramUsedMB / 1024, 1), `/ ${fmt(gpu.vramTotalMB / 1024, 1)} GB`);
-  setMeter("vramBar", vp);
+  const vs = capState(vp);
+  setMeter("vramBar", vp, vs); setChip($("vramTag"), vs, CAP_LABEL);
   $("vramSub").textContent = `free ${fmt((gpu.vramTotalMB - gpu.vramUsedMB) / 1024, 1)} GB · ${fmt(gpu.memClockMHz)} MHz`;
 
   // Baterai
   const b = s.battery;
   if (b) {
     setBig("batV", fmt(b.levelPct), "%");
-    setMeter("batBar", b.levelPct);
-    $("batBar").parentElement.classList.toggle("over", b.levelPct < 20);
+    const bs = batState(b.levelPct);
+    setMeter("batBar", b.levelPct, bs); setChip($("batTag"), bs, BAT_LABEL);
     $("batSub").textContent = `health ${fmt(100 - (b.degradationPct ?? 0), 1)}% · ${fmt(b.fullWh)}/${fmt(b.designedWh)} Wh`;
     const r = b.rateW ?? 0;
     $("batRate").textContent = r > 0.5 ? `charging +${fmt(r, 1)} W` : r < -0.5 ? `draining ${fmt(r, 1)} W` : "AC · idle (0.0 W)";
@@ -356,15 +411,16 @@ function diskCard(d) {
   const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const hd = mk("div", "hd");
   const n = mk("span", "n", d.name.replace(/\s*(SSD|\d+GB)\s*/g, " ").trim()); n.title = d.name;
-  hd.append(n, mk("span", "t " + tempClass(d.tempC), tdeg(d.tempC)));
-  const meter = mk("div", "meter"); const bar = document.createElement("i");
+  hd.append(n, mk("span", "t " + ssdState(d.tempC), tdeg(d.tempC)));
+  const us = capState(d.usedPct ?? 0);
+  const meter = mk("div", "meter st-" + us); const bar = document.createElement("i");
   bar.style.width = Math.min(100, d.usedPct ?? 0) + "%"; meter.append(bar);
-  meter.classList.toggle("over", (d.usedPct ?? 0) >= 90);
-  const line = (label, valueEl) => { const l = mk("div", "ln"); l.append(mk("span", null, label), valueEl); return l; };
+  const line = (label, valueEl, chip) => { const l = mk("div", "ln"); const lab = mk("span", null, label); if (chip) lab.append(chip); l.append(lab, valueEl); return l; };
   const life = mk("b", d.lifePct != null && d.lifePct <= 80 ? "warn" : "", fmt(d.lifePct) + "%");
   const used = mk("b", (d.usedPct ?? 0) >= 90 ? "hot" : "", fmt(d.usedPct) + "%");
   const io = mk("b", "", `${fmt(d.readMBs, 1)} / ${fmt(d.writeMBs, 1)} MB/s`);
-  el.append(hd, meter, line("USED", used), line("LIFE LEFT", life), line("R / W", io));
+  const usedChip = us === "ok" ? null : mk("span", "tag " + us, CAP_LABEL[us]);
+  el.append(hd, meter, line("USED", used, usedChip), line("LIFE LEFT", life), line("R / W", io));
   return el;
 }
 
