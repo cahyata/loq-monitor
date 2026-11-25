@@ -75,7 +75,7 @@
     <h1 class="sr-only">LOQ//NET hardware monitor, <span id="sub">HARDWARE MONITOR</span></h1>
 
     <div id="toolbar">
-      <nav id="tabs" role="tablist" aria-label="Views"><button id="tabOverview" role="tab" class="on" aria-selected="true" aria-controls="overview" aria-keyshortcuts="1">OVERVIEW</button><button id="tabDetail" role="tab" aria-selected="false" aria-controls="detail" aria-keyshortcuts="2">DETAILED</button><button id="tabOverlay" role="tab" aria-selected="false" aria-controls="overlayTab" aria-keyshortcuts="3">OVERLAY</button><button id="tabSystem" role="tab" aria-selected="false" aria-controls="systemTab" aria-keyshortcuts="4">SYSTEM</button></nav>
+      <nav id="tabs" role="tablist" aria-label="Views"><button id="tabOverview" role="tab" class="on" aria-selected="true" aria-controls="overview" aria-keyshortcuts="1">OVERVIEW</button><button id="tabDetail" role="tab" aria-selected="false" aria-controls="detail" aria-keyshortcuts="2">DETAILED</button><button id="tabOverlay" role="tab" aria-selected="false" aria-controls="overlayTab" aria-keyshortcuts="3">OVERLAY</button><button id="tabSystem" role="tab" aria-selected="false" aria-controls="systemTab" aria-keyshortcuts="4">SYSTEM</button><button id="tabInsights" role="tab" aria-selected="false" aria-controls="insightsTab" aria-keyshortcuts="5">INSIGHTS</button></nav>
       <div id="summary"><span class="tag ok" id="sumTag">--</span><span id="sumText">Waiting for data</span></div>
       <span class="seg" id="rangeSeg" role="group" aria-label="Temperature history range"><span class="seglab">HISTORY</span><button data-r="60" aria-pressed="false">1 MIN</button><button data-r="600" aria-pressed="false">10 MIN</button><button data-r="3600" aria-pressed="false">1 HOUR</button></span>
     </div>
@@ -97,7 +97,7 @@
 
       <section class="panel" id="gpu">
         <div class="ph"><h2 class="ptit">[ GPU ]</h2><span class="dim" id="gpuName"></span></div>
-        <div class="hero"><span class="big" id="gpuTemp">--</span><span class="unit u-deg">°C</span><span class="tag" id="gpuTag" title="GPU temperature status. Limits are in Settings.">--</span></div>
+        <div class="hero"><span class="big" id="gpuTemp">--</span><span class="unit u-deg">°C</span><span class="tag" id="gpuTag" title="GPU temperature status. Limits are in Settings.">--</span><span class="tag limit" id="gpuLimit" hidden></span></div>
         <div class="loadrow"><span>LOAD</span><div class="meter load"><i id="gpuLoadBar"></i></div><b id="gpuLoad">--</b></div>
         <canvas id="gpuChart" height="96" role="img" aria-label="GPU temperature history"></canvas>
         <div class="cap" id="gpuCap"></div>
@@ -134,6 +134,35 @@
         <button id="dreset" title="Restart minimum and maximum tracking for every sensor">RESET MIN/MAX</button>
         <button id="dexp">EXPAND ALL</button><button id="dcol">COLLAPSE ALL</button></div>
       <div id="dtree"></div>
+    </section>
+    <section id="insightsTab" role="tabpanel" aria-labelledby="tabInsights" hidden>
+      <div class="insgrid">
+        <section class="panel mini cyan wide">
+          <div class="ph"><h2 class="ptit">TOP PROGRAMS</h2><span class="dim" id="insProcNote"></span></div>
+          <div class="seg" id="insProcSeg" role="group" aria-label="Rank programs by"><span class="seglab">RANK BY</span>
+            <button type="button" data-k="cpu" aria-pressed="true" class="on">CPU</button><button type="button" data-k="memMB" aria-pressed="false">MEMORY</button><button type="button" data-k="gpu" aria-pressed="false">GPU</button><button type="button" data-k="diskMBs" aria-pressed="false">DISK</button></div>
+          <ol id="insProcs" class="proclist" aria-live="off"></ol>
+          <p class="note">Programs with several processes, such as a browser, are added together. This list is measured only while this tab is open.</p>
+        </section>
+        <section class="panel mini yellow">
+          <div class="ph"><h2 class="ptit">POWER</h2></div>
+          <div class="bigrow"><span class="bignum" id="insWatts">--</span><span class="unit">W</span></div>
+          <p class="note" id="insWattsNote"></p>
+          <dl class="kv" id="insEnergy"></dl>
+          <p class="more"><button type="button" id="insTariff" class="act" hidden>SET ELECTRICITY PRICE</button></p>
+        </section>
+        <section class="panel mini pinkb">
+          <div class="ph"><h2 class="ptit">GPU LIMITS</h2><span class="dim" id="insLimitState"></span></div>
+          <p class="note" id="insLimitNow"></p>
+          <div class="systable" id="insLimits" role="table"></div>
+        </section>
+        <section class="panel mini green wide">
+          <div class="ph"><h2 class="ptit">THIS SESSION</h2><span class="dim" id="insSessionLen"></span></div>
+          <div class="systable" id="insStats" role="table"></div>
+          <p class="more"><button type="button" id="insReset" class="act">RESET SESSION</button></p>
+          <p class="note">A session starts when the app opens. Min, average and max are kept while the window is in the tray too.</p>
+        </section>
+      </div>
     </section>
     <section id="systemTab" role="tabpanel" aria-labelledby="tabSystem" hidden>
       <div class="sysbar">
@@ -217,6 +246,9 @@
       <h3>Keyboard</h3>
       <label><span>Keyboard shortcuts<small>Single keys such as 1, 2, T, U and M</small></span><input id="cfgKeys" type="checkbox" checked></label>
       <p class="more"><button type="button" id="btnHelp">VIEW ALL SHORTCUTS</button></p>
+      <h3>Power</h3>
+      <label><span>Electricity price<small>Per kWh. Leave empty to hide costs</small></span><input id="cfgTariff" type="number" min="0" step="any" placeholder="0"></label>
+      <label><span>Currency<small>Shown before the amount</small></span><input id="cfgCurrency" type="text" maxlength="6" placeholder="Rp"></label>
       <h3>Updates</h3>
       <label><span>Check for updates<small>At start, from GitHub Releases. Nothing installs without your click.</small></span><input id="cfgAutoUpdate" type="checkbox" checked></label>
       <p class="more"><span id="updVersion" class="dim"></span> <button type="button" id="updCheck">CHECK NOW</button></p>
@@ -229,7 +261,7 @@
   <dialog id="help" aria-label="Keyboard shortcuts">
     <h2>KEYBOARD SHORTCUTS</h2>
     <dl class="keys">
-      <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></dt><dd>Overview, Detailed, Overlay, System</dd>
+      <dt><kbd>1</kbd> to <kbd>5</kbd></dt><dd>Overview, Detailed, Overlay, System, Insights</dd>
       <dt><kbd>O</kbd></dt><dd>Show or hide the game overlay</dd>
       <dt><kbd>/</kbd> or <kbd>F</kbd></dt><dd>Filter sensors</dd>
       <dt><kbd>T</kbd></dt><dd>Theme: auto, dark, light</dd>
@@ -247,6 +279,7 @@
   <script src="detail.js"></script>
   <script src="overlayui.js"></script>
   <script src="system.js"></script>
+  <script src="insights.js"></script>
   <script src="updater.js"></script>
 </body>
 </html>

@@ -184,6 +184,22 @@ function setMeter(barId, pct, state = "load") {
   bar.style.transform = `scaleX(${Math.max(0, Math.min(100, pct ?? 0)) / 100})`;
   bar.parentElement.className = "meter " + (state === "load" ? "load" : "st-" + state);
 }
+/* Why the NVIDIA GPU is held back. Each entry is a bit of the throttle mask from the service, worst first. */
+const GPU_LIMITS = [
+  { bit: 0x40, label: "HEAT LIMIT", level: "hot", name: "Hardware heat limit", text: "The GPU hardware is cutting its speed because it is too hot. Check the vents, the fans and the power mode." },
+  { bit: 0x20, label: "HEAT LIMIT", level: "hot", name: "Heat limit", text: "The GPU is slowing down to cool off. Check the vents and fans, or use a higher power mode." },
+  { bit: 0x80, label: "POWER BRAKE", level: "warn", name: "Power brake", text: "The charger or battery cannot give the GPU enough power, so it slows down. Check that the charger fits the laptop." },
+  { bit: 0x8, label: "SLOWDOWN", level: "warn", name: "Hardware slowdown", text: "The GPU hardware is slowing itself down because of heat or power. If it lasts, check the cooling and the charger." },
+  { bit: 0x4, label: "POWER LIMIT", level: "info", name: "Power limit", text: "The GPU is held back by its power limit. This is normal under heavy load on a laptop." },
+];
+const limitsOf = (mask) => GPU_LIMITS.filter((l) => (mask ?? 0) & l.bit);
+
+function setLimit(el, mask) {
+  const worst = limitsOf(mask)[0];
+  el.hidden = !worst;
+  if (!worst) return;
+  el.textContent = worst.label; el.className = "tag limit " + worst.level; el.title = worst.text;
+}
 function setChip(el, state, labels) {
   el.textContent = labels[state] ?? "--";
   el.className = "tag " + (state === "good" ? "ok" : state);
@@ -315,6 +331,8 @@ function summaryOf(s) {
     if (st === "hot") hot.push(`SSD ${tf(d.tempC)}\u00B0`); else if (st === "warn") watch.push(`SSD ${tf(d.tempC)}\u00B0`);
     if ((d.usedPct ?? 0) >= 90) watch.push(`SSD ${fmt(d.usedPct)}% full`);
   });
+  const slowed = limitsOf(s.gpu.throttleMask).filter((l) => l.level !== "info")[0];
+  if (slowed) (slowed.level === "hot" ? hot : watch).push("GPU slowed (" + slowed.label.toLowerCase() + ")");
   if (s.battery) { const b = batState(s.battery.levelPct); if (b === "hot") hot.push(`Battery ${fmt(s.battery.levelPct)}%`); else if (b === "warn") watch.push(`Battery ${fmt(s.battery.levelPct)}%`); }
   const parts = [];
   if (hot.length) parts.push("Hot or critical: " + hot.join(", "));
@@ -339,6 +357,7 @@ function render(s) {
   if (typeof Detail !== "undefined") Detail.update(s);
   if (typeof OverlayUI !== "undefined") OverlayUI.update(s);
   if (typeof SystemPage !== "undefined") SystemPage.update(s);
+  if (typeof Insights !== "undefined") Insights.update(s);
   trayUpdate(s); // runs while the window is hidden in the tray
   heatUpdate(s);
   if (document.hidden) return; // window hidden: keep the history, skip drawing
@@ -371,6 +390,7 @@ function render(s) {
   setDd("gpuClock", fmt(gpu.coreClockMHz) + " MHz");
   setDd("gpuVt", tdeg(gpu.vramTempC));
   setDd("gpuMem", fmt(gpu.memClockMHz) + " MHz");
+  setLimit($("gpuLimit"), gpu.throttleMask);
   setDd("gpuRx", fmt(gpu.pcieRxMBs, 1) + " MB/s");
   setDd("gpuTx", fmt(gpu.pcieTxMBs, 1) + " MB/s");
   drawAll();
@@ -394,7 +414,11 @@ function render(s) {
     setMeter("batBar", b.levelPct, bs); setChip($("batTag"), bs, BAT_LABEL);
     $("batSub").textContent = `health ${fmt(100 - (b.degradationPct ?? 0), 1)}% · ${fmt(b.fullWh)}/${fmt(b.designedWh)} Wh`;
     const r = b.rateW ?? 0;
-    $("batRate").textContent = r > 0.5 ? `charging +${fmt(r, 1)} W` : r < -0.5 ? `draining ${fmt(r, 1)} W` : "AC · idle (0.0 W)";
+    // The reading jumps with the load, so the time left uses a running average that restarts when the charger changes.
+    batAvg = batAvg != null && Math.sign(batAvg) === Math.sign(r) ? batAvg * 0.85 + r * 0.15 : r;
+    const stored = (b.fullWh ?? 0) * (b.levelPct ?? 0) / 100;
+    const left = r < -0.5 && stored > 0 ? ` · about ${hm(stored / -batAvg)} left` : r > 0.5 && b.fullWh ? ` · full in about ${hm(Math.max(0, b.fullWh - stored) / batAvg)}` : "";
+    $("batRate").textContent = (r > 0.5 ? `charging +${fmt(r, 1)} W` : r < -0.5 ? `draining ${fmt(r, 1)} W` : "AC · idle (0.0 W)") + left;
   }
 
   // Storage
@@ -429,6 +453,14 @@ function diskCard(d) {
   return el;
 }
 
+let batAvg = null;
+/** Hours as a short phrase: "35 min", "1 h 05 min". */
+function hm(hours) {
+  if (!Number.isFinite(hours)) return "--";
+  const m = Math.round(hours * 60);
+  if (m >= 1440) return "more than a day";
+  return m >= 60 ? Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0") + " min" : Math.max(1, m) + " min";
+}
 function setBig(id, value, unit) {
   const el = $(id);
   const small = document.createElement("small"); small.textContent = unit;
@@ -456,7 +488,7 @@ function connect() {
   clearTimeout(retryTimer);
   ws = new WebSocket(WS_URL);
   const mine = ws;
-  ws.onopen = () => { retry = 0; setLink(true); };
+  ws.onopen = () => { retry = 0; setLink(true); if (typeof Insights !== "undefined") Insights.resync(); };
   ws.onmessage = (e) => { try { render(JSON.parse(e.data)); } catch (err) { console.error(err); } };
   ws.onclose = () => { if (mine !== ws) return; setLink(false); retryTimer = setTimeout(connect, Math.min(5000, 1000 + retry++ * 500)); };
   ws.onerror = () => mine.close();
@@ -481,6 +513,7 @@ function fillCfg(src, u) {
   $("cfgTheme").value = themePref(); $("cfgFx").checked = store.get("fx", "on") === "on"; $("cfgAlerts").checked = store.get("alerts", "on") === "on";
   document.querySelectorAll(".dlg-deg").forEach((e) => { e.textContent = "\u00B0" + u; });
   for (const [k, id] of Object.entries(cfgIds)) $(id).value = TEMP_KEYS.includes(k) ? Math.round(conv(src[k], u)) : src[k];
+  $("cfgTariff").value = store.get("tariff", ""); $("cfgCurrency").value = store.get("currency", "");
   $("cfgErr").textContent = "";
 }
 $("btnSettings").onclick = () => { fillCfg(CFG, unit); dlg.showModal(); };
@@ -498,6 +531,9 @@ $("settingsForm").onsubmit = (e) => {
   for (const k of TEMP_KEYS) v[k] = Math.round(unconv(v[k], dlgUnit) * 10) / 10;   // back to °C
   if (v.warn >= v.hot) { e.preventDefault(); $("cfgErr").textContent = "Warm must be lower than Hot."; return; }
   if (TEMP_KEYS.some((k) => v[k] < 30 || v[k] > 120) || v.hold < 0 || v.hold > 300) { e.preventDefault(); $("cfgErr").textContent = "Limits must be 30 to 120 \u00B0C (86 to 248 \u00B0F) and the delay 0 to 300 s."; return; }
+  const tariff = $("cfgTariff").value.trim();
+  if (tariff !== "" && !(parseFloat(tariff) >= 0)) { e.preventDefault(); $("cfgErr").textContent = "The electricity price must be a number, or empty."; return; }
+  store.set("tariff", tariff); store.set("currency", $("cfgCurrency").value.trim());
   keysOn = $("cfgKeys").checked; store.set("keys", keysOn ? "on" : "off");
   store.set("theme", $("cfgTheme").value); store.set("fx", $("cfgFx").checked ? "on" : "off"); store.set("alerts", $("cfgAlerts").checked ? "on" : "off");
   applyPrefs(); drawAll();
@@ -555,6 +591,7 @@ addEventListener("keydown", (e) => {
   else if (k === "2") Detail.show(true);
   else if (k === "3") Detail.show("overlay");
   else if (k === "4") Detail.show("system");
+  else if (k === "5") Detail.show("insights");
   else if (k === "o") OverlayUI.toggle();
   else if (k === "/" || k === "f") { Detail.show(true); $("dfilter").focus(); e.preventDefault(); }
   else if (k === "t") cycleTheme();

@@ -7,7 +7,7 @@
    so this page asks when it is opened and again on REFRESH. A few values (uptime, memory in use,
    battery health) stay live from the sensor snapshot. Shares $ and store with main.js. */
 
-const SystemPage = (() => {
+var SystemPage = (() => {   // var, so a failure while loading this file cannot break the typeof checks in main.js
   const SYSTEM_URL = "http://127.0.0.1:47821/system";
   let data = null, active = false, last = null, fetchedAt = 0, loading = false;
   let mask = store.get("sysmask", "on") === "on", showVirtual = store.get("sysvirtual", "off") === "on";

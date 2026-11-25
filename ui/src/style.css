@@ -82,6 +82,9 @@ html.light .big { text-shadow: 2px 2px 0 color-mix(in srgb, var(--c, var(--text)
 .unit { font-size: 18px; color: var(--text-muted); }
 .big.ok { --c: var(--success); } .big.warn { --c: var(--highlight); } .big.hot { --c: var(--accent-primary); }
 .tag { display: inline-block; margin-left: 8px; align-self: center; font-size: 11px; font-weight: bold; color: var(--surface-inset); padding: 1px 7px; letter-spacing: 1px; }
+.tag[hidden] { display: none; }
+.tag.info { background: var(--accent-secondary); }
+.hero .tag.limit { animation: none; }
 .tag.ok { background: var(--success); } .tag.warn { background: var(--highlight); } .tag.hot { background: var(--accent-primary); }
 .hero .tag.hot { animation: blink 1.2s steps(1) infinite; }   /* only the temperature chips blink */
 
@@ -359,3 +362,25 @@ dl.kv dd { font-size: 13px; font-weight: normal; color: var(--text-strong); over
 .sysrow { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 12px; padding: 3px 0; border-top: 1px solid var(--divider); min-width: 560px; }
 .sysrow.head { color: var(--text-muted); letter-spacing: 1px; border-top: 0; font-size: 11px; }
 .sysrow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Insights page ---------- */
+#insightsTab[hidden] { display: none; }
+.insgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; align-items: start; }
+.insgrid .panel.wide { grid-column: 1 / -1; }
+.bigrow { display: flex; align-items: baseline; gap: 6px; margin: 6px 0 0; }
+.bignum { font: italic 900 52px/1 Impact, "Arial Black", sans-serif; font-variant-numeric: tabular-nums; color: var(--accent-primary); }
+.proclist { list-style: none; margin: 8px 0 4px; padding: 0; display: grid; gap: 4px; }
+.proclist li { display: grid; grid-template-columns: 18px minmax(120px, 34%) 1fr 84px; align-items: center; gap: 10px; font-size: 13px; min-height: 24px; }
+.proclist li.empty { display: block; color: var(--text-muted); font-size: 12px; padding: 10px 0; }
+.proclist .prank { color: var(--text-muted); font-size: 11px; text-align: right; }
+.proclist .pname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-strong); }
+.proclist .pbar { height: 8px; background: var(--surface-inset); border: 1px solid var(--border); position: relative; overflow: hidden; }
+.proclist .pbar i { position: absolute; inset: 0; background: var(--accent-secondary); transform-origin: left center; }
+.proclist .pval { text-align: right; font-variant-numeric: tabular-nums; }
+#insProcSeg { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 6px 0 4px; }
+#insProcSeg button { font: bold 11px var(--font-mono); letter-spacing: 1px; color: var(--text-muted); background: none; border: 1px solid var(--border); padding: 3px 10px; min-height: 24px; cursor: pointer; }
+#insProcSeg button.on { color: var(--surface-inset); background: var(--accent-secondary); border-color: var(--accent-secondary); }
+#insights .more, #insightsTab .more { margin: 8px 0 0; }
+#insightsTab .systable { min-width: 0; }
+#insightsTab .sysrow { min-width: 0; }
+@media (max-width: 560px) { .proclist li { grid-template-columns: 18px 1fr 76px; } .proclist .pbar { display: none; } }

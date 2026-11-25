@@ -5,6 +5,13 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 ## [Unreleased]
 
 ### Added
+- An INSIGHTS tab (key 5). TOP PROGRAMS ranks programs by CPU, memory, GPU or disk. POWER shows the current draw, the energy used this session and today, and an optional cost. GPU LIMITS says why the GPU is held back and for how long. THIS SESSION shows the lowest, average and highest values since the app opened.
+- A chip next to the GPU temperature says when the GPU is held back (power limit, heat limit, power brake or hardware slowdown) and explains it on hover. A heat limit or hardware slowdown also appears in the status line.
+- The battery panel shows the time left on battery, or the time to full while charging.
+- SETTINGS has an electricity price and currency for the cost estimate.
+- The service reads the GPU throttle reasons from NVML and ranks programs from the raw Windows performance counters. The ranking runs only while the Insights tab is open.
+
+### Added
 - A SYSTEM tab (key 4) with the facts about the machine: device and mainboard, BIOS and Secure Boot, Windows version and uptime, processor, graphics and driver, memory modules, drives and volumes, network adapters, and battery capacity and cycles. It can hide the host name, IP and MAC addresses, which is on by default, and COPY REPORT puts the page in the clipboard as plain text. The service reads Windows once and serves it at `GET /system`. Serial numbers and the user name are never read.
 
 ## [0.2.0] - 2026-11-25

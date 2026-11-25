@@ -35,6 +35,7 @@ try { Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); }; } 
 
 var reader = new SensorReader();
 var fps = new FpsMeter();
+var procs = new ProcessSampler();
 var clients = new ConcurrentDictionary<WebSocket, byte>();
 string latestJson = "{}";
 string? systemJson = null;      // the System page data, read once because it takes a second or two
@@ -59,7 +60,7 @@ try
     do
     {
         fps.Tick();
-        var snap = reader.Read() with { Fps = fps.Current() };
+        var snap = reader.Read() with { Fps = fps.Current(), Processes = procs.Current };
         latestJson = JsonSerializer.Serialize(snap, jsonOptions);
         if (!clients.IsEmpty) await Broadcast(latestJson);
     }
@@ -70,6 +71,7 @@ catch (OperationCanceledException) { }
 listener.Stop();
 reader.Dispose();
 fps.Dispose();
+procs.Dispose();
 return;
 
 async Task AcceptLoop(CancellationToken ct)
@@ -99,6 +101,7 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
             await Send(ws, latestJson);
             var buf = new byte[256];
             var wantsFps = false;
+            var wantsProcs = false;
             try
             {
                 while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
@@ -114,10 +117,12 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
                         case "reset-minmax": reader.RequestMinMaxReset(); break;
                         case "fps-on": if (!wantsFps) { wantsFps = true; fps.Acquire(); } break;
                         case "fps-off": if (wantsFps) { wantsFps = false; fps.Release(); } break;
+                        case "procs-on": if (!wantsProcs) { wantsProcs = true; procs.Acquire(); } break;
+                        case "procs-off": if (wantsProcs) { wantsProcs = false; procs.Release(); } break;
                     }
                 }
             }
-            finally { if (wantsFps) fps.Release(); }
+            finally { if (wantsFps) fps.Release(); if (wantsProcs) procs.Release(); }
             clients.TryRemove(ws, out _);
             ws.Dispose();
         }
@@ -189,6 +194,7 @@ sealed class SensorReader : IDisposable
         IsStorageEnabled = true, IsBatteryEnabled = true,
         IsMotherboardEnabled = true, IsControllerEnabled = true, IsNetworkEnabled = true,
     };
+    readonly Nvml _nvml = new();
     ManagementObject? _other, _zone;
     PerformanceCounter? _cpuFreq, _cpuPerf;
     ManagementBaseObject? _featureArgs;                 // reused for every GetFeatureValue call
@@ -406,7 +412,8 @@ sealed class SensorReader : IDisposable
                 Round(gpu is null ? null : Val(gpu, SensorType.SmallData, "GPU Memory Used")),
                 Round(gpu is null ? null : Val(gpu, SensorType.SmallData, "GPU Memory Total")),
                 MBs(gpu is null ? null : Val(gpu, SensorType.Throughput, "GPU PCIe Rx")),
-                MBs(gpu is null ? null : Val(gpu, SensorType.Throughput, "GPU PCIe Tx"))),
+                MBs(gpu is null ? null : Val(gpu, SensorType.Throughput, "GPU PCIe Tx")),
+                gpu is null ? null : _nvml.ThrottleMask()),
             Ram: new RamInfo(
                 Round(mem is null ? null : Val(mem, SensorType.Load, "Memory")),
                 Round(mem is null ? null : Val(mem, SensorType.Data, "Memory Used")),
@@ -447,16 +454,16 @@ sealed class SensorReader : IDisposable
         return null;
     }
 
-    public void Dispose() { try { _pc.Close(); } catch { } _featureArgs?.Dispose(); _other?.Dispose(); _zone?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }
+    public void Dispose() { try { _pc.Close(); } catch { } _featureArgs?.Dispose(); _nvml.Dispose(); _other?.Dispose(); _zone?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }
 }
 
-record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode, List<HwInfo> Hardware, FpsInfo? Fps = null);
+record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode, List<HwInfo> Hardware, FpsInfo? Fps = null, ProcessInfo? Processes = null);
 record HwInfo(string Name, string Type, SensorInfo[] Sensors);
 record SensorInfo(string Type, string Name, float? Value, float? Min, float? Max);
 record CpuInfo(string? Name, float? Load, float? TempC, int? FanRpm, float? ClockMHz, float? PowerW, float[] CoreLoads);
 record GpuInfo(string? Name, float? Load, float? TempC, float? HotspotC, float? VramTempC, int? FanRpm,
                float? PowerW, float? CoreClockMHz, float? MemClockMHz, float? VramUsedMB, float? VramTotalMB,
-               float? PcieRxMBs, float? PcieTxMBs);
+               float? PcieRxMBs, float? PcieTxMBs, int? ThrottleMask = null);
 record RamInfo(float? LoadPct, float? UsedGB, float? AvailableGB);
 record StorageInfo(string Name, float? TempC, float? UsedPct, float? LifePct, float? ReadMBs, float? WriteMBs, float? ActivityPct);
 record BatteryInfo(float? LevelPct, float? RateW, float? DegradationPct, float? DesignedWh, float? FullWh);

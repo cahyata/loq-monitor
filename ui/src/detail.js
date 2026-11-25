@@ -106,8 +106,8 @@ const Detail = (() => {
     });
   }
 
-  const TABS = { overview: ["tabOverview", "overview"], detail: ["tabDetail", "detail"], overlay: ["tabOverlay", "overlayTab"], system: ["tabSystem", "systemTab"] };
-  /** Shows one tab: "overview", "detail", "overlay" or "system". Booleans from older callers mean detail or overview. */
+  const TABS = { overview: ["tabOverview", "overview"], detail: ["tabDetail", "detail"], overlay: ["tabOverlay", "overlayTab"], system: ["tabSystem", "systemTab"], insights: ["tabInsights", "insightsTab"] };
+  /** Shows one tab: "overview", "detail", "overlay", "system" or "insights". Booleans from older callers mean detail or overview. */
   function setTab(which) {
     const name = which === true ? "detail" : which === false || !TABS[which] ? "overview" : which;
     on = name === "detail";
@@ -121,6 +121,7 @@ const Detail = (() => {
     store.set("tab", name);
     if (typeof OverlayUI !== "undefined") OverlayUI.setActive(name === "overlay");
     if (typeof SystemPage !== "undefined") SystemPage.setActive(name === "system");
+    if (typeof Insights !== "undefined") Insights.setActive(name === "insights");
     if (name === "detail") { sig = ""; if (last) refresh(last); } else if (name === "overview") drawAll();
   }
 
@@ -128,6 +129,7 @@ const Detail = (() => {
   $("tabDetail").onclick = () => setTab(true);
   $("tabOverlay").onclick = () => setTab("overlay");
   $("tabSystem").onclick = () => setTab("system");
+  $("tabInsights").onclick = () => setTab("insights");
   $("dsort").value = sort;
   $("dhide").checked = hideNet;
   $("dsort").onchange = () => { sort = $("dsort").value; store.set("dsort", sort); sig = ""; if (last) refresh(last); };

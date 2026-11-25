@@ -8,6 +8,7 @@ Measurements and decisions for CPU use. Numbers are percent of one core on the t
 |---|---|
 | App window and its WebView2 processes, any tab | 3 to 8 % |
 | Overlay page | under 0.5 % |
+| SensorService with the Insights tab open | about 3 points more (about 6 % in total), from the program scan every 3 s |
 | SensorService | 4 to 5 % |
 
 ## Method
