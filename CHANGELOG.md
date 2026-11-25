@@ -4,6 +4,8 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-25
+
 ### Added
 - Auto update from GitHub Releases. The app checks at start, shows a banner when a newer version exists, and installs it on request. SETTINGS has an Updates group. Releases are built and signed by a GitHub Actions workflow when a version tag is pushed (see `docs/RELEASING.md`).
 - The NSIS installer bundles the sensor service (self-contained), asks whether it starts at sign in, installs the PawnIO driver with winget when missing, and registers the scheduled task. `install-service.ps1` has a new `-NoAutoStart` switch.
