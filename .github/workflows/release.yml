@@ -47,6 +47,10 @@ jobs:
       - name: Publish the sensor service
         run: dotnet publish SensorService -c Release -r win-x64 --self-contained true -o SensorService/publish
 
+      - name: Add PresentMon for the overlay frame rate
+        shell: pwsh
+        run: ./scripts/get-presentmon.ps1 -Destination SensorService/publish
+
       - name: Install UI dependencies
         working-directory: ui
         run: npm ci

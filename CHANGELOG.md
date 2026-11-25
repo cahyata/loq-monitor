@@ -4,6 +4,10 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+### Added
+- FPS, frame time and 1% low readings in the game overlay, measured by PresentMon for the program that has the focus. The service starts PresentMon only while the overlay is visible and shows one of these readings. `scripts/get-presentmon.ps1` downloads it, and the release workflow adds it to the installer.
+- More overlay settings: eight positions including top center, bottom center and the middle of each side, separate horizontal and vertical offsets, a choice of display, an accent color, three fonts, three spacings, a corner radius, a switch for status colors, and a list that sets the order of the readings.
+
 ## [0.1.2] - 2026-11-25
 
 ### Fixed

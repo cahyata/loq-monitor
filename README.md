@@ -8,11 +8,11 @@ It reads the CPU, GPU, memory, storage and battery sensors, plus values that onl
 
 - **Overview:** CPU, GPU, RAM, storage and battery panels with live charts (1, 10 or 60 minutes), a status summary, and a heat warning when a temperature stays high.
 - **Detailed:** every sensor grouped by hardware, like HWMonitor, with value, minimum and maximum, a filter, pinned favorites, and a plain-language hint on hover.
-- **Game overlay:** a transparent, click-through panel over your game that shows the readings you choose. It has presets, a layout, corner, size and opacity, and a global hotkey (default `Ctrl+Shift+O`).
+- **Game overlay:** a transparent, click-through panel over your game that shows the readings you choose, including FPS, frame time and 1% low. It has presets, an order list, eight positions on any display, offsets, size, opacity, accent color, font, spacing and corner radius, and a global hotkey (default `Ctrl+Shift+O`).
 - **Alerts:** desktop notifications when the CPU, GPU or GPU hotspot temperature stays above your limits.
 - **Comfort:** °C or °F, dark, light or system theme, a small always-on-top mini mode, a tray icon, and keyboard shortcuts (press `?` in the app).
 
-The overlay works over games in windowed or borderless fullscreen mode. It cannot draw over exclusive fullscreen, and it does not show FPS.
+The overlay works over games in windowed or borderless fullscreen mode. It cannot draw over exclusive fullscreen. The FPS, frame time and 1% low readings come from PresentMon, which measures the program that has the focus.
 
 ## Install
 

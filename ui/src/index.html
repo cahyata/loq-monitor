@@ -146,24 +146,36 @@
               <span class="keyrow">Hotkey <kbd id="ovKey">Ctrl+Shift+O</kbd> <button id="ovKeyBtn" class="act ghost">CHANGE</button></span>
             </div>
             <p class="note" id="ovMsg" role="status"></p>
-            <p class="note warn">It shows over games in windowed or borderless fullscreen mode. It cannot draw over a game in exclusive fullscreen, and it does not show FPS.</p>
+            <p class="note warn">It shows over games in windowed or borderless fullscreen mode. It cannot draw over a game in exclusive fullscreen. FPS comes from the game that has the focus, and shows only while the overlay is on.</p>
           </section>
           <section class="panel mini yellow">
             <div class="ph"><h2 class="ptit">WHAT TO SHOW</h2><span class="dim" id="ovCount"></span></div>
             <div class="presets" id="ovPresets"><span class="seglab">PRESET</span>
               <button data-p="minimal">MINIMAL</button><button data-p="gaming">GAMING</button><button data-p="full">FULL</button><button data-p="none">CLEAR</button></div>
             <div id="ovMetrics"></div>
+            <h3 class="sub">ORDER ON THE OVERLAY</h3>
+            <ol id="ovOrder" class="ovorder" aria-label="Order of the readings"></ol>
           </section>
           <section class="panel mini pinkb">
             <div class="ph"><h2 class="ptit">APPEARANCE</h2></div>
             <div class="ovform">
               <label><span>Layout</span><select id="ovLayout"><option value="vertical">Vertical list</option><option value="horizontal">Horizontal bar</option></select></label>
-              <label><span>Screen corner</span><select id="ovCorner"><option value="tl">Top left</option><option value="tr">Top right</option><option value="bl">Bottom left</option><option value="br">Bottom right</option></select></label>
-              <label><span>Distance from the edge (px)</span><input id="ovMargin" type="number" min="0" max="400" step="4"></label>
+              <label><span>Position</span><select id="ovCorner">
+                <option value="tl">Top left</option><option value="tc">Top center</option><option value="tr">Top right</option>
+                <option value="ml">Middle left</option><option value="mr">Middle right</option>
+                <option value="bl">Bottom left</option><option value="bc">Bottom center</option><option value="br">Bottom right</option></select></label>
+              <label><span>Display</span><select id="ovMonitor"><option value="0">Primary</option></select></label>
+              <label><span>Horizontal offset (px)<small>From the edge, or from the center</small></span><input id="ovMarginX" type="number" min="-2000" max="2000" step="4"></label>
+              <label><span>Vertical offset (px)<small>From the edge, or from the middle</small></span><input id="ovMarginY" type="number" min="-2000" max="2000" step="4"></label>
               <label><span>Size <output id="ovScaleV"></output></span><input id="ovScale" type="range" min="70" max="200" step="5"></label>
               <label><span>Opacity <output id="ovOpacityV"></output></span><input id="ovOpacity" type="range" min="30" max="100" step="5"></label>
               <label><span>Background</span><select id="ovBg"><option value="panel">Panel</option><option value="none">None, text only</option></select></label>
               <label><span>Show labels</span><input id="ovLabels" type="checkbox" checked></label>
+              <label><span>Accent color</span><select id="ovAccent"><option value="cyan">Cyan</option><option value="pink">Pink</option><option value="green">Green</option><option value="yellow">Yellow</option><option value="white">White</option><option value="none">None</option></select></label>
+              <label><span>Font</span><select id="ovFont"><option value="mono">Monospace</option><option value="sans">Sans serif</option><option value="display">Display</option></select></label>
+              <label><span>Spacing</span><select id="ovSpacing"><option value="tight">Tight</option><option value="normal">Normal</option><option value="roomy">Roomy</option></select></label>
+              <label><span>Corner radius <output id="ovRadiusV"></output></span><input id="ovRadius" type="range" min="0" max="24" step="2"></label>
+              <label><span>Status colors<small>Yellow when warm, pink when hot</small></span><input id="ovStatus" type="checkbox" checked></label>
             </div>
           </section>
         </div>
@@ -171,7 +183,7 @@
           <section class="panel mini green">
             <div class="ph"><h2 class="ptit">PREVIEW</h2><span class="dim">Live</span></div>
             <div id="ovStage" class="stage" data-theme="dark"><div id="ovPreview" class="ov"></div></div>
-            <p class="note">The overlay sits in the corner you pick. This preview only shows how it looks.</p>
+            <p class="note">The overlay sits at the position you pick on the display you choose. This preview only shows how it looks.</p>
           </section>
         </aside>
       </div>

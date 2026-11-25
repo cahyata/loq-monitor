@@ -63,17 +63,34 @@ const OvMetrics = (() => {
     ["powerMode", "System", "Power mode", "MODE", (s) => ({ text: MODES[s.powerMode] ?? "--", state: "" })],
     ["netDown", "System", "Network download", "DOWN", (s) => ({ text: rate(netSum(s, "Download Speed")), state: "" })],
     ["netUp", "System", "Network upload", "UP", (s) => ({ text: rate(netSum(s, "Upload Speed")), state: "" })],
+    ["fps", "Game", "Frame rate", "FPS", (s) => ({ text: s.fps?.fps == null ? "--" : s.fps.fps.toFixed(0), state: "" })],
+    ["frameTime", "Game", "Frame time", "FRAME", (s) => plain(s.fps?.frameMs, 1, " ms")],
+    ["fpsLow", "Game", "1% low frame rate", "1% LOW", (s) => ({ text: s.fps?.low1Fps == null ? "--" : s.fps.low1Fps.toFixed(0), state: "" })],
     ["clock", "System", "Clock", "TIME", () => ({ text: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }), state: "" })],
   ].map(([id, group, label, short, value]) => ({ id, group, label, short, value }));
 
   const BY_ID = Object.fromEntries(LIST.map((m) => [m.id, m]));
-  const GROUPS = ["CPU", "GPU", "Memory", "System"];
+  const GROUPS = ["CPU", "GPU", "Memory", "Game", "System"];
+  // Accent names map to design system tokens, so the overlay follows the palette.
+  const ACCENTS = { cyan: "var(--accent-secondary)", pink: "var(--accent-primary)", green: "var(--success)", yellow: "var(--highlight)", white: "var(--text-strong)", none: "transparent" };
+  const FPS_IDS = ["fps", "frameTime", "fpsLow"];
+  /** True when the settings show a frame rate reading, so the service has to measure frames. */
+  const needsFps = (cfg) => cfg.metrics.some((id) => FPS_IDS.includes(id));
+  // Sample values for the preview in the app, where no game is running.
+  const DEMO = { fps: "144", frameTime: "6.9 ms", fpsLow: "118" };
 
   const DEFAULTS = {
     metrics: ["cpuTemp", "cpuLoad", "gpuTemp", "gpuLoad", "gpuPower", "vramUsed", "ramUsed"],
     layout: "vertical",   // "vertical" list or "horizontal" bar
-    corner: "tl",         // "tl", "tr", "bl", "br"
-    margin: 16,           // pixels from the screen edge
+    corner: "tl",         // two letters: t, m, b for top, middle, bottom, then l, c, r for left, center, right
+    marginX: 16,          // pixels from the left or right edge, or the shift from the center
+    marginY: 16,          // pixels from the top or bottom edge, or the shift from the middle
+    monitor: 0,           // 0 is the primary display
+    accent: "cyan",       // color of the line on the card: cyan, pink, green, yellow, white or none
+    font: "mono",         // mono, sans or display
+    spacing: "normal",    // tight, normal or roomy
+    radius: 12,           // card corner radius in pixels
+    statusColors: true,   // warm and hot values change color
     scale: 100,           // percent
     opacity: 90,          // percent
     bg: "panel",          // "panel" or "none"
@@ -81,23 +98,32 @@ const OvMetrics = (() => {
   };
   const PRESETS = {
     minimal: ["cpuTemp", "gpuTemp", "gpuLoad"],
-    gaming: ["cpuTemp", "cpuLoad", "gpuTemp", "gpuLoad", "gpuPower", "gpuClock", "vramUsed", "ramUsed"],
+    gaming: ["fps", "frameTime", "cpuTemp", "cpuLoad", "gpuTemp", "gpuLoad", "gpuPower", "gpuClock", "vramUsed", "ramUsed"],
     full: ["cpuTemp", "cpuLoad", "cpuClock", "cpuPower", "gpuTemp", "gpuHot", "gpuLoad", "gpuPower", "gpuClock", "gpuMem", "vramUsed", "ramUsed", "ssdTemp", "battery", "powerMode", "clock"],
   };
 
   function load() {
-    try { return { ...DEFAULTS, ...JSON.parse(get("overlay", "{}")) }; } catch { return { ...DEFAULTS }; }
+    try {
+      const saved = JSON.parse(get("overlay", "{}"));
+      // Older settings had one distance for both axes.
+      if (saved.margin != null) { saved.marginX ??= saved.margin; saved.marginY ??= saved.margin; }
+      return { ...DEFAULTS, ...saved };
+    } catch { return { ...DEFAULTS }; }
   }
 
   /** Draws the overlay readings into `el`. `s` is the latest snapshot, or null before data arrives. */
-  function draw(el, s, cfg) {
+  function draw(el, s, cfg, demo = false) {
     const p = prefs();
-    el.className = "ov " + (cfg.layout === "horizontal" ? "h" : "v") + (cfg.bg === "none" ? " nobg" : "") + (cfg.labels === false ? " nolabels" : "");
+    el.className = "ov " + (cfg.layout === "horizontal" ? "h" : "v") + (cfg.bg === "none" ? " nobg" : "") + (cfg.labels === false ? " nolabels" : "")
+      + " f-" + (cfg.font || "mono") + " s-" + (cfg.spacing || "normal") + (cfg.statusColors === false ? " plain" : "");
+    el.style.setProperty("--ov-accent", ACCENTS[cfg.accent] ?? "transparent");
+    el.style.setProperty("--ov-radius", (cfg.radius ?? 12) + "px");
     el.style.setProperty("--ov-scale", String((cfg.scale || 100) / 100));
     el.style.setProperty("--ov-alpha", String((cfg.opacity || 90) / 100));
     const rows = cfg.metrics.map((id) => BY_ID[id]).filter(Boolean).map((m) => {
       let v = { text: "--", state: "" };
       try { if (s) v = m.value(s, p); } catch { /* a missing sensor shows as -- */ }
+      if (demo && DEMO[m.id]) v = { text: DEMO[m.id], state: "" };
       const row = document.createElement("div"); row.className = "m";
       const l = document.createElement("span"); l.className = "l"; l.textContent = m.short;
       const x = document.createElement("span"); x.className = "x " + v.state; x.textContent = v.text;
@@ -107,5 +133,5 @@ const OvMetrics = (() => {
     el.replaceChildren(...rows);
   }
 
-  return { LIST, BY_ID, GROUPS, DEFAULTS, PRESETS, load, draw };
+  return { LIST, BY_ID, GROUPS, DEFAULTS, PRESETS, load, draw, needsFps };
 })();

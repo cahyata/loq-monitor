@@ -18,16 +18,29 @@ function fit() {
   const w = Math.ceil(r.width) + 2, h = Math.ceil(r.height) + 2;
   if (w !== sentW || h !== sentH) { sentW = w; sentH = h; invoke?.("overlay_resize", { w, h }); }
 }
-function paint() { cfg = OvMetrics.load(); OvMetrics.draw(box, last, cfg); fit(); }   // settings are re-read each time, so edits in the app show up at once
+function paint() { cfg = OvMetrics.load(); OvMetrics.draw(box, last, cfg); fit(); syncFps(); }   // settings are re-read each time, so edits in the app show up at once
 
 // The app edits the settings; both windows share localStorage, and the app also sends an event.
 addEventListener("storage", (e) => { if (e.key === "overlay" || e.key?.startsWith("cfg.") || e.key === "unit") { cfg = OvMetrics.load(); paint(); } });
 window.__TAURI__?.event?.listen("overlay-config", (e) => { cfg = { ...OvMetrics.DEFAULTS, ...e.payload }; paint(); });
 
+/* Frame rate needs the service to run PresentMon, which only happens on request. Ask while the overlay
+   is visible and shows an FPS reading, and let go otherwise. */
+let socket = null, visible = false, sentFps = null;
+function syncFps() {
+  const want = visible && OvMetrics.needsFps(cfg);
+  if (socket?.readyState !== WebSocket.OPEN || want === sentFps) return;
+  sentFps = want;
+  socket.send(want ? "fps-on" : "fps-off");
+}
+window.__TAURI__?.event?.listen("overlay-state", (e) => { visible = !!e.payload; syncFps(); });
+invoke?.("overlay_is_visible").then((v) => { visible = !!v; syncFps(); }).catch(() => {});
+
 let retry = 0;
 function connect() {
   const ws = new WebSocket(WS_URL);
-  ws.onopen = () => { retry = 0; };
+  socket = ws;
+  ws.onopen = () => { retry = 0; sentFps = null; syncFps(); };
   ws.onmessage = (e) => { try { last = JSON.parse(e.data); paint(); } catch { /* ignore a bad frame */ } };
   ws.onclose = () => { setTimeout(connect, Math.min(5000, 1000 + retry++ * 500)); };
   ws.onerror = () => ws.close();

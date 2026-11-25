@@ -7,6 +7,7 @@ LOQ Monitor is released under the MIT License (see `LICENSE`). It uses the compo
 | Component | Used for | License |
 |---|---|---|
 | [LibreHardwareMonitorLib](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) 0.9.6 | Sensor readings in SensorService | MPL-2.0 |
+| [PresentMon](https://github.com/GameTechDev/PresentMon) 2.6.0 | Frame rate and frame time for the overlay | MIT, Copyright (C) 2017-2024 Intel Corporation |
 | Packages that LibreHardwareMonitorLib depends on (for example BlackSharp.Core, DiskInfoToolkit, HidSharp, RAMSPDToolkit) | Hardware access | See each package |
 | `System.Management`, `System.Diagnostics.PerformanceCounter` and the .NET 8 runtime | WMI, performance counters, runtime | MIT |
 | [Tauri](https://tauri.app) 2 and its plugins | Desktop shell | MIT or Apache-2.0 |

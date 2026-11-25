@@ -34,6 +34,7 @@ using var cts = new CancellationTokenSource();
 try { Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); }; } catch { /* no console (windowless run) */ }
 
 var reader = new SensorReader();
+var fps = new FpsMeter();
 var clients = new ConcurrentDictionary<WebSocket, byte>();
 string latestJson = "{}";
 
@@ -55,7 +56,8 @@ try
 {
     do
     {
-        var snap = reader.Read();
+        fps.Tick();
+        var snap = reader.Read() with { Fps = fps.Current() };
         latestJson = JsonSerializer.Serialize(snap, jsonOptions);
         if (!clients.IsEmpty) await Broadcast(latestJson);
     }
@@ -65,6 +67,7 @@ catch (OperationCanceledException) { }
 
 listener.Stop();
 reader.Dispose();
+fps.Dispose();
 return;
 
 async Task AcceptLoop(CancellationToken ct)
@@ -93,14 +96,27 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
             clients[ws] = 0;
             await Send(ws, latestJson);
             var buf = new byte[256];
-            while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
+            var wantsFps = false;
+            try
             {
-                var r = await ws.ReceiveAsync(buf, ct);
-                if (r.MessageType == WebSocketMessageType.Close) break;
-                // The only command: restart min and max tracking. It never touches hardware settings.
-                if (r.MessageType == WebSocketMessageType.Text && r.EndOfMessage &&
-                    Encoding.UTF8.GetString(buf, 0, r.Count) == "reset-minmax") reader.RequestMinMaxReset();
+                while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
+                {
+                    var r = await ws.ReceiveAsync(buf, ct);
+                    if (r.MessageType == WebSocketMessageType.Close) break;
+                    if (r.MessageType != WebSocketMessageType.Text || !r.EndOfMessage) continue;
+                    // Commands: restart min and max tracking, and ask for or release frame rate data.
+                    // None of them touches hardware settings.
+                    var command = Encoding.UTF8.GetString(buf, 0, r.Count);
+                    if (Environment.GetEnvironmentVariable("LOQ_FPS_DEBUG") == "1") File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "service.log"), $"{DateTime.Now:s} command {command}{Environment.NewLine}");
+                    switch (command)
+                    {
+                        case "reset-minmax": reader.RequestMinMaxReset(); break;
+                        case "fps-on": if (!wantsFps) { wantsFps = true; fps.Acquire(); } break;
+                        case "fps-off": if (wantsFps) { wantsFps = false; fps.Release(); } break;
+                    }
+                }
             }
+            finally { if (wantsFps) fps.Release(); }
             clients.TryRemove(ws, out _);
             ws.Dispose();
         }
@@ -380,7 +396,7 @@ sealed class SensorReader : IDisposable
     public void Dispose() { try { _pc.Close(); } catch { } _other?.Dispose(); _zone?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }
 }
 
-record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode, List<HwInfo> Hardware);
+record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode, List<HwInfo> Hardware, FpsInfo? Fps = null);
 record HwInfo(string Name, string Type, SensorInfo[] Sensors);
 record SensorInfo(string Type, string Name, float? Value, float? Min, float? Max);
 record CpuInfo(string? Name, float? Load, float? TempC, int? FanRpm, float? ClockMHz, float? PowerW, float[] CoreLoads);

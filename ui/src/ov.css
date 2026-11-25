@@ -9,11 +9,18 @@
   font: 600 calc(13px * var(--ov-scale, 1)) / 1.3 var(--font-mono); color: var(--text-strong); opacity: var(--ov-alpha, .9); white-space: nowrap;
   letter-spacing: .01em; }
 
-.ov.v, .ov.h { display: inline-flex; padding: var(--pad) calc(var(--pad) * 1.5); border-radius: calc(12px * var(--ov-scale, 1));
+.ov.f-sans { font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; letter-spacing: 0; }
+.ov.f-display { font-family: var(--font-display); letter-spacing: .04em; font-weight: 400; }
+.ov.f-display .x { font-weight: 400; }
+.ov.s-tight { --pad: calc(5px * var(--ov-scale, 1)); --gap: calc(10px * var(--ov-scale, 1)); --row: 1px; }
+.ov.s-roomy { --pad: calc(12px * var(--ov-scale, 1)); --gap: calc(20px * var(--ov-scale, 1)); --row: 6px; }
+
+.ov.v, .ov.h { display: inline-flex; padding: var(--pad) calc(var(--pad) * 1.5); border-radius: calc(var(--ov-radius, 12px) * var(--ov-scale, 1));
   background: linear-gradient(180deg, color-mix(in srgb, var(--surface-raised) 88%, transparent), color-mix(in srgb, var(--surface-inset) 92%, transparent));
   border: 1px solid color-mix(in srgb, var(--text-strong) 14%, transparent);
+  border-top: 2px solid var(--ov-accent, transparent);
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text-strong) 12%, transparent); }
-.ov.v { flex-direction: column; gap: calc(3px * var(--ov-scale, 1)); min-width: calc(150px * var(--ov-scale, 1)); }
+.ov.v { flex-direction: column; gap: calc(var(--row, 3px) * var(--ov-scale, 1)); min-width: calc(150px * var(--ov-scale, 1)); }
 .ov.h { flex-direction: row; align-items: center; gap: 0; }
 .ov.h .m + .m { margin-left: var(--gap); padding-left: var(--gap); border-left: 1px solid color-mix(in srgb, var(--text-strong) 14%, transparent); }
 
@@ -29,3 +36,4 @@
 .ov .x.ok { color: var(--success); }
 .ov .x.warn { color: var(--highlight); }
 .ov .x.hot { color: var(--accent-primary); }
+.ov.plain .x.ok, .ov.plain .x.warn, .ov.plain .x.hot { color: var(--text-strong); }

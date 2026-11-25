@@ -330,3 +330,14 @@ fieldset.mgroup legend { padding-right: 8px; font-size: 12px; letter-spacing: 1.
 .stage .ov { position: relative; }
 .stage { overflow: hidden; }
 @media (max-width: 900px) { .ovwrap { grid-template-columns: 1fr; } .ovside { position: static; } }
+
+/* ---------- Overlay order list ---------- */
+.panel h3.sub { font-size: 12px; letter-spacing: 1.5px; color: var(--accent-primary); margin: 14px 0 6px; padding-top: 8px; border-top: 1px solid var(--divider); }
+.ovorder { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.ovorder li { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 0; }
+.ovorder li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ovorder li.empty { color: var(--text-muted); }
+.ovorder button { font: bold 11px var(--font-mono); color: var(--accent-secondary); background: none; border: 1px solid var(--text-muted); min-width: 28px; min-height: 24px; cursor: pointer; }
+.ovorder button:hover:not(:disabled) { border-color: var(--accent-secondary); }
+.ovorder button:disabled { opacity: .35; cursor: default; }
+.ovform small { display: block; font-size: 11px; color: var(--text-muted); }

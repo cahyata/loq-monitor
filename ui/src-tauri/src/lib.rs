@@ -45,8 +45,10 @@ fn start_service() -> Result<(), String> {
 // It cannot draw over a game in exclusive fullscreen; windowed and borderless modes work.
 // ---------------------------------------------------------------------------
 struct OverlayState {
-  corner: String, // "tl", "tr", "bl" or "br"
-  margin: f64,    // logical pixels from the screen edge
+  corner: String, // "tl", "tc", "tr", "ml", "mr", "bl", "bc" or "br"
+  margin_x: f64,  // logical pixels from the screen edge, or the shift from the centre
+  margin_y: f64,
+  monitor: usize, // index in ordered_monitors, 0 is the primary display
   w: f64,         // content size reported by the overlay page, logical pixels
   h: f64,
   visible: bool,
@@ -78,21 +80,42 @@ fn overlay_place(app: &AppHandle) {
   let Some(win) = app.get_webview_window("overlay") else { return };
   let state = app.state::<Mutex<OverlayState>>();
   let st = state.lock().unwrap();
-  let Ok(Some(mon)) = win.primary_monitor() else { return };
+  let all = ordered_monitors(&win);
+  let Some(mon) = all.get(st.monitor).or_else(|| all.first()) else { return };
   let scale = mon.scale_factor();
   let size = mon.size();
   let pos = mon.position();
   let w = (st.w * scale).round() as i32;
   let h = (st.h * scale).round() as i32;
-  let m = (st.margin * scale).round() as i32;
-  let (x, y) = match st.corner.as_str() {
-    "tr" => (size.width as i32 - w - m, m),
-    "bl" => (m, size.height as i32 - h - m),
-    "br" => (size.width as i32 - w - m, size.height as i32 - h - m),
-    _ => (m, m),
+  let mx = (st.margin_x * scale).round() as i32;
+  let my = (st.margin_y * scale).round() as i32;
+  let (sw, sh) = (size.width as i32, size.height as i32);
+  // The name has two letters: t, m, b for top, middle, bottom, then l, c, r for left, centre, right.
+  let c = st.corner.as_str();
+  let x = match c.chars().nth(1) {
+    Some('r') => sw - w - mx,
+    Some('c') => (sw - w) / 2 + mx,
+    _ => mx,
+  };
+  let y = match c.chars().next() {
+    Some('b') => sh - h - my,
+    Some('m') => (sh - h) / 2 + my,
+    _ => my,
   };
   let _ = win.set_size(LogicalSize::new(st.w, st.h));
   let _ = win.set_position(PhysicalPosition::new(pos.x + x, pos.y + y));
+}
+
+/// The connected displays with the primary one first, so index 0 always means "primary".
+fn ordered_monitors(win: &WebviewWindow) -> Vec<tauri::Monitor> {
+  let mut all: Vec<tauri::Monitor> = win.available_monitors().unwrap_or_default();
+  if let Some(p) = win.primary_monitor().ok().flatten() {
+    if let Some(i) = all.iter().position(|m| m.position() == p.position()) {
+      let m = all.remove(i);
+      all.insert(0, m);
+    }
+  }
+  all
 }
 
 fn overlay_set_visible(app: &AppHandle, visible: bool) {
@@ -117,12 +140,14 @@ fn overlay_toggle_now(app: &AppHandle) {
 
 /// Sets where the overlay sits: a screen corner and a margin from the edges.
 #[tauri::command]
-fn overlay_configure(app: AppHandle, corner: String, margin: f64) {
+fn overlay_configure(app: AppHandle, corner: String, margin_x: f64, margin_y: f64, monitor: usize) {
   {
     let state = app.state::<Mutex<OverlayState>>();
     let mut st = state.lock().unwrap();
     st.corner = corner;
-    st.margin = margin.clamp(0.0, 400.0);
+    st.margin_x = margin_x.clamp(-2000.0, 2000.0);
+    st.margin_y = margin_y.clamp(-2000.0, 2000.0);
+    st.monitor = monitor;
   }
   overlay_place(&app);
 }
@@ -137,6 +162,17 @@ fn overlay_resize(app: AppHandle, w: f64, h: f64) {
     st.h = h.clamp(20.0, 1400.0);
   }
   overlay_place(&app);
+}
+
+/// Names of the connected displays for the Display setting, primary first.
+#[tauri::command]
+fn overlay_monitors(app: AppHandle) -> Vec<String> {
+  let Some(win) = app.get_webview_window("main") else { return vec![] };
+  ordered_monitors(&win)
+    .iter()
+    .enumerate()
+    .map(|(i, m)| format!("Display {}{} ({} x {})", i + 1, if i == 0 { ", primary" } else { "" }, m.size().width, m.size().height))
+    .collect()
 }
 
 /// Async on purpose: a synchronous command runs on the main thread, and building a window there
@@ -212,7 +248,9 @@ pub fn run() {
     )
     .manage(Mutex::new(OverlayState {
       corner: "tl".into(),
-      margin: 16.0,
+      margin_x: 16.0,
+      margin_y: 16.0,
+      monitor: 0,
       w: 260.0,
       h: 120.0,
       visible: false,
@@ -223,6 +261,7 @@ pub fn run() {
       notify,
       start_service,
       overlay_configure,
+      overlay_monitors,
       overlay_resize,
       overlay_show,
       overlay_is_visible,
