@@ -5,6 +5,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 ## [Unreleased]
 
 ### Added
+- Fixed: the SHOW OVERLAY button did nothing because the window was built on the main thread. The command is now async and reports errors.
 - System tray icon with a Show and Quit menu and a tooltip with the CPU and GPU temperatures. The close button hides the window to the tray.
 - Desktop notification when CPU or GPU temperature stays at 90 °C or more, or the GPU hotspot at 95 °C or more, for 10 seconds. An ALERTS button toggles it.
 - `scripts/install-service.ps1` and `scripts/uninstall-service.ps1` register or remove a scheduled task that starts SensorService at logon with the highest run level.
@@ -27,6 +28,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 - Dev mode with live reload: `npm run dev` in `ui/`.
 
 ### Changed
+- The game overlay uses a rounded card with a soft highlight, status colors for normal, warm and hot values, and a lighter halo in text-only mode. The preview shrinks to fit.
 - SensorService runs without a console window and allows one instance.
 - The UI text is in English.
 - Overview layout: the large page title is replaced by a compact header (the brand stays in the title bar), and a summary under the tabs says whether anything needs attention. It always reserves two lines, so a longer message does not move the panels. The history range moved next to it.

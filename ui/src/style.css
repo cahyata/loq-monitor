@@ -319,4 +319,5 @@ fieldset.mgroup legend { padding-right: 8px; font-size: 12px; letter-spacing: 1.
 .stage { position: relative; min-height: 190px; padding: 14px; border: 1px solid var(--border); overflow: auto;
   background: linear-gradient(135deg, var(--surface-raised), var(--surface-inset) 70%); }
 .stage .ov { position: relative; }
+.stage { overflow: hidden; }
 @media (max-width: 900px) { .ovwrap { grid-template-columns: 1fr; } .ovside { position: static; } }

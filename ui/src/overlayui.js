@@ -11,7 +11,15 @@ const OverlayUI = (() => {
   let visible = false, active = false, last = null, hotkey = store.get("overlay.hotkey", DEFAULT_KEY);
 
   const msg = (t) => { $("ovMsg").textContent = t; };
-  const redraw = () => { if (active) OvMetrics.draw($("ovPreview"), last, cfg); };
+  const redraw = () => {
+    if (!active) return;
+    const el = $("ovPreview"), stage = $("ovStage");
+    OvMetrics.draw(el, last, cfg);
+    // A wide horizontal bar would overflow the stage, so shrink the preview to fit. The real overlay is not affected.
+    el.style.zoom = "1";
+    const room = stage.clientWidth - 30;
+    if (el.offsetWidth > room && room > 0) el.style.zoom = String(room / el.offsetWidth);
+  };
 
   /** Saves the settings and tells the overlay window (position) and the preview (look). */
   function save() {

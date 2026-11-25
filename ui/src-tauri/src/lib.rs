@@ -139,9 +139,15 @@ fn overlay_resize(app: AppHandle, w: f64, h: f64) {
   overlay_place(&app);
 }
 
+/// Async on purpose: a synchronous command runs on the main thread, and building a window there
+/// can deadlock on Windows, so the button would do nothing.
 #[tauri::command]
-fn overlay_show(app: AppHandle, visible: bool) {
+async fn overlay_show(app: AppHandle, visible: bool) -> Result<(), String> {
+  if visible && overlay_window(&app).is_none() {
+    return Err("the overlay window could not be created".into());
+  }
   overlay_set_visible(&app, visible);
+  Ok(())
 }
 
 #[tauri::command]
