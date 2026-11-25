@@ -22,7 +22,7 @@ Update packages are signed with a minisign key pair. The app trusts only the pub
 | Item | Location |
 |---|---|
 | Private key | `~/.tauri/loq-monitor.key` on the build machine, and the repository secret `TAURI_SIGNING_PRIVATE_KEY` |
-| Password | Empty. The repository secret `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` is set to an empty value |
+| Password | None. GitHub does not store an empty secret, so the workflow reads `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` as empty. Set that secret only if you add a password to the key |
 | Public key | `ui/src-tauri/tauri.conf.json` and `~/.tauri/loq-monitor.key.pub` |
 
 Keep a copy of the private key somewhere safe. If it is lost, installed apps cannot accept new updates, and every user must install a new build by hand that carries a new public key.
