@@ -101,8 +101,8 @@ function drawChart(canvas, series, color) {
   ctx.fillStyle = g; ctx.fill();
 }
 function drawAll() {
-  drawChart($("cpuChart"), hist.cpu, css("--pink"));
-  drawChart($("gpuChart"), hist.gpu, css("--cyan"));
+  drawChart($("cpuChart"), hist.cpu, css("--accent-primary"));
+  drawChart($("gpuChart"), hist.gpu, css("--accent-secondary"));
 }
 function push(series, v) {
   if (v == null) return;
@@ -128,6 +128,8 @@ function logLines(s) {
   return out;
 }
 
+const MODES = { 1: "QUIET", 2: "BALANCED", 3: "PERFORMANCE", 224: "CUSTOM", 255: "CUSTOM" };
+
 function render(s) {
   const { cpu, gpu, ram } = s;
   push(hist.cpu, cpu.tempC); push(hist.gpu, gpu.tempC);
@@ -142,6 +144,7 @@ function render(s) {
   setDd("cpuFan", cpu.fanRpm != null ? cpu.fanRpm + " rpm" : "--");
   setDd("cpuPower", cpu.powerW != null ? fmt(cpu.powerW, 1) + " W" : "--");
   setDd("cpuClock", cpu.clockMHz != null ? fmt(cpu.clockMHz) + " MHz" : "--");
+  $("mode").textContent = MODES[s.powerMode] ?? "--";
   const cores = $("cores");
   if (cores.children.length !== cpu.coreLoads.length) {
     cores.replaceChildren(...cpu.coreLoads.map(() => document.createElement("i")));

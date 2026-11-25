@@ -136,7 +136,7 @@ sealed class SensorReader : IDisposable
         IsCpuEnabled = true, IsGpuEnabled = true, IsMemoryEnabled = true,
         IsStorageEnabled = true, IsBatteryEnabled = true,
     };
-    ManagementObject? _other;
+    ManagementObject? _other, _zone;
     PerformanceCounter? _cpuFreq, _cpuPerf;
 
     public SensorReader()
@@ -148,6 +148,12 @@ sealed class SensorReader : IDisposable
             _other = s.Get().Cast<ManagementObject>().FirstOrDefault();
         }
         catch (Exception e) { Console.WriteLine("Lenovo WMI unavailable: " + e.Message); }
+        try
+        {
+            using var z = new ManagementObjectSearcher(@"root\WMI", "SELECT * FROM LENOVO_GAMEZONE_DATA");
+            _zone = z.Get().Cast<ManagementObject>().FirstOrDefault();
+        }
+        catch (Exception e) { Console.WriteLine("Lenovo GameZone unavailable: " + e.Message); }
         try
         {
             // Windows counters work with Memory Integrity on, unlike the LHM CPU driver.
@@ -168,6 +174,22 @@ sealed class SensorReader : IDisposable
             return mhz > 0 ? MathF.Round(mhz) : null;
         }
         catch { return null; }
+    }
+
+    /// Lenovo power mode (Fn+Q): 1 quiet, 2 balanced, 3 performance, 255 custom (224 on some models). Read-only.
+    int? PowerMode()
+    {
+        if (_zone is null) return null;
+        foreach (var m in new[] { "GetSmartFanMode", "GetThermalMode" })
+        {
+            try
+            {
+                var v = Convert.ToInt32(_zone.InvokeMethod(m, null, null)?["Data"]);
+                if (v is 1 or 2 or 3 or 224 or 255) return v;
+            }
+            catch { }
+        }
+        return null;
     }
 
     int? Feature(int id)
@@ -254,13 +276,14 @@ sealed class SensorReader : IDisposable
                 Round(Val(bat, SensorType.Level, "Charge Level")),
                 Round(Val(bat, SensorType.Power, "Charge/Discharge Rate")),
                 Round(Val(bat, SensorType.Level, "Degradation Level")),
-                Round(designed / 1000), Round(full / 1000)));
+                Round(designed / 1000), Round(full / 1000)),
+            PowerMode: PowerMode());
     }
 
-    public void Dispose() { try { _pc.Close(); } catch { } _other?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }
+    public void Dispose() { try { _pc.Close(); } catch { } _other?.Dispose(); _zone?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }
 }
 
-record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery);
+record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode);
 record CpuInfo(string? Name, float? Load, float? TempC, int? FanRpm, float? ClockMHz, float? PowerW, float[] CoreLoads);
 record GpuInfo(string? Name, float? Load, float? TempC, float? HotspotC, float? VramTempC, int? FanRpm,
                float? PowerW, float? CoreClockMHz, float? MemClockMHz, float? VramUsedMB, float? VramTotalMB,

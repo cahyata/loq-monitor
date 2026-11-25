@@ -21,7 +21,7 @@ This document lists the source of each reading and its status on the test machin
 | Battery level, health, capacity | LHM | Works |
 | Battery charge/discharge rate | LHM | Works, sign unverified |
 | Motherboard temperature, system fan | Lenovo EC | Reads 0 |
-| Lenovo power/thermal mode | WMI `LENOVO_GAMEZONE_DATA` | Returns 255 |
+| Lenovo power mode | WMI `LENOVO_GAMEZONE_DATA.GetSmartFanMode` | Works (read-only; mapping unverified, see below) |
 
 ## Read paths
 
@@ -54,7 +54,7 @@ Install it with `winget install --id namazso.PawnIO` from an administrator shell
 
 ### Power and thermal mode
 
-`LENOVO_GAMEZONE_DATA.GetThermalMode` returns 255. No other read path for the mode has been tested.
+`GetSmartFanMode` and `GetThermalMode` returned 255 in the first probe and 2 in a later one. The service reads `GetSmartFanMode` and falls back to `GetThermalMode`. It maps 1 to Quiet, 2 to Balanced, 3 to Performance, and 224 or 255 to Custom (Legion Toolkit uses 224; this machine reports 255 in Custom, which explains the first probe). The mapping was confirmed on this machine by switching modes with Fn+Q. The service only reads the mode and never sets it.
 
 ### Fan and motherboard readings
 
