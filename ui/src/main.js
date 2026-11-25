@@ -562,3 +562,7 @@ for (const d of [$("settings"), $("help")]) {
     if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) d.close();
   });
 }
+
+/* ---------- no browser context menu ---------- */
+// The right-click menu (Back, Reload, Inspect) does not belong in an app. Text fields keep it so Paste works.
+addEventListener("contextmenu", (e) => { if (!e.target.closest?.('input[type="text"], input[type="search"], input[type="number"], textarea')) e.preventDefault(); });

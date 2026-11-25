@@ -34,6 +34,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 - RAM, VRAM, battery and drives show status chips (OK, HIGH, LOW, CRITICAL). Drive temperature now uses its own limits (70 and 80 degrees Celsius) in the card, the log and the summary. Only the temperature chips blink.
 - Temperature charts scale to the data and always include both limits. Axis labels sit in a left gutter and no longer overlap the line.
 - CPU and GPU cards are balanced: the per-thread load bars fill the free space, and secondary text is larger.
+- The browser right-click menu (Back, Reload, Inspect) is disabled. Text fields keep their menu so Paste still works.
 - Accessibility pass against WCAG 2.2 AA: tabs report their selected state and control their panels, the toggle buttons report pressed state, panel titles are real headings, sensors in the Detailed tab are exposed as tables, the charts have a text summary, and the sustained-heat banner is announced once instead of every second.
 - Click targets are at least 24 by 24 px, and the outlines of inputs and buttons reach 3:1 contrast against the page.
 - The offline screen moves focus to START SERVICE and blocks the page behind it. Dialogs close when you click outside them.
