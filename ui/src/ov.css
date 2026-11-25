@@ -1,0 +1,21 @@
+/* LOQ Monitor | Overlay readings (shared)
+   Author: cahyata
+   Copyright (c) 2026 cahyata */
+
+/* Overlay readings, drawn by metrics.js. The overlay window and the preview in the app share these rules. */
+.ov { font: calc(13px * var(--ov-scale, 1)) / 1.35 var(--font-mono); color: var(--text-strong); opacity: var(--ov-alpha, .9); white-space: nowrap; }
+
+.ov.v { display: inline-flex; flex-direction: column; gap: calc(2px * var(--ov-scale, 1)); padding: calc(8px * var(--ov-scale, 1)) calc(12px * var(--ov-scale, 1));
+  background: color-mix(in srgb, var(--surface-inset) 82%, transparent); border: 1px solid var(--border); border-left: 3px solid var(--accent-secondary); clip-path: var(--clip-sm); }
+.ov.h { display: inline-flex; flex-direction: row; gap: calc(16px * var(--ov-scale, 1)); padding: calc(6px * var(--ov-scale, 1)) calc(12px * var(--ov-scale, 1));
+  background: color-mix(in srgb, var(--surface-inset) 82%, transparent); border: 1px solid var(--border); border-bottom: 2px solid var(--accent-secondary); clip-path: var(--clip-sm); }
+.ov.nobg { background: none; border: 0; clip-path: none; padding: 0; text-shadow: 0 0 3px var(--shadow), 1px 1px 2px var(--shadow), -1px -1px 2px var(--shadow); }
+
+.ov .m { display: flex; align-items: baseline; gap: calc(10px * var(--ov-scale, 1)); }
+.ov.v .m { justify-content: space-between; }
+.ov .l { color: var(--text-muted); font-size: .85em; letter-spacing: .05em; }
+.ov.nolabels .l { display: none; }
+.ov .x { font-weight: bold; font-variant-numeric: tabular-nums; color: var(--text-strong); text-align: right; }
+.ov .x.ok { color: var(--text-strong); }
+.ov .x.warn { color: var(--highlight); }
+.ov .x.hot { color: var(--accent-primary); }

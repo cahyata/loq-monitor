@@ -290,3 +290,33 @@ dialog#settings .more button:hover { border-color: var(--accent-secondary); }
 #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 40; padding: 6px 16px; font-size: 12px; font-weight: bold; letter-spacing: 1px;
   color: var(--text-strong); background: var(--surface-raised); border: 1px solid var(--accent-secondary); box-shadow: 0 0 14px color-mix(in srgb, var(--accent-secondary) 40%, transparent); }
 #toast[hidden] { display: none; }
+
+/* ---------- Overlay tab ---------- */
+#overlayTab[hidden] { display: none; }
+.ovwrap { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; align-items: start; }
+.ovcol { display: grid; gap: 12px; min-width: 0; }
+.ovside { position: sticky; top: 4px; }
+.note { font-size: 12px; color: var(--text); margin: 6px 0; line-height: 1.5; }
+.note.warn { color: var(--highlight); }
+.ovrow { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; margin: 10px 0 4px; }
+.keyrow { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+button.act, .presets button { font: bold 11px var(--font-mono); letter-spacing: 1.5px; color: var(--accent-secondary); background: none; border: 1px solid var(--text-muted); padding: 4px 14px; min-height: 24px; cursor: pointer; }
+button.act:hover, .presets button:hover { border-color: var(--accent-secondary); }
+button.act.on { color: var(--surface-inset); background: var(--success); border-color: var(--success); }
+button.act.ghost { padding: 2px 10px; }
+.presets { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+#ovMetrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px 18px; }
+fieldset.mgroup { border: 0; border-top: 1px solid var(--divider); padding: 6px 0 0; margin: 0; min-width: 0; }
+fieldset.mgroup legend { padding-right: 8px; font-size: 12px; letter-spacing: 1.5px; color: var(--accent-primary); font-weight: bold; }
+.mchk { display: flex; align-items: center; gap: 6px; font-size: 12px; padding: 2px 0; cursor: pointer; }
+.mchk input, .ovform input[type="checkbox"] { accent-color: var(--accent-secondary); width: 16px; height: 16px; }
+.ovform { display: grid; gap: 8px; }
+.ovform label { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; }
+.ovform select, .ovform input[type="number"] { font: 13px var(--font-mono); color: var(--text-strong); background: var(--surface-inset); border: 1px solid var(--text-muted); padding: 3px 6px; min-height: 24px; }
+.ovform input[type="number"] { width: 90px; text-align: right; }
+.ovform input[type="range"] { width: 190px; accent-color: var(--accent-secondary); }
+.ovform output { color: var(--accent-secondary); font-weight: bold; margin-left: 6px; }
+.stage { position: relative; min-height: 190px; padding: 14px; border: 1px solid var(--border); overflow: auto;
+  background: linear-gradient(135deg, var(--surface-raised), var(--surface-inset) 70%); }
+.stage .ov { position: relative; }
+@media (max-width: 900px) { .ovwrap { grid-template-columns: 1fr; } .ovside { position: static; } }

@@ -1,11 +1,13 @@
 // LOQ Monitor | Tauri app (tray, notifications, service start)
 // Author: cahyata
 // Copyright (c) 2026 cahyata
+use std::sync::Mutex;
 use tauri::{
   menu::{Menu, MenuItem},
   tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-  AppHandle, Manager, WindowEvent,
+  AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent,
 };
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_notification::NotificationExt;
 
 const TRAY_ID: &str = "main";
@@ -37,6 +39,149 @@ fn start_service() -> Result<(), String> {
   if out.status.success() { Ok(()) } else { Err(String::from_utf8_lossy(&out.stderr).trim().to_string()) }
 }
 
+// ---------------------------------------------------------------------------
+// Game overlay: a second window that is transparent, always on top and ignores the mouse, so clicks
+// go through to the game. It is created the first time it is shown and only hidden afterwards.
+// It cannot draw over a game in exclusive fullscreen; windowed and borderless modes work.
+// ---------------------------------------------------------------------------
+struct OverlayState {
+  corner: String, // "tl", "tr", "bl" or "br"
+  margin: f64,    // logical pixels from the screen edge
+  w: f64,         // content size reported by the overlay page, logical pixels
+  h: f64,
+  visible: bool,
+  hotkey: String,
+}
+
+fn overlay_window(app: &AppHandle) -> Option<WebviewWindow> {
+  if let Some(w) = app.get_webview_window("overlay") {
+    return Some(w);
+  }
+  let w = WebviewWindowBuilder::new(app, "overlay", WebviewUrl::App("overlay.html".into()))
+    .title("LOQ Overlay")
+    .inner_size(260.0, 120.0)
+    .decorations(false)
+    .transparent(true)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .resizable(false)
+    .shadow(false)
+    .focused(false)
+    .visible(false)
+    .build()
+    .ok()?;
+  let _ = w.set_ignore_cursor_events(true);
+  Some(w)
+}
+
+fn overlay_place(app: &AppHandle) {
+  let Some(win) = app.get_webview_window("overlay") else { return };
+  let state = app.state::<Mutex<OverlayState>>();
+  let st = state.lock().unwrap();
+  let Ok(Some(mon)) = win.primary_monitor() else { return };
+  let scale = mon.scale_factor();
+  let size = mon.size();
+  let pos = mon.position();
+  let w = (st.w * scale).round() as i32;
+  let h = (st.h * scale).round() as i32;
+  let m = (st.margin * scale).round() as i32;
+  let (x, y) = match st.corner.as_str() {
+    "tr" => (size.width as i32 - w - m, m),
+    "bl" => (m, size.height as i32 - h - m),
+    "br" => (size.width as i32 - w - m, size.height as i32 - h - m),
+    _ => (m, m),
+  };
+  let _ = win.set_size(LogicalSize::new(st.w, st.h));
+  let _ = win.set_position(PhysicalPosition::new(pos.x + x, pos.y + y));
+}
+
+fn overlay_set_visible(app: &AppHandle, visible: bool) {
+  if visible {
+    let Some(win) = overlay_window(app) else { return };
+    let _ = win.set_ignore_cursor_events(true);
+    let _ = win.set_always_on_top(true);
+    overlay_place(app);
+    let _ = win.show();
+    let _ = win.set_always_on_top(true);
+  } else if let Some(win) = app.get_webview_window("overlay") {
+    let _ = win.hide();
+  }
+  app.state::<Mutex<OverlayState>>().lock().unwrap().visible = visible;
+  let _ = app.emit("overlay-state", visible);
+}
+
+fn overlay_toggle_now(app: &AppHandle) {
+  let visible = app.state::<Mutex<OverlayState>>().lock().unwrap().visible;
+  overlay_set_visible(app, !visible);
+}
+
+/// Sets where the overlay sits: a screen corner and a margin from the edges.
+#[tauri::command]
+fn overlay_configure(app: AppHandle, corner: String, margin: f64) {
+  {
+    let state = app.state::<Mutex<OverlayState>>();
+    let mut st = state.lock().unwrap();
+    st.corner = corner;
+    st.margin = margin.clamp(0.0, 400.0);
+  }
+  overlay_place(&app);
+}
+
+/// The overlay page reports the size of its content so the window fits it exactly.
+#[tauri::command]
+fn overlay_resize(app: AppHandle, w: f64, h: f64) {
+  {
+    let state = app.state::<Mutex<OverlayState>>();
+    let mut st = state.lock().unwrap();
+    st.w = w.clamp(20.0, 2400.0);
+    st.h = h.clamp(20.0, 1400.0);
+  }
+  overlay_place(&app);
+}
+
+#[tauri::command]
+fn overlay_show(app: AppHandle, visible: bool) {
+  overlay_set_visible(&app, visible);
+}
+
+#[tauri::command]
+fn overlay_is_visible(app: AppHandle) -> bool {
+  app.state::<Mutex<OverlayState>>().lock().unwrap().visible
+}
+
+/// Some games push other windows down; asking again keeps the overlay on top.
+#[tauri::command]
+fn overlay_raise(app: AppHandle) {
+  let visible = app.state::<Mutex<OverlayState>>().lock().unwrap().visible;
+  if visible {
+    if let Some(win) = app.get_webview_window("overlay") {
+      let _ = win.set_always_on_top(true);
+    }
+  }
+}
+
+/// Registers the global key that shows or hides the overlay while a game has focus.
+#[tauri::command]
+fn overlay_hotkey(app: AppHandle, accelerator: String) -> Result<(), String> {
+  let gs = app.global_shortcut();
+  let old = app.state::<Mutex<OverlayState>>().lock().unwrap().hotkey.clone();
+  if !old.is_empty() {
+    let _ = gs.unregister(old.as_str());
+  }
+  match gs.register(accelerator.as_str()) {
+    Ok(()) => {
+      app.state::<Mutex<OverlayState>>().lock().unwrap().hotkey = accelerator;
+      Ok(())
+    }
+    Err(e) => {
+      if !old.is_empty() {
+        let _ = gs.register(old.as_str());
+      }
+      Err(e.to_string())
+    }
+  }
+}
+
 fn show_main(app: &AppHandle) {
   if let Some(w) = app.get_webview_window("main") {
     let _ = w.show();
@@ -49,12 +194,41 @@ fn show_main(app: &AppHandle) {
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_notification::init())
-    .invoke_handler(tauri::generate_handler![set_tooltip, notify, start_service])
+    .plugin(
+      tauri_plugin_global_shortcut::Builder::new()
+        .with_handler(|app, _shortcut, event| {
+          if event.state() == ShortcutState::Pressed {
+            overlay_toggle_now(app);
+          }
+        })
+        .build(),
+    )
+    .manage(Mutex::new(OverlayState {
+      corner: "tl".into(),
+      margin: 16.0,
+      w: 260.0,
+      h: 120.0,
+      visible: false,
+      hotkey: String::new(),
+    }))
+    .invoke_handler(tauri::generate_handler![
+      set_tooltip,
+      notify,
+      start_service,
+      overlay_configure,
+      overlay_resize,
+      overlay_show,
+      overlay_is_visible,
+      overlay_raise,
+      overlay_hotkey
+    ])
     .on_window_event(|window, event| {
-      // The close button hides the window to the tray. "Quit" in the tray menu exits.
-      if let WindowEvent::CloseRequested { api, .. } = event {
-        api.prevent_close();
-        let _ = window.hide();
+      // The close button of the main window hides it to the tray. "Quit" in the tray menu exits.
+      if window.label() == "main" {
+        if let WindowEvent::CloseRequested { api, .. } = event {
+          api.prevent_close();
+          let _ = window.hide();
+        }
       }
     })
     .setup(|app| {
@@ -67,8 +241,9 @@ pub fn run() {
       }
 
       let show = MenuItem::with_id(app, "show", "Show LOQ Monitor", true, None::<&str>)?;
+      let overlay = MenuItem::with_id(app, "overlay", "Show or hide game overlay", true, None::<&str>)?;
       let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-      let menu = Menu::with_items(app, &[&show, &quit])?;
+      let menu = Menu::with_items(app, &[&show, &overlay, &quit])?;
 
       let mut tray = TrayIconBuilder::with_id(TRAY_ID)
         .tooltip("LOQ Monitor")
@@ -76,6 +251,7 @@ pub fn run() {
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
           "show" => show_main(app),
+          "overlay" => overlay_toggle_now(app),
           "quit" => app.exit(0),
           _ => {}
         })

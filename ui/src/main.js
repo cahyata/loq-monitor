@@ -337,6 +337,7 @@ function render(s) {
   const { cpu, gpu, ram } = s;
   push(hist.cpu, cpu.tempC); push(hist.gpu, gpu.tempC);
   if (typeof Detail !== "undefined") Detail.update(s);
+  if (typeof OverlayUI !== "undefined") OverlayUI.update(s);
   trayUpdate(s); // runs while the window is hidden in the tray
   heatUpdate(s);
   if (document.hidden) return; // window hidden: keep the history, skip drawing
@@ -544,13 +545,15 @@ $("btnFull").onclick = () => setMini(false);
 let keysOn = store.get("keys", "on") === "on";   // single-key shortcuts can be turned off (WCAG 2.1.4)
 const typing = (t) => t && (t.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(t.tagName));
 addEventListener("keydown", (e) => {
-  if (!keysOn || e.ctrlKey || e.altKey || e.metaKey || typing(e.target) || document.querySelector("dialog[open]")) return;
+  if (!keysOn || window.__capturing || e.ctrlKey || e.altKey || e.metaKey || typing(e.target) || document.querySelector("dialog[open]")) return;
   const k = e.key.toLowerCase();
   if (k === "escape" && miniOn) { setMini(false); return; }
   if (k === "m") { setMini(!miniOn); return; }
   if (miniOn) return;
   if (k === "1") Detail.show(false);
   else if (k === "2") Detail.show(true);
+  else if (k === "3") Detail.show("overlay");
+  else if (k === "o") OverlayUI.toggle();
   else if (k === "/" || k === "f") { Detail.show(true); $("dfilter").focus(); e.preventDefault(); }
   else if (k === "t") cycleTheme();
   else if (k === "u") { setUnit(unit === "C" ? "F" : "C"); toast("Unit: \u00B0" + unit); }

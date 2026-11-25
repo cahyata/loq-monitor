@@ -1,0 +1,10 @@
+/* LOQ Monitor | Game overlay styles
+   Author: cahyata
+   Copyright (c) 2026 cahyata */
+
+/* The window is transparent: only the readings are drawn. The overlay is always dark so it stays
+   readable over any game, whatever theme the app uses. */
+html, body { margin: 0; background: transparent; overflow: hidden; -webkit-user-select: none; user-select: none; cursor: default; }
+* { box-sizing: border-box; }
+
+#ov { position: absolute; left: 0; top: 0; width: max-content; }   /* natural size, independent of the window */

@@ -106,20 +106,26 @@ const Detail = (() => {
     });
   }
 
-  function setTab(detail) {
-    on = detail;
-    $("overview").hidden = detail; $("detail").hidden = !detail;
-    $("rangeSeg").hidden = detail;       // the history range only applies to the Overview charts
-    $("tabOverview").classList.toggle("on", !detail);
-    $("tabDetail").classList.toggle("on", detail);
-    $("tabOverview").setAttribute("aria-selected", String(!detail));
-    $("tabDetail").setAttribute("aria-selected", String(detail));
-    store.set("tab", detail ? "detail" : "overview");
-    if (detail) { sig = ""; if (last) refresh(last); } else drawAll();
+  const TABS = { overview: ["tabOverview", "overview"], detail: ["tabDetail", "detail"], overlay: ["tabOverlay", "overlayTab"] };
+  /** Shows one tab: "overview", "detail" or "overlay". Booleans from older callers mean detail or overview. */
+  function setTab(which) {
+    const name = which === true ? "detail" : which === false || !TABS[which] ? "overview" : which;
+    on = name === "detail";
+    for (const [key, [tab, panel]] of Object.entries(TABS)) {
+      const sel = key === name;
+      $(panel).hidden = !sel;
+      $(tab).classList.toggle("on", sel);
+      $(tab).setAttribute("aria-selected", String(sel));
+    }
+    $("rangeSeg").hidden = name !== "overview";       // the history range only applies to the Overview charts
+    store.set("tab", name);
+    if (typeof OverlayUI !== "undefined") OverlayUI.setActive(name === "overlay");
+    if (name === "detail") { sig = ""; if (last) refresh(last); } else if (name === "overview") drawAll();
   }
 
   $("tabOverview").onclick = () => setTab(false);
   $("tabDetail").onclick = () => setTab(true);
+  $("tabOverlay").onclick = () => setTab("overlay");
   $("dsort").value = sort;
   $("dhide").checked = hideNet;
   $("dsort").onchange = () => { sort = $("dsort").value; store.set("dsort", sort); sig = ""; if (last) refresh(last); };
@@ -133,7 +139,7 @@ const Detail = (() => {
     fmt: fmtSensor,
     show: setTab,
     update(s) { last = s; if (on && s.hardware && !document.hidden) refresh(s); },
-    restore() { if (store.get("tab", "overview") === "detail") setTab(true); },
+    restore() { const t = store.get("tab", "overview"); if (t in TABS && t !== "overview") setTab(t); },
   };
 })();
 Detail.restore();

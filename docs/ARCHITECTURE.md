@@ -31,6 +31,10 @@ The split exists because the Lenovo WMI calls and the LibreHardwareMonitor (LHM)
 
 A `PeriodicTimer` calls `Read()` every 1000 ms. The service serializes the result with camelCase names, omits null fields, and sends it to every connected client. `HttpListener` binds to `127.0.0.1` only and answers 403 to any request whose `Origin` header is not in the allowlist.
 
+### Game overlay
+
+The overlay is a second Tauri window (`overlay`, page `overlay.html`). Rust creates it the first time it is shown, with no frame, a transparent background, always on top, no taskbar entry, and mouse events ignored, and afterwards only hides and shows it. A global shortcut (`tauri-plugin-global-shortcut`, default Ctrl+Shift+O) and the tray menu toggle it. The overlay page opens its own WebSocket to the service, so it works while the main window is hidden in the tray. `metrics.js` holds the catalog of readings and the function that draws them; both the overlay page and the preview in the Overlay tab use it. Settings live in `localStorage` (key `overlay`), which both windows share, and the overlay re-reads them on every update. The overlay page measures its own content and reports the size to Rust (`overlay_resize`), and Rust places the window in the chosen screen corner on the primary monitor. Drawing over a game depends on how the game presents: windowed and borderless fullscreen work, exclusive fullscreen does not, because the overlay is an ordinary window and does not inject into the game. It has no FPS reading, which would need a frame-timing tool such as PresentMon.
+
 ### Startup
 
 `scripts/install-service.ps1` registers the scheduled task "LOQ Monitor Service", which starts SensorService at logon with the highest run level. `scripts/uninstall-service.ps1` removes it. The service allows one instance and has no console window. If the listener cannot start, it writes the reason to `service.log` next to the executable.

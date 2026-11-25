@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="ds-tokens.css">
   <link rel="stylesheet" href="tokens.css">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="ov.css">
 </head>
 <body>
   <div id="sky"></div>
@@ -69,7 +70,7 @@
     <h1 class="sr-only">LOQ//NET hardware monitor, <span id="sub">HARDWARE MONITOR</span></h1>
 
     <div id="toolbar">
-      <nav id="tabs" role="tablist" aria-label="Views"><button id="tabOverview" role="tab" class="on" aria-selected="true" aria-controls="overview" aria-keyshortcuts="1">OVERVIEW</button><button id="tabDetail" role="tab" aria-selected="false" aria-controls="detail" aria-keyshortcuts="2">DETAILED</button></nav>
+      <nav id="tabs" role="tablist" aria-label="Views"><button id="tabOverview" role="tab" class="on" aria-selected="true" aria-controls="overview" aria-keyshortcuts="1">OVERVIEW</button><button id="tabDetail" role="tab" aria-selected="false" aria-controls="detail" aria-keyshortcuts="2">DETAILED</button><button id="tabOverlay" role="tab" aria-selected="false" aria-controls="overlayTab" aria-keyshortcuts="3">OVERLAY</button></nav>
       <div id="summary"><span class="tag ok" id="sumTag">--</span><span id="sumText">Waiting for data</span></div>
       <span class="seg" id="rangeSeg" role="group" aria-label="Temperature history range"><span class="seglab">HISTORY</span><button data-r="60" aria-pressed="false">1 MIN</button><button data-r="600" aria-pressed="false">10 MIN</button><button data-r="3600" aria-pressed="false">1 HOUR</button></span>
     </div>
@@ -129,6 +130,47 @@
         <button id="dexp">EXPAND ALL</button><button id="dcol">COLLAPSE ALL</button></div>
       <div id="dtree"></div>
     </section>
+    <section id="overlayTab" role="tabpanel" aria-labelledby="tabOverlay" hidden>
+      <div class="ovwrap">
+        <div class="ovcol">
+          <section class="panel mini cyan">
+            <div class="ph"><h2 class="ptit">GAME OVERLAY</h2><span class="dim" id="ovState">Hidden</span></div>
+            <p class="note">A small see-through panel that sits on top of your game and shows the readings you choose. Clicks pass through it to the game.</p>
+            <div class="ovrow">
+              <button id="ovToggle" class="act" aria-pressed="false">SHOW OVERLAY</button>
+              <span class="keyrow">Hotkey <kbd id="ovKey">Ctrl+Shift+O</kbd> <button id="ovKeyBtn" class="act ghost">CHANGE</button></span>
+            </div>
+            <p class="note" id="ovMsg" role="status"></p>
+            <p class="note warn">It shows over games in windowed or borderless fullscreen mode. It cannot draw over a game in exclusive fullscreen, and it does not show FPS.</p>
+          </section>
+          <section class="panel mini yellow">
+            <div class="ph"><h2 class="ptit">WHAT TO SHOW</h2><span class="dim" id="ovCount"></span></div>
+            <div class="presets" id="ovPresets"><span class="seglab">PRESET</span>
+              <button data-p="minimal">MINIMAL</button><button data-p="gaming">GAMING</button><button data-p="full">FULL</button><button data-p="none">CLEAR</button></div>
+            <div id="ovMetrics"></div>
+          </section>
+          <section class="panel mini pinkb">
+            <div class="ph"><h2 class="ptit">APPEARANCE</h2></div>
+            <div class="ovform">
+              <label><span>Layout</span><select id="ovLayout"><option value="vertical">Vertical list</option><option value="horizontal">Horizontal bar</option></select></label>
+              <label><span>Screen corner</span><select id="ovCorner"><option value="tl">Top left</option><option value="tr">Top right</option><option value="bl">Bottom left</option><option value="br">Bottom right</option></select></label>
+              <label><span>Distance from the edge (px)</span><input id="ovMargin" type="number" min="0" max="400" step="4"></label>
+              <label><span>Size <output id="ovScaleV"></output></span><input id="ovScale" type="range" min="70" max="200" step="5"></label>
+              <label><span>Opacity <output id="ovOpacityV"></output></span><input id="ovOpacity" type="range" min="30" max="100" step="5"></label>
+              <label><span>Background</span><select id="ovBg"><option value="panel">Panel</option><option value="none">None, text only</option></select></label>
+              <label><span>Show labels</span><input id="ovLabels" type="checkbox" checked></label>
+            </div>
+          </section>
+        </div>
+        <aside class="ovcol ovside">
+          <section class="panel mini green">
+            <div class="ph"><h2 class="ptit">PREVIEW</h2><span class="dim">Live</span></div>
+            <div id="ovStage" class="stage" data-theme="dark"><div id="ovPreview" class="ov"></div></div>
+            <p class="note">The overlay sits in the corner you pick. This preview only shows how it looks.</p>
+          </section>
+        </aside>
+      </div>
+    </section>
   </div>
   </div>
 
@@ -156,7 +198,8 @@
   <dialog id="help" aria-label="Keyboard shortcuts">
     <h2>KEYBOARD SHORTCUTS</h2>
     <dl class="keys">
-      <dt><kbd>1</kbd> <kbd>2</kbd></dt><dd>Overview, Detailed</dd>
+      <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Overview, Detailed, Overlay</dd>
+      <dt><kbd>O</kbd></dt><dd>Show or hide the game overlay</dd>
       <dt><kbd>/</kbd> or <kbd>F</kbd></dt><dd>Filter sensors</dd>
       <dt><kbd>T</kbd></dt><dd>Theme: auto, dark, light</dd>
       <dt><kbd>U</kbd></dt><dd>Temperature unit: °C, °F</dd>
@@ -167,8 +210,10 @@
     <div class="btns"><button id="helpClose" class="go">CLOSE</button></div>
   </dialog>
 
+  <script src="metrics.js"></script>
   <script src="main.js"></script>
   <script src="help.js"></script>
   <script src="detail.js"></script>
+  <script src="overlayui.js"></script>
 </body>
 </html>
