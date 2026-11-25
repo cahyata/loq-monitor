@@ -1,0 +1,67 @@
+# LOQ Monitor | Release workflow
+# Author: cahyata
+# Copyright (c) 2026 cahyata
+#
+# Pushing a tag such as v0.1.1 builds the installer, signs the update package and publishes a GitHub
+# Release with the installer and latest.json, which the app reads to find updates. The tag must match
+# "version" in ui/src-tauri/tauri.conf.json.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ui/src-tauri
+
+      - name: Check that the tag matches the app version
+        shell: pwsh
+        run: |
+          $version = (Get-Content ui/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          if ("v$version" -ne "${{ github.ref_name }}") {
+            throw "Tag ${{ github.ref_name }} does not match version $version in tauri.conf.json."
+          }
+
+      - name: Publish the sensor service
+        run: dotnet publish SensorService -c Release -r win-x64 --self-contained true -o SensorService/publish
+
+      - name: Install UI dependencies
+        working-directory: ui
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: ui
+          tagName: ${{ github.ref_name }}
+          releaseName: LOQ Monitor ${{ github.ref_name }}
+          releaseBody: See CHANGELOG.md for the changes in this version.
+          releaseDraft: false
+          prerelease: false
+          uploadUpdaterJson: true
+          args: --bundles nsis

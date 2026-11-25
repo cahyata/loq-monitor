@@ -16,6 +16,10 @@
 .PARAMETER TaskName
   Name of the scheduled task.
 
+.PARAMETER Update
+  Keeps the logon choice of the task that is already registered: with a logon trigger it stays
+  automatic, without one it stays manual. A first install with this switch starts at logon.
+
 .PARAMETER NoAutoStart
   Registers the task without the logon trigger. The service still starts now, and later from the
   app (START SERVICE button) or with: schtasks /run /tn "LOQ Monitor Service".
@@ -23,10 +27,16 @@
 param(
     [string]$Exe = (Join-Path $PSScriptRoot '..\SensorService\out\SensorService.exe'),
     [string]$TaskName = 'LOQ Monitor Service',
-    [switch]$NoAutoStart
+    [switch]$NoAutoStart,
+    [switch]$Update
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ($Update) {
+    $existing = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
+    if ($existing -and -not $existing.Triggers) { $NoAutoStart = $true }
+}
 $Exe = (Resolve-Path $Exe).Path
 $user = "$env:USERDOMAIN\$env:USERNAME"
 

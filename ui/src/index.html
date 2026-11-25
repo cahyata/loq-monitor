@@ -60,6 +60,11 @@
       <span class="hb"><button id="heatSnooze">SNOOZE 30 MIN</button><button id="heatDismiss">DISMISS</button></span>
     </div>
 
+    <div id="updBar" role="status" hidden>
+      <span id="updText"></span>
+      <span class="hb"><button type="button" id="updInstall">INSTALL AND RESTART</button><button type="button" id="updLater">LATER</button></span>
+    </div>
+
     <div id="miniview" aria-live="off">
       <span class="ml">CPU</span><span class="mv" id="mCpu">--</span><span class="mp" id="mCpuL">--</span>
       <span class="ml">GPU</span><span class="mv" id="mGpu">--</span><span class="mp" id="mGpuL">--</span>
@@ -190,6 +195,10 @@
       <h3>Keyboard</h3>
       <label><span>Keyboard shortcuts<small>Single keys such as 1, 2, T, U and M</small></span><input id="cfgKeys" type="checkbox" checked></label>
       <p class="more"><button type="button" id="btnHelp">VIEW ALL SHORTCUTS</button></p>
+      <h3>Updates</h3>
+      <label><span>Check for updates<small>At start, from GitHub Releases. Nothing installs without your click.</small></span><input id="cfgAutoUpdate" type="checkbox" checked></label>
+      <p class="more"><span id="updVersion" class="dim"></span> <button type="button" id="updCheck">CHECK NOW</button></p>
+      <p class="note" id="updMsg" role="status"></p>
       <p class="err" id="cfgErr" role="status"></p>
       <div class="btns"><button type="button" id="cfgReset">RESET</button><button type="button" id="cfgCancel">CANCEL</button><button type="submit" class="go" id="cfgSave">SAVE</button></div>
     </form>
@@ -215,5 +224,6 @@
   <script src="help.js"></script>
   <script src="detail.js"></script>
   <script src="overlayui.js"></script>
+  <script src="updater.js"></script>
 </body>
 </html>

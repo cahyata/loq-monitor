@@ -210,6 +210,14 @@ html.mini #titlebar .path { display: none; }
 #heat { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0 10px; padding: 8px 14px; font-weight: bold; font-size: 12px;
   color: var(--text-strong); background: color-mix(in srgb, var(--accent-primary) 18%, var(--surface-inset)); border: 1px solid var(--accent-primary); border-left-width: 5px; clip-path: var(--clip-sm); }
 #heat[hidden] { display: none; }
+#updBar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0 10px; padding: 8px 14px; font-weight: bold; font-size: 12px;
+  color: var(--text-strong); background: color-mix(in srgb, var(--accent-secondary) 16%, var(--surface-inset)); border: 1px solid var(--accent-secondary); border-left-width: 5px; clip-path: var(--clip-sm); }
+#updBar[hidden] { display: none; }
+#updBar .hb { display: flex; gap: 6px; flex-shrink: 0; }
+#updBar button { font: bold 11px var(--font-mono); letter-spacing: 1px; color: var(--accent-secondary); background: none; border: 1px solid var(--accent-secondary); padding: 2px 10px; min-height: 24px; cursor: pointer; }
+#updBar button:hover:not(:disabled) { background: var(--accent-secondary); color: var(--surface-inset); }
+#updBar button:disabled { opacity: .5; cursor: default; }
+dialog#settings .note { font-size: 12px; margin: 4px 0 0; min-height: 1.4em; color: var(--text); }
 #heat .hb { display: flex; gap: 6px; flex-shrink: 0; }
 #heat button { font: bold 11px var(--font-mono); letter-spacing: 1px; color: var(--accent-primary); background: none; border: 1px solid var(--accent-primary); padding: 2px 10px; cursor: pointer; }
 #heat button:hover { background: var(--accent-primary); color: var(--surface-inset); }
@@ -285,6 +293,7 @@ dialog#settings { max-height: calc(100vh - 80px); overflow-y: auto; }
 dialog#settings h3 { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent-primary); margin: 12px 0 2px; padding-top: 8px; border-top: 1px solid var(--divider); }
 dialog#settings h2 + h3 { border-top: 0; padding-top: 0; margin-top: 4px; }
 dialog#settings .more { margin: 6px 0 0; }
+dialog#settings .more .dim { font-size: 12px; margin-right: 8px; }
 dialog#settings .more button { font: bold 11px var(--font-mono); letter-spacing: 1.5px; color: var(--accent-secondary); background: none; border: 1px solid var(--text-muted); padding: 4px 12px; min-height: 24px; cursor: pointer; }
 dialog#settings .more button:hover { border-color: var(--accent-secondary); }
 #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 40; padding: 6px 16px; font-size: 12px; font-weight: bold; letter-spacing: 1px;

@@ -24,6 +24,10 @@ Download `LOQ Monitor_0.1.0_x64-setup.exe` and run it. The installer asks for ad
 
 The installer is not code signed, so Windows SmartScreen can warn you. Choose **More info**, then **Run anyway**.
 
+## Updates
+
+The app checks GitHub Releases for a newer version a few seconds after it starts. When one exists, a banner offers **INSTALL AND RESTART**. Nothing installs without your click. Turn the check off, or run it by hand, in **SETTINGS > Updates**. The installer keeps the sign-in choice you made for the service. See [docs/RELEASING.md](docs/RELEASING.md) for how a release is published.
+
 To remove it, use **Add or Remove Programs**. This stops the service and deletes the task. PawnIO stays, because other tools can use it.
 
 ## How it works

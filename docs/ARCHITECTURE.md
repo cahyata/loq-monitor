@@ -91,6 +91,12 @@ The records in `SensorService/Program.cs` define this schema. A numeric field is
 | Read-only service | No endpoint changes fan or power settings. |
 | Origin allowlist | A web page in a browser cannot read the stream through `ws://127.0.0.1`. |
 
+## Updates
+
+The Tauri updater plugin (`tauri-plugin-updater`) does the work. `ui/src/updater.js` calls `check()` eight seconds after start, and again from SETTINGS on request. The plugin reads `latest.json` from the latest GitHub Release, compares the version, and verifies the downloaded installer against the public key in `tauri.conf.json` (`plugins.updater.pubkey`) before it runs it. The installer runs in passive mode and needs administrator rights.
+
+Before it copies files, the installer stops the sensor service, because the running service locks its files. After the copy, the hook registers the scheduled task again with `install-service.ps1 -Update`, which keeps the sign-in choice of the existing task. Publishing a release is described in `RELEASING.md`.
+
 ## Security
 
 - The listener binds to `127.0.0.1`, so the network cannot reach it.
