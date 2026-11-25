@@ -15,6 +15,8 @@ A release is a git tag. The workflow in `.github/workflows/release.yml` builds t
 
 The workflow stops when the tag does not match `version` in `tauri.conf.json`.
 
+The workflow also copies the section of the new version from `CHANGELOG.md` into the notes of the GitHub Release, using `scripts/release-notes.ps1`. The workflow fails when `CHANGELOG.md` has no `## [x.y.z]` heading for the tag. To print the notes yourself: `./scripts/release-notes.ps1 -Version 0.1.2`.
+
 ## Signing key
 
 Update packages are signed with a minisign key pair. The app trusts only the public key in `tauri.conf.json` (`plugins.updater.pubkey`).

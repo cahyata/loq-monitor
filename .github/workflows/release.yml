@@ -60,7 +60,16 @@ jobs:
           projectPath: ui
           tagName: ${{ github.ref_name }}
           releaseName: LOQ Monitor ${{ github.ref_name }}
-          releaseBody: See CHANGELOG.md for the changes in this version.
+          releaseBody: Changes are listed below.
           releaseDraft: false
           prerelease: false
           args: --bundles nsis
+
+      - name: Write the release notes from CHANGELOG.md
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          ./scripts/release-notes.ps1 -Version $version | Set-Content -Path release-notes.md -Encoding utf8
+          gh release edit "${{ github.ref_name }}" --notes-file release-notes.md
