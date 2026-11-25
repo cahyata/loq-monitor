@@ -343,3 +343,19 @@ fieldset.mgroup legend { padding-right: 8px; font-size: 12px; letter-spacing: 1.
 .ovorder button:hover:not(:disabled) { border-color: var(--accent-secondary); }
 .ovorder button:disabled { opacity: .35; cursor: default; }
 .ovform small { display: block; font-size: 11px; color: var(--text-muted); }
+
+/* ---------- System page ---------- */
+#systemTab[hidden] { display: none; }
+.sysbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; margin: 0 0 6px; font-size: 12px; }
+.sysbar .chk { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.sysbar .chk input { accent-color: var(--accent-secondary); width: 16px; height: 16px; }
+.sysact { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+.sysgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 12px; align-items: start; }
+.sysgrid .panel.wide { grid-column: 1 / -1; }
+dl.kv { display: grid; grid-template-columns: minmax(110px, 38%) 1fr; gap: 4px 12px; margin: 4px 0 0; }
+dl.kv dt { cursor: default; font-size: 12px; letter-spacing: .5px; }
+dl.kv dd { font-size: 13px; font-weight: normal; color: var(--text-strong); overflow-wrap: anywhere; }
+.systable { margin-top: 8px; font-size: 12px; overflow-x: auto; }
+.sysrow { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 12px; padding: 3px 0; border-top: 1px solid var(--divider); min-width: 560px; }
+.sysrow.head { color: var(--text-muted); letter-spacing: 1px; border-top: 0; font-size: 11px; }
+.sysrow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

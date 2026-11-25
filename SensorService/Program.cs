@@ -37,6 +37,8 @@ var reader = new SensorReader();
 var fps = new FpsMeter();
 var clients = new ConcurrentDictionary<WebSocket, byte>();
 string latestJson = "{}";
+string? systemJson = null;      // the System page data, read once because it takes a second or two
+var systemGate = new object();
 
 var listener = new HttpListener();
 listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
@@ -118,6 +120,21 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
             finally { if (wantsFps) fps.Release(); }
             clients.TryRemove(ws, out _);
             ws.Dispose();
+        }
+        else if (path == "/system")
+        {
+            string json;
+            lock (systemGate)
+            {
+                if (systemJson is null || ctx.Request.QueryString["refresh"] == "1")
+                    systemJson = JsonSerializer.Serialize(SystemInfo.Collect(), jsonOptions);
+                json = systemJson;
+            }
+            var bytes = Encoding.UTF8.GetBytes(json);
+            ctx.Response.ContentType = "application/json";
+            if (origin != "") ctx.Response.Headers["Access-Control-Allow-Origin"] = origin;   // the app fetches this from its own origin
+            ctx.Response.OutputStream.Write(bytes);
+            ctx.Response.Close();
         }
         else if (path == "/snapshot")
         {

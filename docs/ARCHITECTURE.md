@@ -12,7 +12,7 @@ LOQ Monitor is two processes. SensorService runs as administrator, reads the har
 │ (temps, fans,  │───────▶│                      │ 1 Hz   │  style.css, tokens    │
 │  power mode)   │        │                      │        │  tray, notifications  │
 └────────────────┘        └──────────────────────┘        └───────────────────────┘
-                           127.0.0.1:47821 (/ws, /snapshot)
+                           127.0.0.1:47821 (/ws, /snapshot, /system)
 ```
 
 The split exists because the Lenovo WMI calls and the LibreHardwareMonitor (LHM) driver need administrator rights, and the UI does not.
@@ -57,6 +57,7 @@ Tauri embeds the frontend files at compile time, so a frontend change in a relea
 |---|---|
 | `ws://127.0.0.1:47821/ws` | Sends the latest snapshot on connect, then one every 1000 ms. |
 | `GET http://127.0.0.1:47821/snapshot` | Returns the latest snapshot as JSON. |
+| `GET http://127.0.0.1:47821/system` | Returns the System page data: device, firmware, Windows, processor, graphics, memory modules, drives, volumes, network adapters and battery. It is read from WMI and the registry on the first request (about 1.7 s) and kept. `?refresh=1` reads it again. The response carries `Access-Control-Allow-Origin` for an allowed origin, because the app fetches it. Serial numbers and the user name are not read. |
 | WebSocket text `reset-minmax` | Resets the minimum and maximum of every sensor, including the Lenovo EC and ACPI values the service tracks itself. |
 
 The allowed origins are the empty origin (non-browser clients), `tauri://localhost`, `http://tauri.localhost`, `https://tauri.localhost` and `http://localhost:1420`.

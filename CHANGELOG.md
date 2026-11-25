@@ -4,6 +4,9 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+### Added
+- A SYSTEM tab (key 4) with the facts about the machine: device and mainboard, BIOS and Secure Boot, Windows version and uptime, processor, graphics and driver, memory modules, drives and volumes, network adapters, and battery capacity and cycles. It can hide the host name, IP and MAC addresses, which is on by default, and COPY REPORT puts the page in the clipboard as plain text. The service reads Windows once and serves it at `GET /system`. Serial numbers and the user name are never read.
+
 ## [0.2.0] - 2026-11-25
 
 ### Changed

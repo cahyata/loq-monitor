@@ -338,6 +338,7 @@ function render(s) {
   push(hist.cpu, cpu.tempC); push(hist.gpu, gpu.tempC);
   if (typeof Detail !== "undefined") Detail.update(s);
   if (typeof OverlayUI !== "undefined") OverlayUI.update(s);
+  if (typeof SystemPage !== "undefined") SystemPage.update(s);
   trayUpdate(s); // runs while the window is hidden in the tray
   heatUpdate(s);
   if (document.hidden) return; // window hidden: keep the history, skip drawing
@@ -553,6 +554,7 @@ addEventListener("keydown", (e) => {
   if (k === "1") Detail.show(false);
   else if (k === "2") Detail.show(true);
   else if (k === "3") Detail.show("overlay");
+  else if (k === "4") Detail.show("system");
   else if (k === "o") OverlayUI.toggle();
   else if (k === "/" || k === "f") { Detail.show(true); $("dfilter").focus(); e.preventDefault(); }
   else if (k === "t") cycleTheme();

@@ -75,7 +75,7 @@
     <h1 class="sr-only">LOQ//NET hardware monitor, <span id="sub">HARDWARE MONITOR</span></h1>
 
     <div id="toolbar">
-      <nav id="tabs" role="tablist" aria-label="Views"><button id="tabOverview" role="tab" class="on" aria-selected="true" aria-controls="overview" aria-keyshortcuts="1">OVERVIEW</button><button id="tabDetail" role="tab" aria-selected="false" aria-controls="detail" aria-keyshortcuts="2">DETAILED</button><button id="tabOverlay" role="tab" aria-selected="false" aria-controls="overlayTab" aria-keyshortcuts="3">OVERLAY</button></nav>
+      <nav id="tabs" role="tablist" aria-label="Views"><button id="tabOverview" role="tab" class="on" aria-selected="true" aria-controls="overview" aria-keyshortcuts="1">OVERVIEW</button><button id="tabDetail" role="tab" aria-selected="false" aria-controls="detail" aria-keyshortcuts="2">DETAILED</button><button id="tabOverlay" role="tab" aria-selected="false" aria-controls="overlayTab" aria-keyshortcuts="3">OVERLAY</button><button id="tabSystem" role="tab" aria-selected="false" aria-controls="systemTab" aria-keyshortcuts="4">SYSTEM</button></nav>
       <div id="summary"><span class="tag ok" id="sumTag">--</span><span id="sumText">Waiting for data</span></div>
       <span class="seg" id="rangeSeg" role="group" aria-label="Temperature history range"><span class="seglab">HISTORY</span><button data-r="60" aria-pressed="false">1 MIN</button><button data-r="600" aria-pressed="false">10 MIN</button><button data-r="3600" aria-pressed="false">1 HOUR</button></span>
     </div>
@@ -134,6 +134,16 @@
         <button id="dreset" title="Restart minimum and maximum tracking for every sensor">RESET MIN/MAX</button>
         <button id="dexp">EXPAND ALL</button><button id="dcol">COLLAPSE ALL</button></div>
       <div id="dtree"></div>
+    </section>
+    <section id="systemTab" role="tabpanel" aria-labelledby="tabSystem" hidden>
+      <div class="sysbar">
+        <label class="chk"><input id="sysMask" type="checkbox" checked> Hide host name, IP and MAC addresses</label>
+        <label class="chk"><input id="sysVirtual" type="checkbox"> Show virtual adapters</label>
+        <span class="sysact"><span class="dim" id="sysWhen"></span>
+          <button type="button" id="sysRefresh" class="act">REFRESH</button><button type="button" id="sysCopy" class="act">COPY REPORT</button></span>
+      </div>
+      <p class="note" id="sysMsg" role="status"></p>
+      <div id="sysGrid" class="sysgrid"></div>
     </section>
     <section id="overlayTab" role="tabpanel" aria-labelledby="tabOverlay" hidden>
       <div class="ovwrap">
@@ -219,7 +229,7 @@
   <dialog id="help" aria-label="Keyboard shortcuts">
     <h2>KEYBOARD SHORTCUTS</h2>
     <dl class="keys">
-      <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Overview, Detailed, Overlay</dd>
+      <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></dt><dd>Overview, Detailed, Overlay, System</dd>
       <dt><kbd>O</kbd></dt><dd>Show or hide the game overlay</dd>
       <dt><kbd>/</kbd> or <kbd>F</kbd></dt><dd>Filter sensors</dd>
       <dt><kbd>T</kbd></dt><dd>Theme: auto, dark, light</dd>
@@ -236,6 +246,7 @@
   <script src="help.js"></script>
   <script src="detail.js"></script>
   <script src="overlayui.js"></script>
+  <script src="system.js"></script>
   <script src="updater.js"></script>
 </body>
 </html>
