@@ -13,7 +13,7 @@ const Detail = (() => {
     SmallData: "Small data", Throughput: "Throughput", Energy: "Energy", Frequency: "Frequencies", Flow: "Flow",
     TimeSpan: "Time", Noise: "Noise", Humidity: "Humidity", Conductivity: "Conductivity" };
 
-  const open = new Set(["Lenovo embedded controller", "ACPI thermal zones"]); // expanded sections survive refreshes
+  const open = new Set(["Favorites", "Lenovo embedded controller", "ACPI thermal zones"]); // expanded sections survive refreshes
   let sig = "", on = false, last = null;
   let sort = store.get("dsort", "default"), hideNet = store.get("dhide", "on") === "on";
   const VIRTUAL = /vmware|virtualbox|hyper-v|vethernet|openvpn|wireguard|tap-|loopback|bluetooth|local area connection|wan miniport/i;
@@ -25,6 +25,7 @@ const Detail = (() => {
 
   function fmtSensor(type, v) {
     if (v == null) return "--";
+    if (type === "Temperature") return tf(v, 1) + " " + deg();
     if (type === "Throughput") return fmt(v / 1e6, 2) + " MB/s";
     return Number(v).toFixed(digits(type)) + (UNITS[type] ? " " + UNITS[type] : "");
   }
@@ -55,7 +56,14 @@ const Detail = (() => {
         rows.filter((r) => r.x.type === t).forEach(({ x, i }) => {
           const r = document.createElement("div"); r.className = "srow"; r.dataset.i = i;
           ["nm", "val", "mm", "mm"].forEach((c) => { const s = document.createElement("span"); s.className = c; r.append(s); });
-          r.children[0].textContent = x.name; r.children[0].title = x.name;
+          const key = x.key ?? Pins.key(h, x);
+          const pin = document.createElement("button");
+          pin.type = "button"; pin.className = "pin";
+          const paint = () => { const on = Pins.has(key); pin.textContent = on ? "\u2605" : "\u2606"; pin.setAttribute("aria-pressed", String(on)); pin.title = on ? "Remove from favorites" : "Add to favorites"; };
+          paint();
+          pin.setAttribute("aria-label", "Favorite " + x.name);
+          pin.onclick = (ev) => { ev.stopPropagation(); Pins.toggle(key); sig = ""; if (last) { refresh(last); if (typeof renderFavs === "function") renderFavs(last); } };
+          r.children[0].append(pin, document.createTextNode(x.name)); r.children[0].title = x.name;
           g.append(r);
         });
         d.append(g);
@@ -67,7 +75,8 @@ const Detail = (() => {
 
   function refresh(s) {
     const filter = $("dfilter").value.trim().toLowerCase();
-    const hw = shown(s);
+    const favs = Pins.resolve(s).map(({ key, hw: from, x }) => ({ ...x, key, name: from + " \u203A " + x.name }));
+    const hw = favs.length ? [{ name: "Favorites", type: "Pins", sensors: favs }, ...shown(s)] : shown(s);
     const next = filter + "|" + (sort === "name" ? "n" : "d") + "|" + hw.map((h) => h.name + ":" + h.sensors.length).join(",");
     const tree = $("dtree");
     if (next !== sig) { sig = next; tree.replaceChildren(build(hw, filter)); }
@@ -113,6 +122,8 @@ const Detail = (() => {
   $("dcol").onclick = () => { document.querySelectorAll("#dtree details").forEach((d) => (d.open = false)); };
 
   return {
+    fmt: fmtSensor,
+    show: setTab,
     update(s) { last = s; if (on && s.hardware && !document.hidden) refresh(s); },
     restore() { if (store.get("tab", "overview") === "detail") setTab(true); },
   };

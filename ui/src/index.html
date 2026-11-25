@@ -42,8 +42,9 @@
       <span class="acts">
         <button id="btnAlerts" title="Desktop notifications for critical temperatures">ALERTS</button>
         <button id="btnFx" title="Visual effects (grid, scanlines)">FX</button>
-        <button id="btnTheme" title="Dark / Light theme">THEME</button>
+        <button id="btnTheme" title="Theme: follow system, dark or light (T)">THEME</button>
         <button id="btnMini" title="Small always-on-top window">MINI</button>
+        <button id="btnHelp" title="Keyboard shortcuts (?)">KEYS</button>
         <button id="btnSettings" title="Temperature limits and alert timing">SETTINGS</button>
       </span>
     </div>
@@ -70,7 +71,7 @@
       </div>
       <section class="panel pink" id="cpu">
         <div class="ph"><span class="ptit">[ CPU ]</span><span class="dim" id="cpuName"></span></div>
-        <div class="hero"><span class="big" id="cpuTemp">--</span><span class="unit">°C</span><span class="tag" id="cpuTag" title="CPU temperature status. Limits are in Settings.">--</span></div>
+        <div class="hero"><span class="big" id="cpuTemp">--</span><span class="unit u-deg">°C</span><span class="tag" id="cpuTag" title="CPU temperature status. Limits are in Settings.">--</span></div>
         <div class="meter"><i id="cpuLoadBar"></i></div>
         <canvas id="cpuChart" height="72"></canvas>
         <div class="cap" id="cpuCap"></div>
@@ -85,7 +86,7 @@
 
       <section class="panel" id="gpu">
         <div class="ph"><span class="ptit">[ GPU ]</span><span class="dim" id="gpuName"></span></div>
-        <div class="hero"><span class="big" id="gpuTemp">--</span><span class="unit">°C</span><span class="tag" id="gpuTag" title="GPU temperature status. Limits are in Settings.">--</span></div>
+        <div class="hero"><span class="big" id="gpuTemp">--</span><span class="unit u-deg">°C</span><span class="tag" id="gpuTag" title="GPU temperature status. Limits are in Settings.">--</span></div>
         <div class="meter"><i id="gpuLoadBar"></i></div>
         <canvas id="gpuChart" height="72"></canvas>
         <div class="cap" id="gpuCap"></div>
@@ -114,6 +115,8 @@
         <div id="storage" class="disks"></div></section>
       <section class="panel mini pinkb span2"><div class="ph"><span class="ptit">SYSTEM LOG</span></div>
         <div id="log" class="log"></div></section>
+      <section class="panel mini yellow wide" id="favPanel" hidden><div class="ph"><span class="ptit">FAVORITES</span><span class="dim">pin sensors with the star in the Detailed tab</span></div>
+        <div id="favList" class="favs"></div></section>
     </main>
     <section id="detail" hidden>
       <div class="dtools"><input id="dfilter" type="search" placeholder="Filter sensors" aria-label="Filter sensors"><select id="dsort" aria-label="Sort sensors"><option value="default">SORT: DEFAULT</option><option value="name">SORT: NAME</option><option value="value">SORT: VALUE</option></select>
@@ -128,13 +131,28 @@
   <dialog id="settings" aria-label="Settings">
     <form method="dialog" id="settingsForm">
       <h2>SETTINGS</h2>
-      <label><span>Warm at (°C)<small>Temperature turns yellow</small></span><input id="cfgWarn" type="number" min="40" max="110" step="1"></label>
-      <label><span>Hot at (°C)<small>Turns pink and raises the alert</small></span><input id="cfgHot" type="number" min="40" max="110" step="1"></label>
-      <label><span>GPU hotspot limit (°C)<small>Separate alert for the hottest GPU point</small></span><input id="cfgSpot" type="number" min="40" max="120" step="1"></label>
-      <label><span>Alert delay (s)<small>How long it must stay hot first</small></span><input id="cfgHold" type="number" min="0" max="300" step="1"></label>
+      <label><span>Temperature unit<small>Used everywhere (U)</small></span><select id="cfgUnit"><option value="C">°C</option><option value="F">°F</option></select></label>
+      <label><span>Warm at (<span class="dlg-deg">°C</span>)<small>Temperature turns yellow</small></span><input id="cfgWarn" type="number"></label>
+      <label><span>Hot at (<span class="dlg-deg">°C</span>)<small>Turns pink and raises the alert</small></span><input id="cfgHot" type="number"></label>
+      <label><span>GPU hotspot limit (<span class="dlg-deg">°C</span>)<small>Separate alert for the hottest GPU point</small></span><input id="cfgSpot" type="number"></label>
+      <label><span>Alert delay (s)<small>How long it must stay hot first</small></span><input id="cfgHold" type="number"></label>
       <p class="err" id="cfgErr" role="status"></p>
       <div class="btns"><button type="button" id="cfgReset">RESET</button><button type="button" id="cfgCancel">CANCEL</button><button type="submit" class="go" id="cfgSave">SAVE</button></div>
     </form>
+  </dialog>
+
+  <dialog id="help" aria-label="Keyboard shortcuts">
+    <h2>KEYBOARD SHORTCUTS</h2>
+    <dl class="keys">
+      <dt><kbd>1</kbd> <kbd>2</kbd></dt><dd>Overview, Detailed</dd>
+      <dt><kbd>/</kbd> or <kbd>F</kbd></dt><dd>Filter sensors</dd>
+      <dt><kbd>T</kbd></dt><dd>Theme: auto, dark, light</dd>
+      <dt><kbd>U</kbd></dt><dd>Temperature unit: °C, °F</dd>
+      <dt><kbd>M</kbd></dt><dd>Mini window on or off (Esc also leaves it)</dd>
+      <dt><kbd>S</kbd></dt><dd>Settings</dd>
+      <dt><kbd>?</kbd> or <kbd>H</kbd></dt><dd>This list</dd>
+    </dl>
+    <div class="btns"><button id="helpClose" class="go">CLOSE</button></div>
   </dialog>
 
   <script src="main.js"></script>

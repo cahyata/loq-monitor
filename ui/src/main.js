@@ -18,16 +18,43 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* ignore */ } },
 };
+/* temperature unit: every value is kept in °C and converted only for display */
+let unit = store.get("unit", "C") === "F" ? "F" : "C";
+const conv = (c, u = unit) => (u === "F" ? (c * 9) / 5 + 32 : c);
+const unconv = (v, u = unit) => (u === "F" ? ((v - 32) * 5) / 9 : v);
+const deg = () => "\u00B0" + unit;
+const tf = (c, d = 0) => (c == null ? "--" : conv(c).toFixed(d));        // number in the chosen unit
+const tdeg = (c, d = 0) => (c == null ? "--" : tf(c, d) + deg());         // number plus unit
+function applyUnit() { document.querySelectorAll(".u-deg").forEach((e) => { e.textContent = deg(); }); }
+function setUnit(u) {
+  unit = u === "F" ? "F" : "C"; store.set("unit", unit); applyUnit();
+  if (lastRendered) render(lastRendered);
+  drawAll();
+}
+
+/* theme: "system" follows the operating system, otherwise dark or light */
+const THEME_LABEL = { system: "AUTO", dark: "DARK", light: "LIGHT" };
+const themePref = () => { const t = store.get("theme", "system"); return t in THEME_LABEL ? t : "system"; };
+const systemLight = matchMedia("(prefers-color-scheme: light)");
+function cycleTheme() {
+  const order = ["system", "dark", "light"];
+  store.set("theme", order[(order.indexOf(themePref()) + 1) % 3]);
+  applyPrefs(); drawAll();
+}
+
 function applyPrefs() {
   $("btnAlerts").classList.toggle("on", store.get("alerts", "on") === "on");
-  root.classList.toggle("light", store.get("theme", "dark") === "light");
+  const t = themePref();
+  root.classList.toggle("light", t === "light" || (t === "system" && systemLight.matches));
+  $("btnTheme").textContent = "THEME: " + THEME_LABEL[t];
   root.classList.toggle("nofx", store.get("fx", "on") === "off");
   $("btnFx").classList.toggle("on", store.get("fx", "on") === "on");
 }
 $("btnAlerts").onclick = () => { store.set("alerts", store.get("alerts", "on") === "on" ? "off" : "on"); applyPrefs(); };
 $("btnFx").onclick = () => { store.set("fx", store.get("fx", "on") === "on" ? "off" : "on"); applyPrefs(); };
-$("btnTheme").onclick = () => { store.set("theme", store.get("theme", "dark") === "dark" ? "light" : "dark"); applyPrefs(); drawAll(); };
-applyPrefs();
+$("btnTheme").onclick = cycleTheme;
+systemLight.addEventListener("change", () => { if (themePref() === "system") { applyPrefs(); drawAll(); } });
+applyPrefs(); applyUnit();
 for (const k of Object.keys(DEFAULTS)) { const v = parseFloat(store.get("cfg." + k, "")); if (Number.isFinite(v)) CFG[k] = v; }
 { const r = parseInt(store.get("range", "600"), 10); if ([60, 600, 3600].includes(r)) range = r; }
 addEventListener("load", () => scrollTo(0, 0));
@@ -57,17 +84,49 @@ function checkAlert(key, label, value, limit) {
   st.since ??= now;
   if (st.armed && now - st.since >= CFG.hold * 1000 && now - st.sent >= ALERT_COOLDOWN_MS) {
     st.armed = false; st.sent = now;
-    invoke("notify", { title: "LOQ Monitor: " + label + " is hot", body: `${label} reached ${fmt(value)}°C` }).catch(() => {});
+    invoke("notify", { title: "LOQ Monitor: " + label + " is hot", body: `${label} reached ${tdeg(value)}` }).catch(() => {});
   }
 }
 function trayUpdate(s) {
   if (!invoke) return;
-  const tip = `LOQ Monitor\nCPU ${fmt(s.cpu.tempC)}°C   GPU ${fmt(s.gpu.tempC)}°C`;
+  const tip = `LOQ Monitor\nCPU ${tdeg(s.cpu.tempC)}   GPU ${tdeg(s.gpu.tempC)}`;
   if (tip !== lastTip) { lastTip = tip; invoke("set_tooltip", { text: tip }).catch(() => {}); }
   if (store.get("alerts", "on") !== "on") return;
   checkAlert("cpu", "CPU", s.cpu.tempC, CFG.hot);
   checkAlert("gpu", "GPU", s.gpu.tempC, CFG.hot);
   checkAlert("hotspot", "GPU hotspot", s.gpu.hotspotC, CFG.spot);
+}
+
+/* ---------- pinned sensors (favorites) ---------- */
+const Pins = (() => {
+  let list = [];
+  try { const v = JSON.parse(store.get("pins", "[]")); if (Array.isArray(v)) list = v.filter((k) => typeof k === "string"); } catch { /* keep empty */ }
+  return {
+    key: (h, x) => h.name + "|" + x.type + "|" + x.name,
+    has: (k) => list.includes(k),
+    toggle(k) { list = list.includes(k) ? list.filter((x) => x !== k) : [...list, k]; store.set("pins", JSON.stringify(list)); },
+    resolve(s) {
+      const out = [];
+      for (const k of list) {
+        const [hn, type, ...rest] = k.split("|"), name = rest.join("|");
+        const h = (s.hardware ?? []).find((z) => z.name === hn);
+        const x = h?.sensors.find((z) => z.type === type && z.name === name);
+        if (x) out.push({ key: k, hw: h.name, x });
+      }
+      return out;
+    },
+  };
+})();
+function renderFavs(s) {
+  const items = Pins.resolve(s);
+  $("favPanel").hidden = items.length === 0;
+  if (!items.length || typeof Detail === "undefined") return;
+  $("favList").replaceChildren(...items.map(({ hw, x }) => {
+    const row = document.createElement("div"); row.className = "fav";
+    const a = document.createElement("span"); a.textContent = hw + " \u203A " + x.name; a.title = a.textContent;
+    const b = document.createElement("b"); b.textContent = Detail.fmt(x.type, x.value);
+    row.append(a, b); return row;
+  }));
 }
 
 /* ---------- sustained-heat banner ---------- */
@@ -82,7 +141,7 @@ function heatUpdate(s) {
     const st = heat[key];
     if (v == null || v < limit) { st.since = null; st.dismissed = false; continue; }
     st.since ??= now;
-    if (!st.dismissed && now - st.since >= HEAT_AFTER_MS) live.push([key, `${label} ${fmt(v)}°C for ${duration(now - st.since)}`]);
+    if (!st.dismissed && now - st.since >= HEAT_AFTER_MS) live.push([key, `${label} ${tdeg(v)} for ${duration(now - st.since)}`]);
   }
   const show = live.length > 0 && now >= heat.snoozeUntil;
   $("heat").hidden = !show;
@@ -94,7 +153,7 @@ $("heatSnooze").onclick = () => { heat.snoozeUntil = Date.now() + SNOOZE_MS; $("
 
 /* ---------- helper render ---------- */
 function setTemp(el, tagEl, t) {
-  el.textContent = fmt(t);
+  el.textContent = tf(t);
   el.className = "big " + tempClass(t);
   const c = tempClass(t);
   tagEl.textContent = c === "hot" ? "HOT" : c === "warn" ? "WARM" : c === "ok" ? "NORMAL" : "--";
@@ -126,7 +185,7 @@ function drawChart(canvas, series, color) {
     const y = Math.round(py(t)) + 0.5;
     ctx.setLineDash([4, 4]); ctx.strokeStyle = c; ctx.globalAlpha = 0.7;
     ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-    ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.fillStyle = c; ctx.fillText(t + "°", w - 2, y - 1);
+    ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.fillStyle = c; ctx.fillText(Math.round(conv(t)) + "\u00B0", w - 2, y - 1);
   });
 
   const n = Math.min(series.length, range);
@@ -155,7 +214,7 @@ function caption(el, series) {
   let lo = Infinity, hi = -Infinity, sum = 0;
   for (let i = series.length - n; i < series.length; i++) { const v = series[i]; if (v < lo) lo = v; if (v > hi) hi = v; sum += v; }
   const span = n < range ? (n < 60 ? n + " s" : Math.floor(n / 60) + " min") : RANGE_NAMES[range];
-  el.textContent = `last ${span} · min ${fmt(lo)}° · avg ${fmt(sum / n)}° · max ${fmt(hi)}°`;
+  el.textContent = `last ${span} · min ${tf(lo)}\u00B0 · avg ${tf(sum / n)}\u00B0 · max ${tf(hi)}\u00B0`;
 }
 function drawAll() {
   drawChart($("cpuChart"), hist.cpu, css("--accent-primary"));
@@ -179,15 +238,15 @@ function push(series, v) {
 function logLines(s) {
   const out = [];
   const add = (lv, msg) => out.push([lv, msg]);
-  if (s.cpu.tempC >= CFG.hot) add("CRIT", `cpu.temp ${fmt(s.cpu.tempC)}°C, near thermal limit`);
-  else if (s.cpu.tempC >= CFG.warn) add("WARN", `cpu.temp ${fmt(s.cpu.tempC)}°C`);
-  if (s.gpu.hotspotC >= CFG.spot) add("CRIT", `gpu.hotspot ${fmt(s.gpu.hotspotC)}°C`);
-  else if (s.gpu.tempC >= CFG.hot) add("CRIT", `gpu.temp ${fmt(s.gpu.tempC)}°C`);
-  else if (s.gpu.tempC >= CFG.warn) add("WARN", `gpu.temp ${fmt(s.gpu.tempC)}°C`);
+  if (s.cpu.tempC >= CFG.hot) add("CRIT", `cpu.temp ${tdeg(s.cpu.tempC)}, near thermal limit`);
+  else if (s.cpu.tempC >= CFG.warn) add("WARN", `cpu.temp ${tdeg(s.cpu.tempC)}`);
+  if (s.gpu.hotspotC >= CFG.spot) add("CRIT", `gpu.hotspot ${tdeg(s.gpu.hotspotC)}`);
+  else if (s.gpu.tempC >= CFG.hot) add("CRIT", `gpu.temp ${tdeg(s.gpu.tempC)}`);
+  else if (s.gpu.tempC >= CFG.warn) add("WARN", `gpu.temp ${tdeg(s.gpu.tempC)}`);
   const vp = s.gpu.vramTotalMB ? (s.gpu.vramUsedMB / s.gpu.vramTotalMB) * 100 : 0;
   if (vp >= 90) add("WARN", `vram ${fmt(vp)}% used`);
   if (s.ram.loadPct >= 90) add("WARN", `ram ${fmt(s.ram.loadPct)}% used`);
-  s.storage.forEach((d) => { if (d.tempC >= 70) add("WARN", `ssd ${d.name} ${fmt(d.tempC)}°C`); });
+  s.storage.forEach((d) => { if (d.tempC >= 70) add("WARN", `ssd ${d.name} ${tdeg(d.tempC)}`); });
   if (s.battery && s.battery.levelPct < 20) add("WARN", `battery ${fmt(s.battery.levelPct)}%`);
   if (!out.length) add("OK", "all sensors within normal range");
   add("INFO", "ec.wmi link established");
@@ -195,7 +254,7 @@ function logLines(s) {
 }
 
 function updateMini(s) {
-  const t = (id, v) => { const e = $(id); e.textContent = fmt(v) + "°"; e.className = "mv " + tempClass(v); };
+  const t = (id, v) => { const e = $(id); e.textContent = tf(v) + "\u00B0"; e.className = "mv " + tempClass(v); };
   t("mCpu", s.cpu.tempC); t("mGpu", s.gpu.tempC);
   $("mCpuL").textContent = fmt(s.cpu.load) + "%";
   $("mGpuL").textContent = fmt(s.gpu.load) + "%";
@@ -235,11 +294,11 @@ function render(s) {
   setTemp($("gpuTemp"), $("gpuTag"), gpu.tempC);
   setMeter("gpuLoadBar", gpu.load);
   setDd("gpuLoad", fmt(gpu.load) + "%");
-  setDd("gpuHot", fmt(gpu.hotspotC) + "°C", gpu.hotspotC >= CFG.spot ? "hot" : gpu.hotspotC >= CFG.hot ? "warn" : "");
+  setDd("gpuHot", tdeg(gpu.hotspotC), gpu.hotspotC >= CFG.spot ? "hot" : gpu.hotspotC >= CFG.hot ? "warn" : "");
   setDd("gpuPower", fmt(gpu.powerW) + " W");
   setDd("gpuFan", gpu.fanRpm != null ? gpu.fanRpm + " rpm" : "--");
   setDd("gpuClock", fmt(gpu.coreClockMHz) + " MHz");
-  setDd("gpuVt", fmt(gpu.vramTempC) + "°C");
+  setDd("gpuVt", tdeg(gpu.vramTempC));
   setDd("gpuMem", fmt(gpu.memClockMHz) + " MHz");
   setDd("gpuRx", fmt(gpu.pcieRxMBs, 1) + " MB/s");
   setDd("gpuTx", fmt(gpu.pcieTxMBs, 1) + " MB/s");
@@ -268,6 +327,8 @@ function render(s) {
   // Storage
   $("storage").replaceChildren(...s.storage.map(diskCard));
 
+  renderFavs(s);
+
   // Log
   $("log").replaceChildren(...logLines(s).map(([lv, msg]) => {
     const row = document.createElement("div");
@@ -282,7 +343,7 @@ function diskCard(d) {
   const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const hd = mk("div", "hd");
   const n = mk("span", "n", d.name.replace(/\s*(SSD|\d+GB)\s*/g, " ").trim()); n.title = d.name;
-  hd.append(n, mk("span", "t " + tempClass(d.tempC), fmt(d.tempC) + "°C"));
+  hd.append(n, mk("span", "t " + tempClass(d.tempC), tdeg(d.tempC)));
   const meter = mk("div", "meter"); const bar = document.createElement("i");
   bar.style.width = Math.min(100, d.usedPct ?? 0) + "%"; meter.append(bar);
   meter.classList.toggle("over", (d.usedPct ?? 0) >= 90);
@@ -332,14 +393,30 @@ $("btnStart").onclick = () => {
 /* ---------- settings dialog ---------- */
 const dlg = $("settings");
 const cfgIds = { warn: "cfgWarn", hot: "cfgHot", spot: "cfgSpot", hold: "cfgHold" };
-function fillCfg(src) { for (const [k, id] of Object.entries(cfgIds)) $(id).value = src[k]; $("cfgErr").textContent = ""; }
-$("btnSettings").onclick = () => { fillCfg(CFG); dlg.showModal(); };
+const TEMP_KEYS = ["warn", "hot", "spot"];
+let dlgUnit = unit;
+function fillCfg(src, u) {
+  dlgUnit = u; $("cfgUnit").value = u;
+  document.querySelectorAll(".dlg-deg").forEach((e) => { e.textContent = "\u00B0" + u; });
+  for (const [k, id] of Object.entries(cfgIds)) $(id).value = TEMP_KEYS.includes(k) ? Math.round(conv(src[k], u)) : src[k];
+  $("cfgErr").textContent = "";
+}
+$("btnSettings").onclick = () => { fillCfg(CFG, unit); dlg.showModal(); };
 $("cfgCancel").onclick = () => dlg.close();
-$("cfgReset").onclick = () => fillCfg(DEFAULTS);
+$("cfgReset").onclick = () => fillCfg(DEFAULTS, dlgUnit);
+$("cfgUnit").onchange = () => {   // convert the numbers on screen so they keep their meaning
+  const next = $("cfgUnit").value;
+  for (const k of TEMP_KEYS) { const e = $(cfgIds[k]), v = parseFloat(e.value); if (Number.isFinite(v)) e.value = Math.round(conv(unconv(v, dlgUnit), next)); }
+  dlgUnit = next;
+  document.querySelectorAll(".dlg-deg").forEach((e) => { e.textContent = "\u00B0" + next; });
+};
 $("settingsForm").onsubmit = (e) => {
   const v = {}; for (const [k, id] of Object.entries(cfgIds)) v[k] = parseFloat($(id).value);
   if (Object.values(v).some((x) => !Number.isFinite(x))) { e.preventDefault(); $("cfgErr").textContent = "Fill in every field with a number."; return; }
+  for (const k of TEMP_KEYS) v[k] = Math.round(unconv(v[k], dlgUnit) * 10) / 10;   // back to °C
   if (v.warn >= v.hot) { e.preventDefault(); $("cfgErr").textContent = "Warm must be lower than Hot."; return; }
+  if (TEMP_KEYS.some((k) => v[k] < 30 || v[k] > 120) || v.hold < 0 || v.hold > 300) { e.preventDefault(); $("cfgErr").textContent = "Limits must be 30 to 120 \u00B0C (86 to 248 \u00B0F) and the delay 0 to 300 s."; return; }
+  if (dlgUnit !== unit) setUnit(dlgUnit);
   Object.assign(CFG, v);
   for (const k of Object.keys(v)) store.set("cfg." + k, String(v[k]));
   Object.keys(alertState).forEach((k) => delete alertState[k]);
@@ -379,3 +456,22 @@ $("btnFull").onclick = () => setMini(false);
   $("wMax").onclick = () => w.toggleMaximize();
   $("wClose").onclick = () => w.close(); // hides to tray (see lib.rs)
 })();
+
+/* ---------- keyboard shortcuts ---------- */
+const typing = (t) => t && (t.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(t.tagName));
+addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.altKey || e.metaKey || typing(e.target) || document.querySelector("dialog[open]")) return;
+  const k = e.key.toLowerCase();
+  if (k === "escape" && miniOn) { setMini(false); return; }
+  if (k === "m") { setMini(!miniOn); return; }
+  if (miniOn) return;
+  if (k === "1") Detail.show(false);
+  else if (k === "2") Detail.show(true);
+  else if (k === "/" || k === "f") { Detail.show(true); $("dfilter").focus(); e.preventDefault(); }
+  else if (k === "t") cycleTheme();
+  else if (k === "u") setUnit(unit === "C" ? "F" : "C");
+  else if (k === "s") $("btnSettings").click();
+  else if (k === "?" || k === "h") $("help").showModal();
+});
+$("btnHelp").onclick = () => $("help").showModal();
+$("helpClose").onclick = () => $("help").close();
