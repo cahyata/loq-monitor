@@ -346,11 +346,35 @@ sealed class SensorReader : IDisposable
             Storage: storage,
             Battery: bat is null ? null : new BatteryInfo(
                 Round(Val(bat, SensorType.Level, "Charge Level")),
-                Round(Val(bat, SensorType.Power, "Charge/Discharge Rate")),
+                Round(BatteryRateW() ?? Val(bat, SensorType.Power, "Charge/Discharge Rate")),
                 Round(Val(bat, SensorType.Level, "Degradation Level")),
                 Round(designed / 1000), Round(full / 1000)),
             PowerMode: PowerMode(),
             Hardware: AllHardware());
+    }
+
+    /// <summary>
+    /// Battery power in watts: positive while charging, negative while discharging, 0 when idle on AC.
+    /// Windows reports it in milliwatts through root\WMI BatteryStatus. LibreHardwareMonitor leaves its
+    /// rate sensor empty while the battery discharges on this machine, so this is the primary source.
+    /// </summary>
+    static float? BatteryRateW()
+    {
+        try
+        {
+            using var s = new ManagementObjectSearcher(@"root\WMI", "SELECT Charging, Discharging, ChargeRate, DischargeRate FROM BatteryStatus");
+            foreach (ManagementObject o in s.Get())
+            {
+                using (o)
+                {
+                    if (o["Charging"] is true) return Convert.ToInt32(o["ChargeRate"]) / 1000f;
+                    if (o["Discharging"] is true) return -Convert.ToInt32(o["DischargeRate"]) / 1000f;
+                    return 0f;
+                }
+            }
+        }
+        catch { /* no battery or WMI unavailable: fall back to LibreHardwareMonitor */ }
+        return null;
     }
 
     public void Dispose() { try { _pc.Close(); } catch { } _other?.Dispose(); _zone?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }

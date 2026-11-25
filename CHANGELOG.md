@@ -4,6 +4,11 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-25
+
+### Fixed
+- The battery power was blank while the laptop ran on battery, because LibreHardwareMonitor leaves its rate sensor empty while discharging. The service now reads it from Windows (`BatteryStatus` in `root\WMI`), so the battery panel and the overlay show the drain in watts.
+
 ## [0.1.1] - 2026-11-25
 
 ### Added

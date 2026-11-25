@@ -79,7 +79,6 @@ npx tauri build --bundles nsis
 ## Known limits
 
 - The motherboard temperature and system fan read 0 on the test machine.
-- The sign of the battery charge and discharge rate is unverified.
 - No FPS counter. It would need a frame-timing source such as PresentMon.
 
 ## License

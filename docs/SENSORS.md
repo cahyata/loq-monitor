@@ -19,7 +19,7 @@ This document lists the source of each reading and its status on the test machin
 | RAM used, available, load | LHM, hardware item `Total Memory` | Works |
 | SSD temperature, used space, remaining life, read and write rate | LHM | Works |
 | Battery level, health, capacity | LHM | Works |
-| Battery charge/discharge rate | LHM | Works, sign unverified |
+| Battery charge/discharge rate | Windows WMI `root\WMI` `BatteryStatus` (mW), fallback LHM | Works on battery (negative); the charging sign (positive) is by convention, not yet seen |
 | Motherboard temperature, system fan | Lenovo EC | Reads 0 |
 | Lenovo power mode | WMI `LENOVO_GAMEZONE_DATA.GetSmartFanMode` | Works (read-only; mapping unverified, see below) |
 
