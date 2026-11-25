@@ -418,7 +418,8 @@ function render(s) {
     batAvg = batAvg != null && Math.sign(batAvg) === Math.sign(r) ? batAvg * 0.85 + r * 0.15 : r;
     const stored = (b.fullWh ?? 0) * (b.levelPct ?? 0) / 100;
     const left = r < -0.5 && stored > 0 ? ` · about ${hm(stored / -batAvg)} left` : r > 0.5 && b.fullWh ? ` · full in about ${hm(Math.max(0, b.fullWh - stored) / batAvg)}` : "";
-    $("batRate").textContent = (r > 0.5 ? `charging +${fmt(r, 1)} W` : r < -0.5 ? `draining ${fmt(r, 1)} W` : "AC · idle (0.0 W)") + left;
+    $("batRate").textContent = (r > 0.5 ? `charging +${fmt(r, 1)} W` : r < -0.5 ? `draining ${fmt(r, 1)} W`
+      : b.acOnline && b.charging === false && (b.levelPct ?? 0) < 98 ? "AC \u00B7 charging paused (battery protection)" : b.acOnline ? "AC \u00B7 not charging (0.0 W)" : "idle (0.0 W)") + left;
   }
 
   // Storage

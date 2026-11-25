@@ -25,6 +25,7 @@ static class SystemInfo
         Volumes = Volumes(),
         Network = Network(),
         Battery = Battery(),
+        PowerModes = PowerModes(),
     };
 
     static List<T> Query<T>(string scope, string wql, Func<ManagementObject, T> map)
@@ -158,5 +159,25 @@ static class SystemInfo
         var cycles = Query(@"root\WMI", "SELECT CycleCount FROM BatteryCycleCount", o => L(o, "CycleCount")).FirstOrDefault();
         return new { b.Name, b.Chemistry, b.DesignMilliVolts, CycleCount = cycles is > 0 ? cycles : null };
     }
+    /// <summary>
+    /// What each Lenovo power mode allows by default: CPU and GPU power limits. The laptop firmware lists them as
+    /// capability data, one entry per feature and mode. The mode is the second byte of the ID (1 quiet, 2 balanced,
+    /// 3 performance). Read only.
+    /// </summary>
+    static object? PowerModes()
+    {
+        var table = Query(@"root\WMI", "SELECT IDs, DefaultValue FROM LENOVO_CAPABILITY_DATA_01", o => (Id: L(o, "IDs"), Value: L(o, "DefaultValue")))
+            .Where(x => x.Id is not null && x.Value is not null).GroupBy(x => x.Id!.Value).ToDictionary(g => g.Key, g => g.First().Value);
+        if (table.Count == 0) return null;
+        long? V(long feature, int mode) => table.TryGetValue((feature << 16) | ((long)mode << 8), out var v) ? v : null;
+        object Mode(string name, int mode) => new
+        {
+            Name = name,
+            CpuSustainedW = V(0x0102, mode), CpuShortW = V(0x0101, mode), CpuPeakW = V(0x0103, mode), CpuTempC = V(0x0104, mode),
+            GpuBaseW = V(0x0202, mode), GpuBoostW = V(0x0201, mode),
+        };
+        return new[] { Mode("Quiet", 1), Mode("Balanced", 2), Mode("Performance", 3) };
+    }
+
     static string? Chem(long? code) => code switch { 1 => "Other", 3 => "Lead acid", 4 => "Nickel cadmium", 5 => "Nickel metal hydride", 6 => "Lithium ion", 7 => "Zinc air", 8 => "Lithium polymer", _ => null };
 }

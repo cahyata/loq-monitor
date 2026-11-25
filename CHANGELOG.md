@@ -4,6 +4,11 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+### Added
+- A POWER LIMITS card on the Insights tab. It shows the CPU and GPU power and temperature against their limits (CPU from the Lenovo firmware, GPU from the NVIDIA driver) and a table of what each Lenovo power mode allows, with the active mode highlighted. The service reads the limits only while the Insights tab is open.
+- The battery panel says whether the charger is connected and whether charging is paused.
+- Not added, because this model does not expose them through WMI: the GPU mode switch, Battery Conservation Mode and Rapid Charge. See `docs/SENSORS.md`.
+
 ### Changed
 - The header is sorted by purpose. Read only status (service, power mode, alerts, clock) moved to the title bar, next to the window controls. Below it, the pages are one joined control in the order Overview, Insights, Detailed, System, with Overlay set apart because it is a feature and shows a dot while the overlay is on. MINI and SETTINGS are separate buttons with icons on the right. The status line moved under the pages and scrolls away, so only one row stays pinned. The keys 1 to 5 follow the new order.
 

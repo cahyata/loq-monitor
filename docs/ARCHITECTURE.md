@@ -63,6 +63,7 @@ Tauri embeds the frontend files at compile time, so a frontend change in a relea
 | WebSocket text `fps-on`, `fps-off` | Starts or stops PresentMon for this connection. Frame data appears in `fps` while at least one connection wants it. |
 | WebSocket text `procs-on`, `procs-off` | Starts or stops the program ranking for this connection. `processes` appears in the snapshot while at least one connection wants it. |
 | WebSocket text `net-on`, `net-off` | Starts or stops the network probe for this connection. `network` appears in the snapshot while at least one connection wants it. |
+| WebSocket text `limits-on`, `limits-off` | Starts or stops reading the power limits for this connection. `limits` appears in the snapshot while at least one connection wants it, refreshed every 5 s. |
 | WebSocket text `reset-minmax` | Resets the minimum and maximum of every sensor, including the Lenovo EC and ACPI values the service tracks itself. |
 
 The allowed origins are the empty origin (non-browser clients), `tauri://localhost`, `http://tauri.localhost`, `https://tauri.localhost` and `http://localhost:1420`.
@@ -78,7 +79,7 @@ battery { levelPct, rateW, degradationPct, designedWh, fullWh }
 hardware[] { name, type, sensors[] { type, name, value, min, max } }
 ```
 
-`gpu.throttleMask` is the NVIDIA clock throttle reason mask from `nvml.dll` (0x4 power limit, 0x8 hardware slowdown, 0x20 heat limit, 0x40 hardware heat limit, 0x80 power brake), or absent without an NVIDIA driver. `processes` holds the top five programs by CPU, private memory, GPU and disk, summed over all processes of a program, from the raw Windows performance counters (`ProcessSampler.cs`, scanned every 3 s while requested). `network` (`NetProbe.cs`, every 2 s while requested) holds the Wi-Fi link from the Windows WLAN API (`wlanapi.dll`: network name, signal quality in percent, link speed, standard, channel) and ping statistics (now, average, jitter and loss over the last 30 replies) to the default gateway and to the first IPv4 DNS server of the same connection. It never contacts a host the machine does not already use. `powerMode` is the Lenovo power mode: 1 Quiet, 2 Balanced, 3 Performance, 224 or 255 Custom. `hardware` carries every sensor (about 17 KB per snapshot on the test machine), so the Detailed tab needs no second request. `min` and `max` for the Lenovo EC and ACPI groups are tracked by the service since it started.
+`gpu.throttleMask` is the NVIDIA clock throttle reason mask from `nvml.dll` (0x4 power limit, 0x8 hardware slowdown, 0x20 heat limit, 0x40 hardware heat limit, 0x80 power brake), or absent without an NVIDIA driver. `processes` holds the top five programs by CPU, private memory, GPU and disk, summed over all processes of a program, from the raw Windows performance counters (`ProcessSampler.cs`, scanned every 3 s while requested). `network` (`NetProbe.cs`, every 2 s while requested) holds the Wi-Fi link from the Windows WLAN API (`wlanapi.dll`: network name, signal quality in percent, link speed, standard, channel) and ping statistics (now, average, jitter and loss over the last 30 replies) to the default gateway and to the first IPv4 DNS server of the same connection. It never contacts a host the machine does not already use. `limits` holds the CPU sustained, short-term and peak power limits and the CPU temperature limit from the Lenovo firmware, and the GPU enforced power limit and slowdown temperature from NVML. `battery.acOnline` and `battery.charging` come from the Windows battery status. `/system` also returns `powerModes`, the default limits of each Lenovo power mode. `powerMode` is the Lenovo power mode: 1 Quiet, 2 Balanced, 3 Performance, 224 or 255 Custom. `hardware` carries every sensor (about 17 KB per snapshot on the test machine), so the Detailed tab needs no second request. `min` and `max` for the Lenovo EC and ACPI groups are tracked by the service since it started.
 
 The records in `SensorService/Program.cs` define this schema. A numeric field is absent when its sensor has no value, and the UI then shows `--`.
 
@@ -108,7 +109,7 @@ Before it copies files, the installer stops the sensor service, because the runn
 - The listener binds to `127.0.0.1`, so the network cannot reach it.
 - Every request is checked against the origin allowlist.
 - The app CSP is `default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ws://127.0.0.1:47821 http://127.0.0.1:47821`.
-- The service ignores incoming WebSocket messages except a close frame and the text messages `reset-minmax`, `fps-on`, `fps-off`, `procs-on`, `procs-off`, `net-on` and `net-off`, which restart min and max tracking or ask for frame and program data. No message changes a hardware or power setting.
+- The service ignores incoming WebSocket messages except a close frame and the text messages `reset-minmax`, `fps-on`, `fps-off`, `procs-on`, `procs-off`, `net-on`, `net-off`, `limits-on` and `limits-off`, which restart min and max tracking or ask for frame and program data. No message changes a hardware or power setting.
 
 ## Build and run
 

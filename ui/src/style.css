@@ -451,3 +451,18 @@ html.mini #titlebar .wc { margin-left: auto; }
 #toolbar { margin-bottom: 8px; }
 #summary { flex: none; min-width: 0; height: 30px; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
 @media (max-width: 900px) { #summary { height: 40px; } }
+
+/* Power limits card on the Insights page */
+.plgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 18px; align-items: start; }
+.plgrid h3.sub.first { margin-top: 0; padding-top: 0; border-top: 0; }
+.lbars { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 10px; }
+.lbars li { display: grid; gap: 3px; font-size: 13px; }
+.lbars .ltop { display: flex; justify-content: space-between; gap: 10px; }
+.lbars .ltop b { font-variant-numeric: tabular-nums; }
+.lbars .ltrack { height: 8px; background: var(--surface-inset); border: 1px solid var(--border); position: relative; overflow: hidden; }
+.lbars .ltrack i { position: absolute; inset: 0; background: var(--accent-secondary); transform-origin: left center; }
+.lbars .ltrack i.warn { background: var(--highlight); } .lbars .ltrack i.hot { background: var(--accent-primary); }
+.sysrow.modes { grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+.sysrow.modes span.now { color: var(--accent-secondary); font-weight: bold; }
+.sysrow.head span.now { color: var(--accent-secondary); }
+@media (max-width: 760px) { .plgrid { grid-template-columns: 1fr; } }

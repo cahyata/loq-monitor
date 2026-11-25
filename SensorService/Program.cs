@@ -105,6 +105,7 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
             var wantsFps = false;
             var wantsProcs = false;
             var wantsNet = false;
+            var wantsLimits = false;
             try
             {
                 while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
@@ -124,10 +125,12 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
                         case "procs-off": if (wantsProcs) { wantsProcs = false; procs.Release(); } break;
                         case "net-on": if (!wantsNet) { wantsNet = true; net.Acquire(); } break;
                         case "net-off": if (wantsNet) { wantsNet = false; net.Release(); } break;
+                        case "limits-on": if (!wantsLimits) { wantsLimits = true; reader.WantLimits(true); } break;
+                        case "limits-off": if (wantsLimits) { wantsLimits = false; reader.WantLimits(false); } break;
                     }
                 }
             }
-            finally { if (wantsFps) fps.Release(); if (wantsProcs) procs.Release(); if (wantsNet) net.Release(); }
+            finally { if (wantsFps) fps.Release(); if (wantsProcs) procs.Release(); if (wantsNet) net.Release(); if (wantsLimits) reader.WantLimits(false); }
             clients.TryRemove(ws, out _);
             ws.Dispose();
         }
@@ -207,13 +210,14 @@ sealed class SensorReader : IDisposable
     // The Lenovo power mode and the ACPI zones change slowly and each read costs tens of milliseconds, so they refresh less often.
     readonly Throttled<int?> _mode;
     readonly Throttled<SensorInfo[]> _acpi;
-    readonly Throttled<float?> _batteryRate;
+    readonly Throttled<BatteryPower?> _batteryRate;
 
     public SensorReader()
     {
         _mode = new(ReadPowerMode, 3000);
         _acpi = new(ReadAcpiZones, 3000);
         _batteryRate = new(ReadBatteryRateW, 2000);
+        _limits = new(ReadLimits, 5000);
         Open();
     }
 
@@ -276,16 +280,45 @@ sealed class SensorReader : IDisposable
     {
         if (_other is null) return null;
         if (_features.TryGetValue(id, out var cached)) return cached;
-        int? value = null;
+        return _features[id] = ReadFeature(id);
+    }
+
+    int? ReadFeature(int id)
+    {
+        if (_other is null) return null;
         try
         {
             _featureArgs ??= _other.GetMethodParameters("GetFeatureValue");
             _featureArgs["IDs"] = id;
             var r = _other.InvokeMethod("GetFeatureValue", _featureArgs, null);
-            value = Convert.ToInt32(r?["value"]);
+            return Convert.ToInt32(r?["value"]);
         }
-        catch { }
-        return _features[id] = value;
+        catch { return null; }
+    }
+
+    // ---- power limits: what the laptop firmware and the GPU driver allow right now ----
+    // Lenovo capability IDs, the values of the active power mode (the FF suffix). Read only.
+    const int CpuShortTermW = 0x0101FF00, CpuLongTermW = 0x0102FF00, CpuPeakW = 0x0103FF00, CpuTempLimitC = 0x0104FF00;
+    readonly Throttled<PowerLimits?> _limits;
+    int _limitsWanted;
+
+    /// <summary>Asks for the limits to be read (true) or lets go (false). They are read only while someone shows them.</summary>
+    public void WantLimits(bool want)
+    {
+        if (want) Interlocked.Increment(ref _limitsWanted);
+        else if (Volatile.Read(ref _limitsWanted) > 0) Interlocked.Decrement(ref _limitsWanted);
+    }
+
+    PowerLimits? ReadLimits()
+    {
+        var cpuLong = ReadFeature(CpuLongTermW);
+        var cpuShort = ReadFeature(CpuShortTermW);
+        var cpuPeak = ReadFeature(CpuPeakW);
+        var cpuTemp = ReadFeature(CpuTempLimitC);
+        var gpuW = _nvml.PowerLimitW();
+        var gpuTemp = _nvml.SlowdownTempC();
+        if (cpuLong is null && gpuW is null) return null;
+        return new PowerLimits(cpuLong, cpuShort, cpuPeak, cpuTemp, gpuW, gpuTemp);
     }
 
     static float? Val(IHardware hw, SensorType t, string name) =>
@@ -426,10 +459,11 @@ sealed class SensorReader : IDisposable
             Storage: storage,
             Battery: bat is null ? null : new BatteryInfo(
                 Round(Val(bat, SensorType.Level, "Charge Level")),
-                Round(BatteryRateW() ?? Val(bat, SensorType.Power, "Charge/Discharge Rate")),
+                Round(BatteryNow()?.RateW ?? Val(bat, SensorType.Power, "Charge/Discharge Rate")),
                 Round(Val(bat, SensorType.Level, "Degradation Level")),
-                Round(designed / 1000), Round(full / 1000)),
+                Round(designed / 1000), Round(full / 1000), BatteryNow()?.AcOnline, BatteryNow()?.Charging),
             PowerMode: PowerMode(),
+            Limits: Volatile.Read(ref _limitsWanted) > 0 ? _limits.Get() : null,
             Hardware: AllHardware());
     }
 
@@ -438,20 +472,22 @@ sealed class SensorReader : IDisposable
     /// Windows reports it in milliwatts through root\WMI BatteryStatus. LibreHardwareMonitor leaves its
     /// rate sensor empty while the battery discharges on this machine, so this is the primary source.
     /// </summary>
-    float? BatteryRateW() => _batteryRate.Get();
+    BatteryPower? BatteryNow() => _batteryRate.Get();
 
-    static float? ReadBatteryRateW()
+    static BatteryPower? ReadBatteryRateW()
     {
         try
         {
-            using var s = new ManagementObjectSearcher(@"root\WMI", "SELECT Charging, Discharging, ChargeRate, DischargeRate FROM BatteryStatus");
+            using var s = new ManagementObjectSearcher(@"root\WMI", "SELECT PowerOnline, Charging, Discharging, ChargeRate, DischargeRate FROM BatteryStatus");
             foreach (ManagementObject o in s.Get())
             {
                 using (o)
                 {
-                    if (o["Charging"] is true) return Convert.ToInt32(o["ChargeRate"]) / 1000f;
-                    if (o["Discharging"] is true) return -Convert.ToInt32(o["DischargeRate"]) / 1000f;
-                    return 0f;
+                    var ac = o["PowerOnline"] as bool?;
+                    var charging = o["Charging"] as bool?;
+                    if (charging is true) return new(Convert.ToInt32(o["ChargeRate"]) / 1000f, ac, charging);
+                    if (o["Discharging"] is true) return new(-Convert.ToInt32(o["DischargeRate"]) / 1000f, ac, charging);
+                    return new(0f, ac, charging);
                 }
             }
         }
@@ -462,7 +498,7 @@ sealed class SensorReader : IDisposable
     public void Dispose() { try { _pc.Close(); } catch { } _featureArgs?.Dispose(); _nvml.Dispose(); _other?.Dispose(); _zone?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }
 }
 
-record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode, List<HwInfo> Hardware, FpsInfo? Fps = null, ProcessInfo? Processes = null, NetworkInfo? Network = null);
+record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode, List<HwInfo> Hardware, FpsInfo? Fps = null, ProcessInfo? Processes = null, NetworkInfo? Network = null, PowerLimits? Limits = null);
 record HwInfo(string Name, string Type, SensorInfo[] Sensors);
 record SensorInfo(string Type, string Name, float? Value, float? Min, float? Max);
 record CpuInfo(string? Name, float? Load, float? TempC, int? FanRpm, float? ClockMHz, float? PowerW, float[] CoreLoads);
@@ -471,4 +507,7 @@ record GpuInfo(string? Name, float? Load, float? TempC, float? HotspotC, float? 
                float? PcieRxMBs, float? PcieTxMBs, int? ThrottleMask = null);
 record RamInfo(float? LoadPct, float? UsedGB, float? AvailableGB);
 record StorageInfo(string Name, float? TempC, float? UsedPct, float? LifePct, float? ReadMBs, float? WriteMBs, float? ActivityPct);
-record BatteryInfo(float? LevelPct, float? RateW, float? DegradationPct, float? DesignedWh, float? FullWh);
+record BatteryInfo(float? LevelPct, float? RateW, float? DegradationPct, float? DesignedWh, float? FullWh, bool? AcOnline = null, bool? Charging = null);
+record BatteryPower(float RateW, bool? AcOnline, bool? Charging);
+/// <summary>Limits in watts and degrees: the CPU from the Lenovo firmware, the GPU from the NVIDIA driver.</summary>
+record PowerLimits(int? CpuSustainedW, int? CpuShortW, int? CpuPeakW, int? CpuTempC, int? GpuW, int? GpuTempC);

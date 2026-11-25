@@ -42,6 +42,28 @@ The service calls `GetFeatureValue` on `LENOVO_OTHER_METHOD` in the `root\WMI` n
 
 The service uses the GPU temperature from LHM and falls back to the EC value. All four calls only read values.
 
+### Lenovo power limits
+
+`LENOVO_OTHER_METHOD.GetFeatureValue` returns the limits of the active power mode when asked for these IDs (the `FF` suffix). `LENOVO_CAPABILITY_DATA_01` lists the same features with a default and a range per mode (the second byte of the ID: 1 quiet, 2 balanced, 3 performance, `E0` custom). Both are read only. The meaning of each ID follows the community documentation of the Lenovo WMI interface (Legion Toolkit) and the ranges on this machine fit it. The values were not checked against a second tool.
+
+| ID prefix | Meaning | Active value on the test machine (Balanced) |
+|---|---|---|
+| `0x0101` | CPU short-term power limit, 45 to 100 W | 54 W |
+| `0x0102` | CPU long-term (sustained) power limit, 40 to 75 W | 54 W |
+| `0x0103` | CPU peak power limit, 55 to 125 W | 65 W |
+| `0x0104` | CPU temperature limit, 85 to 100 degrees | 95 degrees |
+| `0x0201` | GPU power boost, 10 to 25 W | 15 W |
+| `0x0202` | GPU base power (TGP), 55 to 105 W | the active value reads 105 W, which does not match the 69 W the driver enforces, so the app does not show it |
+
+The GPU limit and its slowdown temperature come from NVML instead (`nvmlDeviceGetEnforcedPowerLimit`, `nvmlDeviceGetTemperatureThreshold`), which report what the driver enforces: 69 W and 91 degrees on the test machine. The NVML limit moves a little with Dynamic Boost.
+
+## Not available on this model
+
+| Feature | Finding |
+|---|---|
+| GPU mode (hybrid or discrete) | `IsSupportIGPUMode` and `IsSupportGSync` return 0 on the 83JC, so the switch is not exposed through WMI. |
+| Battery conservation mode, Rapid Charge | No WMI class or capability ID for them was found (`Lenovo_BiosSetting` does not exist, `LENOVO_FEATURE_STATUS_DATA` reports "Not supported", and the capability list has no entry that can be named with confidence). Lenovo Vantage reads them through an ACPI driver that this app does not use. The app shows what can be measured instead: whether the charger is connected and whether charging is paused. |
+
 ## Limitations
 
 ### PawnIO driver

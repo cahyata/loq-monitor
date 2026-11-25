@@ -14,6 +14,8 @@ sealed class Nvml : IDisposable
     [DllImport("nvml.dll")] static extern int nvmlShutdown();
     [DllImport("nvml.dll")] static extern int nvmlDeviceGetHandleByIndex_v2(uint index, out IntPtr device);
     [DllImport("nvml.dll")] static extern int nvmlDeviceGetCurrentClocksThrottleReasons(IntPtr device, out ulong reasons);
+    [DllImport("nvml.dll")] static extern int nvmlDeviceGetEnforcedPowerLimit(IntPtr device, out uint milliwatts);
+    [DllImport("nvml.dll")] static extern int nvmlDeviceGetTemperatureThreshold(IntPtr device, int kind, out uint celsius);
 
     // Bits that matter to the user. Idle, application clocks and sync boost are normal and left out.
     const ulong SwPowerCap = 0x4, HwSlowdown = 0x8, SwThermal = 0x20, HwThermal = 0x40, HwPowerBrake = 0x80;
@@ -36,6 +38,22 @@ sealed class Nvml : IDisposable
     {
         if (!_ready) return null;
         try { return nvmlDeviceGetCurrentClocksThrottleReasons(_device, out var r) == 0 ? (int)(r & Mask) : null; }
+        catch (Exception) { return null; }
+    }
+
+    /// <summary>The power limit the GPU is held to right now, in watts, or null.</summary>
+    public int? PowerLimitW()
+    {
+        if (!_ready) return null;
+        try { return nvmlDeviceGetEnforcedPowerLimit(_device, out var mw) == 0 ? (int)Math.Round(mw / 1000.0) : null; }
+        catch (Exception) { return null; }
+    }
+
+    /// <summary>The temperature at which the GPU starts to slow down, in degrees Celsius, or null.</summary>
+    public int? SlowdownTempC()
+    {
+        if (!_ready) return null;
+        try { return nvmlDeviceGetTemperatureThreshold(_device, 1, out var c) == 0 ? (int)c : null; }   // 1 is NVML_TEMPERATURE_THRESHOLD_SLOWDOWN
         catch (Exception) { return null; }
     }
 

@@ -93,7 +93,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   function syncProcs() {
     const want = wantNow();
     if (want !== askedProcs) { askedProcs = want; askedAt = Date.now(); sendWs(want ? "procs-on" : "procs-off"); }
-    if (want !== askedNet) { askedNet = want; sendWs(want ? "net-on" : "net-off"); }
+    if (want !== askedNet) { askedNet = want; sendWs(want ? "net-on" : "net-off"); sendWs(want ? "limits-on" : "limits-off"); }
   }
   document.addEventListener("visibilitychange", syncProcs);
 
@@ -162,6 +162,60 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     wrap.replaceChildren(row(["LIMIT", "THIS SESSION", "TODAY"], true),
       ...(hit.length ? hit.map((l) => { const x = row([l.name, clock(sess.limitSec[l.bit] ?? 0), clock(day.limitSec[l.bit] ?? 0)]); x.title = l.text; return x; })
                      : [el("p", "note", "No limit has held the GPU back so far today.")]));
+  }
+
+  /* ---- power limits card ---- */
+  let modes = null, modesAsked = false;
+  function loadModes() {
+    if (modes || modesAsked) return;
+    modesAsked = true;
+    fetch("http://127.0.0.1:47821/system").then((r) => r.json()).then((d) => { modes = d.powerModes ?? []; if (last) paintLimitsCard(last); }).catch(() => { modesAsked = false; });
+  }
+
+  function lbar(label, value, limit, text, kind) {
+    const li = el("li"), top = el("div", "ltop"), track = el("div", "ltrack"), fill = el("i");
+    const ratio = limit ? Math.max(0, Math.min(1, value / limit)) : 0;
+    fill.style.transform = `scaleX(${ratio})`;
+    if (kind === "temp") fill.className = ratio >= 0.97 ? "hot" : ratio >= 0.9 ? "warn" : "";
+    top.append(el("span", null, label), el("b", null, text)); track.append(fill); li.append(top, track);
+    return li;
+  }
+
+  function paintLimitsCard(s) {
+    const L = s.limits, bars = $("insPLBars"), mode = { 1: 1, 2: 2, 3: 3 }[s.powerMode] ?? 0;
+    const names = { 1: "Quiet", 2: "Balanced", 3: "Performance", 224: "Custom", 255: "Custom" };
+    $("insPLMode").textContent = s.powerMode ? "Power mode: " + (names[s.powerMode] ?? "--") : "";
+    if (!L) {
+      const old = askedAt && Date.now() - askedAt > 12000;
+      bars.replaceChildren(el("li", "empty", old ? "No data. The sensor service that is running is older than this app and cannot read the limits." : "Reading the limits..."));
+    } else {
+      const items = [];
+      if (L.cpuSustainedW != null && s.cpu?.powerW != null)
+        items.push(lbar("CPU power", s.cpu.powerW, L.cpuPeakW ?? L.cpuSustainedW, `${s.cpu.powerW.toFixed(0)} W of ${L.cpuSustainedW} W sustained${L.cpuPeakW ? ", " + L.cpuPeakW + " W peak" : ""}`));
+      if (L.gpuW != null && s.gpu?.powerW != null)
+        items.push(lbar("GPU power", s.gpu.powerW, L.gpuW, `${s.gpu.powerW.toFixed(0)} W of ${L.gpuW} W`));
+      if (L.cpuTempC != null && s.cpu?.tempC != null)
+        items.push(lbar("CPU temperature", s.cpu.tempC, L.cpuTempC, `${tf(s.cpu.tempC)}${deg()} of ${tf(L.cpuTempC)}${deg()}`, "temp"));
+      if (L.gpuTempC != null && s.gpu?.tempC != null)
+        items.push(lbar("GPU temperature", s.gpu.tempC, L.gpuTempC, `${tf(s.gpu.tempC)}${deg()} of ${tf(L.gpuTempC)}${deg()} slowdown`, "temp"));
+      bars.replaceChildren(...items);
+    }
+
+    const wrap = $("insPLModes");
+    if (modes && modes.length) {
+      const row = (cells, head) => {
+        const x = el("div", "sysrow modes" + (head ? " head" : "")); x.setAttribute("role", "row");
+        cells.forEach((c, i) => { const sp = el("span", i && modes[i - 1] && mode === i ? "now" : null, c); sp.setAttribute("role", head ? "columnheader" : "cell"); x.append(sp); });
+        return x;
+      };
+      const W = (k) => modes.map((m) => (m[k] == null ? "--" : m[k] + " W"));
+      wrap.replaceChildren(row(["", ...modes.map((m) => m.name.toUpperCase())], true),
+        row(["CPU sustained", ...W("cpuSustainedW")]), row(["CPU short boost", ...W("cpuShortW")]), row(["CPU peak", ...W("cpuPeakW")]),
+        row(["GPU base", ...W("gpuBaseW")]), row(["GPU boost", ...W("gpuBoostW")]));
+    } else wrap.replaceChildren(el("p", "note", modes ? "This laptop does not list limits per mode." : "Reading..."));
+
+    $("insPLNote").textContent = "These limits come from the laptop firmware (CPU) and the NVIDIA driver (GPU). LOQ Monitor only reads them. Change the power mode with Fn+Q or in Lenovo Vantage. When power sits at its limit the chip is held back, which is normal under heavy load."
+      + (s.powerMode === 224 || s.powerMode === 255 ? " Custom mode uses your own values, so the table shows only the defaults of the other modes." : "");
   }
 
   /* ---- network card ---- */
@@ -280,7 +334,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
 
   function paint() {
     if (!last) return;
-    paintProcs(last); paintPower(last); paintLimits(last); paintNetwork(last); paintStats();
+    paintProcs(last); paintPower(last); paintLimits(last); paintLimitsCard(last); paintNetwork(last); paintStats();
   }
 
   /* ---- controls ---- */
@@ -297,7 +351,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   addEventListener("beforeunload", saveDay);
 
   return {
-    setActive(on) { active = on; syncProcs(); if (on) paint(); },
+    setActive(on) { active = on; syncProcs(); if (on) { loadModes(); paint(); } },
     update,
     /** After a reconnect the service has forgotten what this window asked for. */
     resync() { askedProcs = false; askedNet = false; syncProcs(); },
