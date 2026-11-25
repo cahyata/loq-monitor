@@ -48,13 +48,14 @@ const Detail = (() => {
       const sm = document.createElement("summary");
       const a = document.createElement("span"), b = document.createElement("span");
       a.textContent = h.name; b.className = "dim"; b.textContent = rows.length + " sensors";
+      sm.title = SensorHelp.hardware(h.name, h.type);
       sm.append(a, b); d.append(sm);
       if (sort === "name") rows.sort((p, q) => p.x.name.localeCompare(q.x.name, undefined, { numeric: true }));
       [...new Set(rows.map((r) => r.x.type))].sort((p, q) => rank(p) - rank(q)).forEach((t) => {
         const g = document.createElement("div"); g.className = "grp";
-        const h4 = document.createElement("h4"); h4.textContent = NAMES[t] ?? t; g.append(h4);
+        const h4 = document.createElement("h4"); h4.textContent = NAMES[t] ?? t; h4.title = SensorHelp.group(t); g.append(h4);
         const head = document.createElement("div"); head.className = "srow head";
-        ["SENSOR", "VALUE", "MIN", "MAX"].forEach((c) => { const s = document.createElement("span"); s.textContent = c; head.append(s); });
+        ["SENSOR", "VALUE", "MIN", "MAX"].forEach((c) => { const s = document.createElement("span"); s.textContent = c; s.title = SensorHelp.column(c); head.append(s); });
         g.append(head);
         rows.filter((r) => r.x.type === t).forEach(({ x, i }) => {
           const r = document.createElement("div"); r.className = "srow"; r.dataset.i = i;
@@ -66,7 +67,8 @@ const Detail = (() => {
           paint();
           pin.setAttribute("aria-label", "Favorite " + x.name);
           pin.onclick = (ev) => { ev.stopPropagation(); Pins.toggle(key); sig = ""; if (last) { refresh(last); if (typeof renderFavs === "function") renderFavs(last); } };
-          r.children[0].append(pin, document.createTextNode(x.name)); r.children[0].title = x.name;
+          r.children[0].append(pin, document.createTextNode(x.name));
+          r.title = x.name + "\n" + SensorHelp.sensor(x.type, x.name);   // plain-language hint on hover
           g.append(r);
         });
         d.append(g);

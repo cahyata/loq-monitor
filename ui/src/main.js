@@ -126,7 +126,7 @@ function renderFavs(s) {
   if (!items.length || typeof Detail === "undefined") return;
   $("favList").replaceChildren(...items.map(({ hw, x }) => {
     const row = document.createElement("div"); row.className = "fav";
-    const a = document.createElement("span"); a.textContent = hw + " \u203A " + x.name; a.title = a.textContent;
+    const a = document.createElement("span"); a.textContent = hw + " \u203A " + x.name; row.title = a.textContent + "\n" + SensorHelp.sensor(x.type, x.name);
     const b = document.createElement("b"); b.textContent = Detail.fmt(x.type, x.value);
     row.append(a, b); return row;
   }));

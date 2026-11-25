@@ -141,6 +141,9 @@ dd.warn { color: var(--highlight); } dd.hot { color: var(--accent-primary); }
 .srow .val { color: var(--text-strong); font-weight: bold; }
 .srow .val.warn { color: var(--highlight); } .srow .val.hot { color: var(--accent-primary); }
 .srow .mm { color: var(--text-muted); }
+.srow:not(.head):hover { background: var(--surface-hover); cursor: help; }
+.hw > summary[title], .grp h4[title], .srow.head span[title] { cursor: help; }
+.hw > summary { cursor: pointer; }
 @media (max-width: 600px) { .srow { grid-template-columns: minmax(0, 1fr) 80px 80px 80px; } }
 
 /* ---------- title bar ---------- */

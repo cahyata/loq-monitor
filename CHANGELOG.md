@@ -10,6 +10,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 - `scripts/install-service.ps1` and `scripts/uninstall-service.ps1` register or remove a scheduled task that starts SensorService at logon with the highest run level.
 - CPU clock and CPU package power in the CPU panel. Power needs the PawnIO driver (see `docs/SENSORS.md`).
 - DETAILED tab next to OVERVIEW: every sensor (LibreHardwareMonitor, Lenovo EC, ACPI thermal zones, network) grouped by hardware with value, min and max, a filter box, and expand or collapse controls. The snapshot gains a `hardware` array.
+- Plain-language hints in the Detailed tab: hover a sensor row, a hardware section, a group heading or a column title (`ui/src/help.js`).
 - Temperature unit switch, degrees Celsius or Fahrenheit, in SETTINGS or with the U key. The service and all limits stay in Celsius.
 - Pin sensors with the star in the Detailed tab. Pinned sensors appear in a Favorites section at the top of the Detailed tab and in a Favorites panel in Overview.
 - Keyboard shortcuts (1, 2, /, F, T, U, M, S, ?) and a KEYS button that lists them.
