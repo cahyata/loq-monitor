@@ -13,7 +13,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 - Plain-language hints in the Detailed tab: hover a sensor row, a hardware section, a group heading or a column title (`ui/src/help.js`).
 - Temperature unit switch, degrees Celsius or Fahrenheit, in SETTINGS or with the U key. The service and all limits stay in Celsius.
 - Pin sensors with the star in the Detailed tab. Pinned sensors appear in a Favorites section at the top of the Detailed tab and in a Favorites panel in Overview.
-- Keyboard shortcuts (1, 2, /, F, T, U, M, S, ?) and a KEYS button that lists them.
+- Keyboard shortcuts (1, 2, /, F, T, U, M, S, ?) with a list in SETTINGS.
 - Theme can follow the operating system. THEME now cycles AUTO, DARK and LIGHT, and AUTO is the default.
 - Banner when the CPU, GPU or GPU hotspot stays at or above its limit for 30 seconds, with Snooze (30 minutes) and Dismiss.
 - Chart range switch (1 minute, 10 minutes, 1 hour), warm and hot limit lines, and a min, average and max caption.
@@ -34,6 +34,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 - RAM, VRAM, battery and drives show status chips (OK, HIGH, LOW, CRITICAL). Drive temperature now uses its own limits (70 and 80 degrees Celsius) in the card, the log and the summary. Only the temperature chips blink.
 - Temperature charts scale to the data and always include both limits. Axis labels sit in a left gutter and no longer overlap the line.
 - CPU and GPU cards are balanced: the per-thread load bars fill the free space, and secondary text is larger.
+- The top bar keeps only MINI and SETTINGS. Theme, visual effects, desktop notifications and the shortcut list moved into SETTINGS, which is now grouped into Appearance, Alerts and Keyboard. The T and U keys show a short message, and the bar shows ALERTS OFF while notifications are disabled.
 - The browser right-click menu (Back, Reload, Inspect) is disabled. Text fields keep their menu so Paste still works.
 - Accessibility pass against WCAG 2.2 AA: tabs report their selected state and control their panels, the toggle buttons report pressed state, panel titles are real headings, sensors in the Detailed tab are exposed as tables, the charts have a text summary, and the sustained-heat banner is announced once instead of every second.
 - Click targets are at least 24 by 24 px, and the outlines of inputs and buttons reach 3:1 contrast against the page.

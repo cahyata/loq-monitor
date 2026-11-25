@@ -278,3 +278,15 @@ dialog#settings input[type="checkbox"] { width: auto; }
 .vrow .tag { margin-left: 0; }
 #ramSub, #vramSub, #batSub, #batRate { color: var(--text); font-size: 12px; }
 .disk .ln .tag { margin-left: 6px; font-size: 11px; padding: 0 5px; }
+
+/* ---------- fewer buttons in the top bar ---------- */
+#alertsOff b { color: var(--highlight); font-weight: bold; }
+dialog#settings { max-height: calc(100vh - 80px); overflow-y: auto; }
+dialog#settings h3 { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--accent-primary); margin: 12px 0 2px; padding-top: 8px; border-top: 1px solid var(--divider); }
+dialog#settings h2 + h3 { border-top: 0; padding-top: 0; margin-top: 4px; }
+dialog#settings .more { margin: 6px 0 0; }
+dialog#settings .more button { font: bold 11px var(--font-mono); letter-spacing: 1.5px; color: var(--accent-secondary); background: none; border: 1px solid var(--text-muted); padding: 4px 12px; min-height: 24px; cursor: pointer; }
+dialog#settings .more button:hover { border-color: var(--accent-secondary); }
+#toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 40; padding: 6px 16px; font-size: 12px; font-weight: bold; letter-spacing: 1px;
+  color: var(--text-strong); background: var(--surface-raised); border: 1px solid var(--accent-secondary); box-shadow: 0 0 14px color-mix(in srgb, var(--accent-secondary) 40%, transparent); }
+#toast[hidden] { display: none; }

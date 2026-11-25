@@ -43,21 +43,23 @@ function cycleTheme() {
   const order = ["system", "dark", "light"];
   store.set("theme", order[(order.indexOf(themePref()) + 1) % 3]);
   applyPrefs(); drawAll();
+  toast("Theme: " + THEME_LABEL[themePref()]);
+}
+
+/* a short message for actions that no longer have a visible button (keyboard shortcuts) */
+let toastTimer = null;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 1800);
 }
 
 function applyPrefs() {
-  $("btnAlerts").classList.toggle("on", store.get("alerts", "on") === "on");
-  $("btnAlerts").setAttribute("aria-pressed", String(store.get("alerts", "on") === "on"));
   const t = themePref();
   root.classList.toggle("light", t === "light" || (t === "system" && systemLight.matches));
-  $("btnTheme").textContent = "THEME: " + THEME_LABEL[t];
   root.classList.toggle("nofx", store.get("fx", "on") === "off");
-  $("btnFx").classList.toggle("on", store.get("fx", "on") === "on");
-  $("btnFx").setAttribute("aria-pressed", String(store.get("fx", "on") === "on"));
+  $("alertsOff").hidden = store.get("alerts", "on") === "on";     // the bar says so when notifications are off
 }
-$("btnAlerts").onclick = () => { store.set("alerts", store.get("alerts", "on") === "on" ? "off" : "on"); applyPrefs(); };
-$("btnFx").onclick = () => { store.set("fx", store.get("fx", "on") === "on" ? "off" : "on"); applyPrefs(); };
-$("btnTheme").onclick = cycleTheme;
 systemLight.addEventListener("change", () => { if (themePref() === "system") { applyPrefs(); drawAll(); } });
 applyPrefs(); applyUnit();
 for (const k of Object.keys(DEFAULTS)) { const v = parseFloat(store.get("cfg." + k, "")); if (Number.isFinite(v)) CFG[k] = v; }
@@ -438,7 +440,7 @@ function showOffline(show) {
   $("offline").hidden = !show;
   $("scroller").inert = show;                      // the page behind the overlay cannot take focus
   if (show && !was) $("btnStart").focus();
-  if (!show && was) $("btnTheme").focus({ preventScroll: true });
+  if (!show && was) $("btnSettings").focus({ preventScroll: true });
 }
 function setLink(on) {
   const b = $("link");
@@ -474,6 +476,7 @@ const TEMP_KEYS = ["warn", "hot", "spot"];
 let dlgUnit = unit;
 function fillCfg(src, u) {
   dlgUnit = u; $("cfgUnit").value = u; $("cfgKeys").checked = keysOn;
+  $("cfgTheme").value = themePref(); $("cfgFx").checked = store.get("fx", "on") === "on"; $("cfgAlerts").checked = store.get("alerts", "on") === "on";
   document.querySelectorAll(".dlg-deg").forEach((e) => { e.textContent = "\u00B0" + u; });
   for (const [k, id] of Object.entries(cfgIds)) $(id).value = TEMP_KEYS.includes(k) ? Math.round(conv(src[k], u)) : src[k];
   $("cfgErr").textContent = "";
@@ -494,6 +497,8 @@ $("settingsForm").onsubmit = (e) => {
   if (v.warn >= v.hot) { e.preventDefault(); $("cfgErr").textContent = "Warm must be lower than Hot."; return; }
   if (TEMP_KEYS.some((k) => v[k] < 30 || v[k] > 120) || v.hold < 0 || v.hold > 300) { e.preventDefault(); $("cfgErr").textContent = "Limits must be 30 to 120 \u00B0C (86 to 248 \u00B0F) and the delay 0 to 300 s."; return; }
   keysOn = $("cfgKeys").checked; store.set("keys", keysOn ? "on" : "off");
+  store.set("theme", $("cfgTheme").value); store.set("fx", $("cfgFx").checked ? "on" : "off"); store.set("alerts", $("cfgAlerts").checked ? "on" : "off");
+  applyPrefs(); drawAll();
   if (dlgUnit !== unit) setUnit(dlgUnit);
   Object.assign(CFG, v);
   for (const k of Object.keys(v)) store.set("cfg." + k, String(v[k]));
@@ -548,11 +553,11 @@ addEventListener("keydown", (e) => {
   else if (k === "2") Detail.show(true);
   else if (k === "/" || k === "f") { Detail.show(true); $("dfilter").focus(); e.preventDefault(); }
   else if (k === "t") cycleTheme();
-  else if (k === "u") setUnit(unit === "C" ? "F" : "C");
+  else if (k === "u") { setUnit(unit === "C" ? "F" : "C"); toast("Unit: \u00B0" + unit); }
   else if (k === "s") $("btnSettings").click();
   else if (k === "?" || k === "h") $("help").showModal();
 });
-$("btnHelp").onclick = () => $("help").showModal();
+$("btnHelp").onclick = () => { $("settings").close(); $("help").showModal(); };
 $("helpClose").onclick = () => $("help").close();
 
 /* ---------- close a dialog by clicking outside it ---------- */
