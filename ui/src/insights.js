@@ -9,7 +9,7 @@
    only while this tab is open. Shares $, store, sendWs, tf, deg, GPU_LIMITS and limitsOf with main.js. */
 
 var Insights = (() => {   // var, so a failure while loading this file cannot break the typeof checks in main.js
-  let active = false, last = null, procKey = store.get("insproc", "cpu"), askedProcs = false;
+  let active = false, last = null, procKey = store.get("insproc", "cpu"), askedProcs = false, askedAt = 0;
   let prevAt = 0;
 
   /** One bucket of statistics per measured value. */
@@ -62,7 +62,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   function syncProcs() {
     const want = wantProcs();
     if (want === askedProcs) return;
-    askedProcs = want; sendWs(want ? "procs-on" : "procs-off");
+    askedProcs = want; askedAt = Date.now(); sendWs(want ? "procs-on" : "procs-off");
   }
   document.addEventListener("visibilitychange", syncProcs);
 
@@ -78,7 +78,14 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     const list = $("insProcs"), f = FORMATS[procKey];
     const rows = s?.processes?.[procKey];
     $("insProcNote").textContent = s?.processes ? "Updates every 3 s" : "";
-    if (!s?.processes) { list.replaceChildren(el("li", "empty", "Measuring... the first numbers appear in a few seconds.")); return; }
+    if (!s?.processes) {
+      // An older sensor service ignores the request, so say so instead of waiting for ever.
+      const old = askedAt && Date.now() - askedAt > 12000;
+      list.replaceChildren(el("li", "empty", old
+        ? "No data. The sensor service that is running is older than this app and cannot rank programs. Update LOQ Monitor, or restart the service from the new install."
+        : "Measuring... the first numbers appear in a few seconds."));
+      return;
+    }
     if (!rows.length) { list.replaceChildren(el("li", "empty", f.empty)); return; }
     const top = procKey === "memMB" || procKey === "diskMBs" ? Math.max(...rows.map((r) => r.value)) : 100;
     list.replaceChildren(...rows.map((r, i) => {
@@ -115,7 +122,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     const worst = now[0];
     $("insLimitState").textContent = s.gpu?.throttleMask == null ? "Not available" : worst ? worst.label : "No limit";
     $("insLimitNow").textContent = s.gpu?.throttleMask == null
-      ? "This needs an NVIDIA GPU and its driver."
+      ? "This needs an NVIDIA GPU with its driver, and a sensor service that is as new as this app."
       : worst ? worst.text : "The GPU is running without being held back right now.";
     // Only the limits that happened are listed, so the table is not a wall of zeros.
     const hit = GPU_LIMITS.filter((l) => (sess.limitSec[l.bit] ?? 0) > 0 || (day.limitSec[l.bit] ?? 0) > 0);

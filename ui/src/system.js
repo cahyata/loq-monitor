@@ -60,6 +60,13 @@ var SystemPage = (() => {   // var, so a failure while loading this file cannot 
       ] });
     }
 
+    if (b) {
+      out.push({ title: "BATTERY", color: "yellow", rows: [
+        ["Model", b.name], ["Design capacity", null, "batDesign"], ["Full charge capacity", null, "batFull"], ["Health", null, "batHealth"],
+        ["Charge cycles", b.cycleCount], ["Design voltage", b.designMilliVolts ? (b.designMilliVolts / 1000).toFixed(1) + " V" : null],
+      ] });
+    }
+
     const total = mem.reduce((a, m) => a + (m.bytes ?? 0), 0);
     out.push({ title: "MEMORY", color: "orange", wide: true, rows: [
       ["Installed", total ? GB(total) + " in " + mem.length + " module" + (mem.length === 1 ? "" : "s") : null],
@@ -79,12 +86,6 @@ var SystemPage = (() => {   // var, so a failure while loading this file cannot 
       return [n.name, n.connection, n.speedMbps ? n.speedMbps + " Mbps" : "--", hide(v4 ?? "--"), hide(n.gateway ?? "--"), hide(n.mac ?? "--")];
     }) } });
 
-    if (b) {
-      out.push({ title: "BATTERY", color: "yellow", rows: [
-        ["Model", b.name], ["Design capacity", null, "batDesign"], ["Full charge capacity", null, "batFull"], ["Health", null, "batHealth"],
-        ["Charge cycles", b.cycleCount], ["Design voltage", b.designMilliVolts ? (b.designMilliVolts / 1000).toFixed(1) + " V" : null],
-      ] });
-    }
     return out;
   }
 

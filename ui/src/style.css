@@ -337,7 +337,7 @@ fieldset.mgroup legend { padding-right: 8px; font-size: 12px; letter-spacing: 1.
 @media (max-width: 900px) { .ovwrap { grid-template-columns: 1fr; } .ovside { position: static; } }
 
 /* ---------- Overlay order list ---------- */
-.panel h3.sub { font-size: 12px; letter-spacing: 1.5px; color: var(--accent-primary); margin: 14px 0 6px; padding-top: 8px; border-top: 1px solid var(--divider); }
+.panel h3.sub { text-align: left; font-size: 12px; letter-spacing: 1.5px; color: var(--accent-primary); margin: 14px 0 6px; padding-top: 8px; border-top: 1px solid var(--divider); }
 .ovorder { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 .ovorder li { display: flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 0; }
 .ovorder li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -384,3 +384,22 @@ dl.kv dd { font-size: 13px; font-weight: normal; color: var(--text-strong); over
 #insightsTab .systable { min-width: 0; }
 #insightsTab .sysrow { min-width: 0; }
 @media (max-width: 560px) { .proclist li { grid-template-columns: 18px 1fr 76px; } .proclist .pbar { display: none; } }
+
+/* ---------- Layout pass ---------- */
+/* The tabs stay in view while a long page scrolls, so the way to another page is never out of reach. */
+#toolbar { position: sticky; top: 0; z-index: 6; margin: 0 0 12px; padding: 6px 0 8px; background: var(--surface); border-bottom: 1px solid var(--divider); }
+/* System page: paired cards share a height, and the key column is narrower inside full-width cards. */
+.sysgrid { align-items: stretch; }
+.sysgrid .panel.wide dl.kv { grid-template-columns: 140px 1fr; }
+/* Overlay page: the preview stays in view while the settings scroll under it. */
+.ovside { position: static; }
+.ovside > section:first-child { position: sticky; top: 48px; z-index: 3; background: var(--surface-inset); }
+.stage { min-height: 110px; }
+.ovform h3.sub { grid-column: 1 / -1; text-align: left; margin: 12px 0 0; padding-top: 8px; font-size: 11px; letter-spacing: 1.5px; color: var(--accent-primary); border-top: 1px solid var(--divider); }
+.ovform h3.sub.first { margin-top: 0; padding-top: 0; border-top: 0; }
+.ovside .ovform select, .ovside .ovform input[type="number"] { max-width: 170px; }
+.ovside .ovform input[type="range"] { width: 130px; }
+@media (max-width: 900px) { .ovside > section:first-child { position: static; } }
+#overview > #rangeSeg { grid-column: 1 / -1; justify-self: end; margin: 0; }
+/* A focused control scrolls into view below the sticky tabs, not under them (WCAG 2.2 Focus Not Obscured). */
+#scroller { scroll-padding-top: 72px; }

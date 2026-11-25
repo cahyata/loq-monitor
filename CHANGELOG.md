@@ -4,6 +4,11 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+### Changed
+- Layout pass over every page. The tabs stay in view while a page scrolls, and each page opens at its top. The history selector moved from the tab bar to the top of the Overview charts. The CPU and GPU panel titles lost their brackets to match the other panels. Tabs show their key in a tooltip.
+- The Overlay page puts the preview and the appearance settings side by side, with the preview pinned while the settings scroll, and groups the settings into Placement, Look and Style. The page is a third shorter.
+- On the System page paired cards share a height, and the battery sits next to the graphics card instead of leaving a gap.
+
 ### Added
 - An INSIGHTS tab (key 5). TOP PROGRAMS ranks programs by CPU, memory, GPU or disk. POWER shows the current draw, the energy used this session and today, and an optional cost. GPU LIMITS says why the GPU is held back and for how long. THIS SESSION shows the lowest, average and highest values since the app opened.
 - A chip next to the GPU temperature says when the GPU is held back (power limit, heat limit, power brake or hardware slowdown) and explains it on hover. A heat limit or hardware slowdown also appears in the status line.

@@ -119,6 +119,7 @@ const Detail = (() => {
     }
     $("rangeSeg").hidden = name !== "overview";       // the history range only applies to the Overview charts
     store.set("tab", name);
+    $("scroller").scrollTop = 0;   // each page starts at its top
     if (typeof OverlayUI !== "undefined") OverlayUI.setActive(name === "overlay");
     if (typeof SystemPage !== "undefined") SystemPage.setActive(name === "system");
     if (typeof Insights !== "undefined") Insights.setActive(name === "insights");
