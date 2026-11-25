@@ -4,36 +4,28 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
-### Changed
-- With visual effects on, the default, the window used about half a core while it had focus, because the moving grid ran as a 60 Hz CSS animation. A timer now steps it ten times a second and stops it on battery power. It uses about a tenth of that.
-- A hot temperature chip blinks with a class flipped twice a second instead of a CSS animation, which cost about 6 points of CPU on the Overview.
-- The program scan on the Insights tab skips GPU engines that were never used, which lowers the service CPU by about a quarter while the tab is open.
+## [0.3.0] - 2026-11-25
 
 ### Added
 - A POWER LIMITS card on the Insights tab. It shows the CPU and GPU power and temperature against their limits (CPU from the Lenovo firmware, GPU from the NVIDIA driver) and a table of what each Lenovo power mode allows, with the active mode highlighted. The service reads the limits only while the Insights tab is open.
 - The battery panel says whether the charger is connected and whether charging is paused.
 - Not added, because this model does not expose them through WMI: the GPU mode switch, Battery Conservation Mode and Rapid Charge. See `docs/SENSORS.md`.
-
-### Changed
-- The header is sorted by purpose. Read only status (service, power mode, alerts, clock) moved to the title bar, next to the window controls. Below it, the pages are one joined control in the order Overview, Insights, Detailed, System, with Overlay set apart because it is a feature and shows a dot while the overlay is on. MINI and SETTINGS are separate buttons with icons on the right. The status line moved under the pages and scrolls away, so only one row stays pinned. The keys 1 to 5 follow the new order.
-
-### Added
 - A NETWORK card on the Insights tab. It graphs download and upload speed for the last five minutes, shows the Wi-Fi network, signal strength (with bars and a word), link speed, standard and channel, and measures ping to the router and the DNS server (now, average, jitter, loss). A verdict says whether the router connection looks good, is unsteady or has a problem, and explains the likely cause. The network name and addresses are hidden by default. The service reads the Wi-Fi link from the Windows WLAN API and pings only the router and DNS server it already uses, and only while the Insights tab is open.
-
-### Changed
-- Layout pass over every page. The tabs stay in view while a page scrolls, and each page opens at its top. The history selector moved from the tab bar to the top of the Overview charts. The CPU and GPU panel titles lost their brackets to match the other panels. Tabs show their key in a tooltip.
-- The Overlay page puts the preview and the appearance settings side by side, with the preview pinned while the settings scroll, and groups the settings into Placement, Look and Style. The page is a third shorter.
-- On the System page paired cards share a height, and the battery sits next to the graphics card instead of leaving a gap.
-
-### Added
 - An INSIGHTS tab (key 2). TOP PROGRAMS ranks programs by CPU, memory, GPU or disk. POWER shows the current draw, the energy used this session and today, and an optional cost. With the charger plugged in it adds an estimate for the rest of the laptop, learned from the difference between the battery reading and CPU plus GPU while the laptop ran on battery, and marks the number with a tilde. GPU LIMITS says why the GPU is held back and for how long. THIS SESSION shows the lowest, average and highest values since the app opened.
 - A chip next to the GPU temperature says when the GPU is held back (power limit, heat limit, power brake or hardware slowdown) and explains it on hover. A heat limit or hardware slowdown also appears in the status line.
 - The battery panel shows the time left on battery, or the time to full while charging.
 - SETTINGS has an electricity price and currency for the cost estimate.
 - The service reads the GPU throttle reasons from NVML and ranks programs from the raw Windows performance counters. The ranking runs only while the Insights tab is open.
-
-### Added
 - A SYSTEM tab (key 4) with the facts about the machine: device and mainboard, BIOS and Secure Boot, Windows version and uptime, processor, graphics and driver, memory modules, drives and volumes, network adapters, and battery capacity and cycles. It can hide the host name, IP and MAC addresses, which is on by default, and COPY REPORT puts the page in the clipboard as plain text. The service reads Windows once and serves it at `GET /system`. Serial numbers and the user name are never read.
+
+### Changed
+- With visual effects on, the default, the window used about half a core while it had focus, because the moving grid ran as a 60 Hz CSS animation. A timer now steps it ten times a second and stops it on battery power. It uses about a tenth of that.
+- A hot temperature chip blinks with a class flipped twice a second instead of a CSS animation, which cost about 6 points of CPU on the Overview.
+- The program scan on the Insights tab skips GPU engines that were never used, which lowers the service CPU by about a quarter while the tab is open.
+- The header is sorted by purpose. Read only status (service, power mode, alerts, clock) moved to the title bar, next to the window controls. Below it, the pages are one joined control in the order Overview, Insights, Detailed, System, with Overlay set apart because it is a feature and shows a dot while the overlay is on. MINI and SETTINGS are separate buttons with icons on the right. The status line moved under the pages and scrolls away, so only one row stays pinned. The keys 1 to 5 follow the new order.
+- Layout pass over every page. The tabs stay in view while a page scrolls, and each page opens at its top. The history selector moved from the tab bar to the top of the Overview charts. The CPU and GPU panel titles lost their brackets to match the other panels. Tabs show their key in a tooltip.
+- The Overlay page puts the preview and the appearance settings side by side, with the preview pinned while the settings scroll, and groups the settings into Placement, Look and Style. The page is a third shorter.
+- On the System page paired cards share a height, and the battery sits next to the graphics card instead of leaving a gap.
 
 ## [0.2.0] - 2026-11-25
 
