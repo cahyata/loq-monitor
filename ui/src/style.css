@@ -261,7 +261,9 @@ dialog#settings input[type="checkbox"] { width: auto; }
 /* ---------- overview layout pass ---------- */
 #toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin: 4px 0 12px; }
 #toolbar #tabs { margin: 0; }
-#summary { flex: 1; min-width: 240px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text); }
+/* The summary always occupies two lines of height, so a longer message never pushes the panels down. */
+#summary { flex: 1; min-width: 240px; height: 40px; display: flex; align-items: center; gap: 10px; font-size: 13px; line-height: 1.5; color: var(--text); }
+#sumText { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; min-width: 0; }
 #summary .tag { margin-left: 0; flex-shrink: 0; }
 #rangeSeg { align-items: center; }
 #rangeSeg[hidden] { display: none; }

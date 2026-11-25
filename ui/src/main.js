@@ -325,6 +325,7 @@ function renderSummary(s) {
   $("sumTag").textContent = level === "hot" ? "ATTENTION" : level === "warn" ? "WATCH" : "ALL NORMAL";
   $("sumTag").className = "tag " + level;
   $("sumText").textContent = text;
+  $("sumText").title = text;     // the full message, in case it is clipped to two lines
 }
 
 const MODES = { 1: "QUIET", 2: "BALANCED", 3: "PERFORMANCE", 224: "CUSTOM", 255: "CUSTOM" };

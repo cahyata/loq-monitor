@@ -29,7 +29,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 ### Changed
 - SensorService runs without a console window and allows one instance.
 - The UI text is in English.
-- Overview layout: the large page title is replaced by a compact header (the brand stays in the title bar), and one line under the tabs says whether anything needs attention. The history range moved next to it.
+- Overview layout: the large page title is replaced by a compact header (the brand stays in the title bar), and a summary under the tabs says whether anything needs attention. It always reserves two lines, so a longer message does not move the panels. The history range moved next to it.
 - The bar under each temperature is now labelled LOAD and stays cyan. Bar colours carry status instead: cyan normal, green healthy battery, yellow high, pink critical. A full battery no longer shows as an alarm.
 - RAM, VRAM, battery and drives show status chips (OK, HIGH, LOW, CRITICAL). Drive temperature now uses its own limits (70 and 80 degrees Celsius) in the card, the log and the summary. Only the temperature chips blink.
 - Temperature charts scale to the data and always include both limits. Axis labels sit in a left gutter and no longer overlap the line.
