@@ -10,7 +10,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 - On the System page paired cards share a height, and the battery sits next to the graphics card instead of leaving a gap.
 
 ### Added
-- An INSIGHTS tab (key 5). TOP PROGRAMS ranks programs by CPU, memory, GPU or disk. POWER shows the current draw, the energy used this session and today, and an optional cost. GPU LIMITS says why the GPU is held back and for how long. THIS SESSION shows the lowest, average and highest values since the app opened.
+- An INSIGHTS tab (key 5). TOP PROGRAMS ranks programs by CPU, memory, GPU or disk. POWER shows the current draw, the energy used this session and today, and an optional cost. With the charger plugged in it adds an estimate for the rest of the laptop, learned from the difference between the battery reading and CPU plus GPU while the laptop ran on battery, and marks the number with a tilde. GPU LIMITS says why the GPU is held back and for how long. THIS SESSION shows the lowest, average and highest values since the app opened.
 - A chip next to the GPU temperature says when the GPU is held back (power limit, heat limit, power brake or hardware slowdown) and explains it on hover. A heat limit or hardware slowdown also appears in the status line.
 - The battery panel shows the time left on battery, or the time to full while charging.
 - SETTINGS has an electricity price and currency for the cost estimate.

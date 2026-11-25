@@ -30,12 +30,26 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const clock = (sec) => { const s = Math.round(sec), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60; return h ? h + " h " + String(m).padStart(2, "0") + " min" : m ? m + " min " + String(s % 60).padStart(2, "0") + " s" : s + " s"; };
 
-  /** Whole-laptop power while on battery (the battery reports exactly that), otherwise the CPU and GPU alone. */
+  /* Only the battery measures the whole laptop, and only while it drains. The rest of the laptop (screen, drives, fans,
+     board) is learned from those moments as the difference to CPU plus GPU, and added back while the charger is plugged in. */
+  let rest = (() => { const v = parseFloat(store.get("insrest", "")); return Number.isFinite(v) ? v : null; })();
+  let restSaved = 0;
+  const parts = (s) => (s.cpu?.powerW ?? 0) + (s.gpu?.powerW ?? 0);
+
+  function learnRest(s) {
+    const r = s.battery?.rateW;
+    if (r == null || r >= -0.5 || s.cpu?.powerW == null || s.gpu?.powerW == null) return;   // needs the whole-laptop reading and both parts
+    const other = Math.min(80, Math.max(0, -r - parts(s)));
+    rest = rest == null ? other : rest * 0.97 + other * 0.03;
+    if (Date.now() - restSaved > 30000) { restSaved = Date.now(); store.set("insrest", rest.toFixed(1)); }
+  }
+
+  /** Power now. `estimated` is true when the charger is plugged in and the rest of the laptop comes from what was learned. */
   function power(s) {
     const r = s.battery?.rateW;
-    if (r != null && r < -0.5) return { w: -r, note: "The whole laptop, measured at the battery." };
-    const w = (s.cpu?.powerW ?? 0) + (s.gpu?.powerW ?? 0);
-    return { w, note: "CPU and GPU only. With the charger plugged in the rest of the laptop is not measured." };
+    if (r != null && r < -0.5) return { w: -r, estimated: false, note: "The whole laptop, measured at the battery." };
+    if (rest != null) return { w: parts(s) + rest, estimated: true, note: `Estimated: CPU and GPU plus about ${rest.toFixed(0)} W for the rest of the laptop, learned while it ran on battery.` };
+    return { w: parts(s), estimated: false, note: "CPU and GPU only. Use the laptop on battery once and this page learns the power of the rest." };
   }
 
   /** Called for every snapshot. */
@@ -44,9 +58,11 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     const now = Date.now(), dt = prevAt ? Math.min(5, (now - prevAt) / 1000) : 0;
     prevAt = now;
     if (dt > 0) {
+      learnRest(s);
       const p = power(s);
       const wh = (p.w * dt) / 3600;
       sess.wh += wh; day.wh += wh; sess.secs += dt;
+      if (p.estimated) sess.est = true;
       for (const l of limitsOf(s.gpu?.throttleMask)) { sess.limitSec[l.bit] = (sess.limitSec[l.bit] ?? 0) + dt; day.limitSec[l.bit] = (day.limitSec[l.bit] ?? 0) + dt; }
       if (day.date !== dayKey()) day = { date: dayKey(), wh, limitSec: {} };
       if (now - savedAt > 30000) saveDay();
@@ -106,7 +122,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
 
   function paintPower(s) {
     const p = power(s);
-    $("insWatts").textContent = p.w.toFixed(0);
+    $("insWatts").textContent = (p.estimated ? "~" : "") + p.w.toFixed(0);
     $("insWattsNote").textContent = p.note;
     const tariff = parseFloat(store.get("tariff", "")), cur = store.get("currency", "");
     const money = (wh) => (Number.isFinite(tariff) && tariff > 0 ? "  ·  " + (cur ? cur + " " : "") + ((wh / 1000) * tariff).toFixed(tariff >= 100 ? 0 : 2) : "");
@@ -114,6 +130,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     dl.replaceChildren(
       el("dt", null, "This session"), el("dd", null, sess.wh.toFixed(1) + " Wh" + money(sess.wh)),
       el("dt", null, "Today"), el("dd", null, day.wh.toFixed(1) + " Wh" + money(day.wh)));
+    if (sess.est) dl.append(el("dt", null, "Note"), el("dd", null, "Includes estimates while the charger was plugged in."));
     $("insTariff").hidden = Number.isFinite(tariff) && tariff > 0;
   }
 
