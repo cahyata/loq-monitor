@@ -1,4 +1,7 @@
 #Requires -RunAsAdministrator
+# LOQ Monitor | Install the SensorService scheduled task
+# Author: cahyata
+# Copyright (c) 2026 cahyata
 <#
 .SYNOPSIS
   Registers SensorService as a scheduled task that starts at logon with the highest run level.

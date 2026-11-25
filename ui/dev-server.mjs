@@ -1,3 +1,6 @@
+// LOQ Monitor | Dev server with live reload
+// Author: cahyata
+// Copyright (c) 2026 cahyata
 // Dev-only static server with live reload. Serves ./src on http://localhost:1420.
 // Tauri starts it through build.beforeDevCommand; it is not part of the release build.
 import { createServer } from "node:http";

@@ -1,3 +1,6 @@
+/* LOQ Monitor | UI styles
+   Author: cahyata
+   Copyright (c) 2026 cahyata */
 * { box-sizing: border-box; margin: 0; }
 :is(button, a, [tabindex]):focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent-secondary); }
 html, body { background: var(--surface); color: var(--text); font: 13px/1.5 var(--font-mono); min-height: 100%; }

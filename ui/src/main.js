@@ -1,3 +1,6 @@
+// LOQ Monitor | UI main script (overview, settings, shortcuts)
+// Author: cahyata
+// Copyright (c) 2026 cahyata
 "use strict";
 
 const WS_URL = "ws://127.0.0.1:47821/ws";

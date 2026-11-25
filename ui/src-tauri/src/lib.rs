@@ -1,3 +1,6 @@
+// LOQ Monitor | Tauri app (tray, notifications, service start)
+// Author: cahyata
+// Copyright (c) 2026 cahyata
 use tauri::{
   menu::{Menu, MenuItem},
   tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},

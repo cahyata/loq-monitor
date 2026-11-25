@@ -1,4 +1,7 @@
-﻿using System.Collections.Concurrent;
+﻿// LOQ Monitor | SensorService (sensor reader and WebSocket server)
+// Author: cahyata
+// Copyright (c) 2026 cahyata
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Management;
 using System.Net;

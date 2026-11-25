@@ -1,3 +1,6 @@
+// LOQ Monitor | UI Detailed tab
+// Author: cahyata
+// Copyright (c) 2026 cahyata
 "use strict";
 /* Detailed tab: every sensor the service reports, grouped by hardware like HWMonitor.
    Shares $, fmt, store, tempClass and drawAll with main.js (classic scripts share one global scope). */

@@ -1,4 +1,7 @@
-﻿using System.Management;
+﻿// LOQ Monitor | SensorProbe (diagnostic console tool)
+// Author: cahyata
+// Copyright (c) 2026 cahyata
+using System.Management;
 using System.Security.Principal;
 using LibreHardwareMonitor.Hardware;
 

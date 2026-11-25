@@ -1,4 +1,7 @@
 #Requires -RunAsAdministrator
+# LOQ Monitor | Remove the SensorService scheduled task
+# Author: cahyata
+# Copyright (c) 2026 cahyata
 <#
 .SYNOPSIS
   Removes the scheduled task created by install-service.ps1 and stops the service.
