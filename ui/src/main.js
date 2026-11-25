@@ -133,6 +133,7 @@ const MODES = { 1: "QUIET", 2: "BALANCED", 3: "PERFORMANCE", 224: "CUSTOM", 255:
 function render(s) {
   const { cpu, gpu, ram } = s;
   push(hist.cpu, cpu.tempC); push(hist.gpu, gpu.tempC);
+  if (typeof Detail !== "undefined") Detail.update(s);
   trayUpdate(s); // runs while the window is hidden in the tray
   if (document.hidden) return; // window hidden: keep the history, skip drawing
 
@@ -237,3 +238,12 @@ function connect() {
   ws.onerror = () => ws.close();
 }
 connect();
+
+/* ---------- custom title bar (window has no native frame) ---------- */
+(() => {
+  const w = window.__TAURI__?.window?.getCurrentWindow?.();
+  if (!w) { $("titlebar").hidden = true; return; }
+  $("wMin").onclick = () => w.minimize();
+  $("wMax").onclick = () => w.toggleMaximize();
+  $("wClose").onclick = () => w.close(); // hides to tray (see lib.rs)
+})();

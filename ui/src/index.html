@@ -13,6 +13,17 @@
   <div id="floor"><div id="grid"></div></div>
   <div id="scan"></div>
 
+  <header id="titlebar" data-tauri-drag-region>
+    <img src="icon.png" alt="" width="16" height="16" data-tauri-drag-region>
+    <span class="ttl" data-tauri-drag-region>LOQ//NET</span><span class="path" data-tauri-drag-region>// HARDWARE MONITOR</span>
+    <span class="wc">
+      <button id="wMin" aria-label="Minimize" title="Minimize">_</button>
+      <button id="wMax" aria-label="Maximize" title="Maximize">&#9633;</button>
+      <button id="wClose" class="x" aria-label="Close to tray" title="Close to tray">X</button>
+    </span>
+  </header>
+
+  <div id="scroller">
   <div id="app">
     <div id="hud">
       <span>SERVICE <b id="link">OFFLINE</b></span>
@@ -28,7 +39,8 @@
     <h1>LOQ//NET<span class="cur"></span></h1>
     <p class="sub" id="sub">HARDWARE MONITOR</p>
 
-    <main>
+    <nav id="tabs" role="tablist"><button id="tabOverview" role="tab" class="on">OVERVIEW</button><button id="tabDetail" role="tab">DETAILED</button></nav>
+    <main id="overview">
       <section class="panel pink" id="cpu">
         <div class="ph"><span class="ptit">[ CPU ]</span><span class="dim" id="cpuName"></span></div>
         <div class="hero"><span class="big" id="cpuTemp">--</span><span class="unit">°C</span><span class="tag" id="cpuTag">HOT</span></div>
@@ -74,8 +86,14 @@
       <section class="panel mini pinkb span2"><div class="ph"><span class="ptit">SYSTEM LOG</span></div>
         <div id="log" class="log"></div></section>
     </main>
+    <section id="detail" hidden>
+      <div class="dtools"><input id="dfilter" type="search" placeholder="Filter sensors" aria-label="Filter sensors"><button id="dexp">EXPAND ALL</button><button id="dcol">COLLAPSE ALL</button></div>
+      <div id="dtree"></div>
+    </section>
+  </div>
   </div>
 
   <script src="main.js"></script>
+  <script src="detail.js"></script>
 </body>
 </html>

@@ -135,6 +135,7 @@ sealed class SensorReader : IDisposable
     {
         IsCpuEnabled = true, IsGpuEnabled = true, IsMemoryEnabled = true,
         IsStorageEnabled = true, IsBatteryEnabled = true,
+        IsMotherboardEnabled = true, IsControllerEnabled = true, IsNetworkEnabled = true,
     };
     ManagementObject? _other, _zone;
     PerformanceCounter? _cpuFreq, _cpuPerf;
@@ -212,6 +213,55 @@ sealed class SensorReader : IDisposable
 
     static float? Round(float? v) => v.HasValue ? MathF.Round(v.Value, 1) : null;
 
+    /// Every LHM sensor, grouped by hardware, for the Detailed tab.
+    List<HwInfo> AllHardware()
+    {
+        var list = new List<HwInfo>();
+        void Add(IHardware hw, string name)
+        {
+            var sensors = hw.Sensors
+                .Select(x => new SensorInfo(x.SensorType.ToString(), x.Name, x.Value, x.Min, x.Max)).ToArray();
+            if (sensors.Length > 0) list.Add(new HwInfo(name, hw.HardwareType.ToString(), sensors));
+            foreach (var sub in hw.SubHardware) Add(sub, name + " / " + sub.Name);
+        }
+        foreach (var hw in _pc.Hardware) Add(hw, hw.Name);
+
+        var acpi = AcpiZones();
+        if (acpi.Length > 0) list.Insert(0, new HwInfo("ACPI thermal zones", "Acpi", acpi));
+        var ec = new List<SensorInfo>();
+        void Ec(string type, string name, float? v) { if (v is > 0) ec.Add(Track(type, name, v.Value)); }
+        Ec("Temperature", "CPU", Feature(CpuTemp)); Ec("Temperature", "GPU", Feature(GpuTemp));
+        Ec("Fan", "CPU fan", Feature(CpuFan)); Ec("Fan", "GPU fan", Feature(GpuFan));
+        if (ec.Count > 0) list.Insert(0, new HwInfo("Lenovo embedded controller", "Lenovo", ec.ToArray()));
+        return list;
+    }
+
+    // Min and max since start for sensors LHM does not own.
+    readonly Dictionary<string, (float Min, float Max)> _range = new();
+    SensorInfo Track(string type, string name, float v)
+    {
+        var key = type + "|" + name;
+        var r = _range.TryGetValue(key, out var old) ? (Math.Min(old.Min, v), Math.Max(old.Max, v)) : (v, v);
+        _range[key] = r;
+        return new SensorInfo(type, name, v, r.Item1, r.Item2);
+    }
+
+    /// ACPI thermal zones (tenths of a kelvin), the same source HWMonitor shows as \_TZ.TZxx.
+    SensorInfo[] AcpiZones()
+    {
+        try
+        {
+            using var s = new ManagementObjectSearcher(@"root\WMI", "SELECT InstanceName, CurrentTemperature FROM MSAcpi_ThermalZoneTemperature");
+            return s.Get().Cast<ManagementObject>().Select(m =>
+            {
+                var name = Convert.ToString(m["InstanceName"]) ?? "zone";
+                name = name.Split((char)92).Last().Replace("_0", "");
+                return Track("Temperature", name, MathF.Round(Convert.ToInt32(m["CurrentTemperature"]) / 10f - 273.15f, 1));
+            }).ToArray();
+        }
+        catch { return []; }
+    }
+
     public Snapshot Read()
     {
         foreach (var hw in _pc.Hardware) { hw.Update(); foreach (var sub in hw.SubHardware) sub.Update(); }
@@ -277,13 +327,16 @@ sealed class SensorReader : IDisposable
                 Round(Val(bat, SensorType.Power, "Charge/Discharge Rate")),
                 Round(Val(bat, SensorType.Level, "Degradation Level")),
                 Round(designed / 1000), Round(full / 1000)),
-            PowerMode: PowerMode());
+            PowerMode: PowerMode(),
+            Hardware: AllHardware());
     }
 
     public void Dispose() { try { _pc.Close(); } catch { } _other?.Dispose(); _zone?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }
 }
 
-record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode);
+record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode, List<HwInfo> Hardware);
+record HwInfo(string Name, string Type, SensorInfo[] Sensors);
+record SensorInfo(string Type, string Name, float? Value, float? Min, float? Max);
 record CpuInfo(string? Name, float? Load, float? TempC, int? FanRpm, float? ClockMHz, float? PowerW, float[] CoreLoads);
 record GpuInfo(string? Name, float? Load, float? TempC, float? HotspotC, float? VramTempC, int? FanRpm,
                float? PowerW, float? CoreClockMHz, float? MemClockMHz, float? VramUsedMB, float? VramTotalMB,
