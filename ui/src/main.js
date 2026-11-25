@@ -588,10 +588,10 @@ addEventListener("keydown", (e) => {
   if (k === "m") { setMini(!miniOn); return; }
   if (miniOn) return;
   if (k === "1") Detail.show(false);
-  else if (k === "2") Detail.show(true);
-  else if (k === "3") Detail.show("overlay");
+  else if (k === "2") Detail.show("insights");
+  else if (k === "3") Detail.show("detail");
   else if (k === "4") Detail.show("system");
-  else if (k === "5") Detail.show("insights");
+  else if (k === "5") Detail.show("overlay");
   else if (k === "o") OverlayUI.toggle();
   else if (k === "/" || k === "f") { Detail.show(true); $("dfilter").focus(); e.preventDefault(); }
   else if (k === "t") cycleTheme();

@@ -4,6 +4,9 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+### Changed
+- The header is sorted by purpose. Read only status (service, power mode, alerts, clock) moved to the title bar, next to the window controls. Below it, the pages are one joined control in the order Overview, Insights, Detailed, System, with Overlay set apart because it is a feature and shows a dot while the overlay is on. MINI and SETTINGS are separate buttons with icons on the right. The status line moved under the pages and scrolls away, so only one row stays pinned. The keys 1 to 5 follow the new order.
+
 ### Added
 - A NETWORK card on the Insights tab. It graphs download and upload speed for the last five minutes, shows the Wi-Fi network, signal strength (with bars and a word), link speed, standard and channel, and measures ping to the router and the DNS server (now, average, jitter, loss). A verdict says whether the router connection looks good, is unsteady or has a problem, and explains the likely cause. The network name and addresses are hidden by default. The service reads the Wi-Fi link from the Windows WLAN API and pings only the router and DNS server it already uses, and only while the Insights tab is open.
 
@@ -13,7 +16,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 - On the System page paired cards share a height, and the battery sits next to the graphics card instead of leaving a gap.
 
 ### Added
-- An INSIGHTS tab (key 5). TOP PROGRAMS ranks programs by CPU, memory, GPU or disk. POWER shows the current draw, the energy used this session and today, and an optional cost. With the charger plugged in it adds an estimate for the rest of the laptop, learned from the difference between the battery reading and CPU plus GPU while the laptop ran on battery, and marks the number with a tilde. GPU LIMITS says why the GPU is held back and for how long. THIS SESSION shows the lowest, average and highest values since the app opened.
+- An INSIGHTS tab (key 2). TOP PROGRAMS ranks programs by CPU, memory, GPU or disk. POWER shows the current draw, the energy used this session and today, and an optional cost. With the charger plugged in it adds an estimate for the rest of the laptop, learned from the difference between the battery reading and CPU plus GPU while the laptop ran on battery, and marks the number with a tilde. GPU LIMITS says why the GPU is held back and for how long. THIS SESSION shows the lowest, average and highest values since the app opened.
 - A chip next to the GPU temperature says when the GPU is held back (power limit, heat limit, power brake or hardware slowdown) and explains it on hover. A heat limit or hardware slowdown also appears in the status line.
 - The battery panel shows the time left on battery, or the time to full while charging.
 - SETTINGS has an electricity price and currency for the cost estimate.

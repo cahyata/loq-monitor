@@ -69,6 +69,8 @@ const OverlayUI = (() => {
     $("ovToggle").setAttribute("aria-pressed", String(visible));
     $("ovToggle").classList.toggle("on", visible);
     $("ovState").textContent = visible ? "Showing over your game" : "Hidden";
+    $("ovDot").classList.toggle("on", visible);
+    $("tabOverlay").title = "Game overlay (key 5)" + (visible ? ", showing" : "");
   }
   function setVisible(v) { visible = !!v; paintState(); }
 

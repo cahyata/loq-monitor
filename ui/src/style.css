@@ -38,9 +38,6 @@ html.nofx #sky { inset: 0; }
 
 /* ---------- HUD and title ---------- */
 #app { position: relative; z-index: 2; padding: 8px 18px 18px; max-width: 1240px; margin: 0 auto; }
-#hud { display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 11px; letter-spacing: 1px; }
-#hud b { color: var(--highlight); font-weight: normal; }
-#hud b.on { color: var(--success); }
 #clock { color: var(--accent-secondary); }
 .acts { display: flex; gap: 6px; }
 .acts button { font: bold 11px var(--font-mono); letter-spacing: 1px; color: var(--text-muted); background: none; border: 1px solid var(--text-muted); padding: 2px 8px; cursor: pointer; }
@@ -416,3 +413,41 @@ dl.kv dd { font-size: 13px; font-weight: normal; color: var(--text-strong); over
 .ph .dim.ok { color: var(--success); } .ph .dim.warn { color: var(--highlight); } .ph .dim.hot { color: var(--accent-primary); }
 @media (max-width: 760px) { .netgrid { grid-template-columns: 1fr; } }
 #insightsTab .sysrow.net { grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(0, 1fr)); gap: 8px; }
+
+/* ---------- Header: status in the title bar, pages and actions in the bar below ---------- */
+/* Status is read only text on the left of the window controls. It is not a button, so it carries no border. */
+#titlebar .status { margin-left: auto; display: flex; align-items: center; gap: 16px; font-size: 11px; letter-spacing: 1px; color: var(--text-muted); }
+#titlebar .status .st { display: inline-flex; gap: 6px; white-space: nowrap; }
+#titlebar .status b { font-weight: normal; color: var(--highlight); }
+#titlebar .status b.on { color: var(--success); }
+#titlebar .status .clock { color: var(--accent-secondary); font-variant-numeric: tabular-nums; }
+#titlebar .wc { margin-left: 6px; }
+html.mini #titlebar .status { display: none; }
+html.mini #titlebar .wc { margin-left: auto; }
+@media (max-width: 900px) { #titlebar .path { display: none; } }
+@media (max-width: 720px) { #titlebar .status .mode { display: none; } }
+
+/* Pages are one joined control, with the overlay set apart because it is a feature, not a page of readings. */
+#toolbar { display: block; }
+#toolbar .navrow { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+#tabs { display: flex; align-items: stretch; gap: 0; margin: 0; }
+#tabs button { margin-left: -1px; padding: 4px 14px; position: relative; }
+#tabs button:first-child { margin-left: 0; }
+#tabs button.on { z-index: 1; }
+#tabs .tabsep { width: 16px; }
+#tabs .tabsep + button { margin-left: 0; }
+.odot { display: none; width: 7px; height: 7px; margin-left: 7px; border-radius: 50%; background: var(--success); vertical-align: middle; }
+.odot.on { display: inline-block; }
+#tabs button.on .odot { background: var(--surface-inset); }
+/* Actions are separate bordered buttons with an icon, so they read as things to press, not as pages. */
+.acts { display: flex; gap: 8px; }
+.acts button { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; }
+.acts button svg { flex-shrink: 0; }
+/* The status line sits under the pages. One line wide, two lines narrow, always the same height. */
+#toolbar #summary { flex: none; min-width: 0; height: 30px; margin-top: 8px; }
+#sumText { -webkit-line-clamp: 1; }
+@media (max-width: 900px) { #toolbar #summary { height: 40px; } #sumText { -webkit-line-clamp: 2; } }
+/* Only the row of pages and actions stays pinned. The status line scrolls away with the content. */
+#toolbar { margin-bottom: 8px; }
+#summary { flex: none; min-width: 0; height: 30px; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
+@media (max-width: 900px) { #summary { height: 40px; } }
