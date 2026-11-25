@@ -35,6 +35,17 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": {
+      "../../SensorService/publish/": "service/",
+      "../../scripts/install-service.ps1": "service/install-service.ps1",
+      "../../scripts/uninstall-service.ps1": "service/uninstall-service.ps1"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "installerHooks": "installer-hooks.nsh"
+      }
+    }
   }
 }

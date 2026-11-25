@@ -15,10 +15,15 @@
 
 .PARAMETER TaskName
   Name of the scheduled task.
+
+.PARAMETER NoAutoStart
+  Registers the task without the logon trigger. The service still starts now, and later from the
+  app (START SERVICE button) or with: schtasks /run /tn "LOQ Monitor Service".
 #>
 param(
     [string]$Exe = (Join-Path $PSScriptRoot '..\SensorService\out\SensorService.exe'),
-    [string]$TaskName = 'LOQ Monitor Service'
+    [string]$TaskName = 'LOQ Monitor Service',
+    [switch]$NoAutoStart
 )
 
 $ErrorActionPreference = 'Stop'
@@ -26,15 +31,16 @@ $Exe = (Resolve-Path $Exe).Path
 $user = "$env:USERDOMAIN\$env:USERNAME"
 
 $action    = New-ScheduledTaskAction -Execute $Exe -WorkingDirectory (Split-Path $Exe)
-$trigger   = New-ScheduledTaskTrigger -AtLogOn -User $user
 $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Highest
 $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -ExecutionTimeLimit ([TimeSpan]::Zero) -MultipleInstances IgnoreNew -StartWhenAvailable
 
 Get-Process SensorService -ErrorAction SilentlyContinue | Stop-Process -Force
-Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
-    -Principal $principal -Settings $settings -Force | Out-Null
+$register = @{ TaskName = $TaskName; Action = $action; Principal = $principal; Settings = $settings; Force = $true }
+if (-not $NoAutoStart) { $register.Trigger = New-ScheduledTaskTrigger -AtLogOn -User $user }
+Register-ScheduledTask @register | Out-Null
 Start-ScheduledTask -TaskName $TaskName
 
-Write-Host "Task '$TaskName' registered for $user and started."
+$when = if ($NoAutoStart) { 'without a logon trigger' } else { 'to start at logon' }
+Write-Host "Task '$TaskName' registered for $user $when and started."
 Write-Host "Executable: $Exe"

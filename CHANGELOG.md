@@ -5,6 +5,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 ## [Unreleased]
 
 ### Added
+- The NSIS installer bundles the sensor service (self-contained), asks whether it starts at sign in, installs the PawnIO driver with winget when missing, and registers the scheduled task. `install-service.ps1` has a new `-NoAutoStart` switch.
 - Fixed: the SHOW OVERLAY button did nothing because the window was built on the main thread. The command is now async and reports errors.
 - System tray icon with a Show and Quit menu and a tooltip with the CPU and GPU temperatures. The close button hides the window to the tray.
 - Desktop notification when CPU or GPU temperature stays at 90 °C or more, or the GPU hotspot at 95 °C or more, for 10 seconds. An ALERTS button toggles it.
