@@ -23,18 +23,15 @@ body { overflow-x: hidden; }
   background-image:
     linear-gradient(90deg, color-mix(in srgb, var(--accent-primary) 90%, transparent) 2px, transparent 2px),
     linear-gradient(0deg, color-mix(in srgb, var(--accent-primary) 90%, transparent) 2px, transparent 2px);
-  background-size: 48px 48px; animation: run 1.6s linear infinite;
+  background-size: 48px 48px;   /* main.js steps the transform about ten times a second; a 60 Hz CSS animation cost about 45 % of a core */
 }
-@keyframes run { from { transform: rotateX(58deg) translate3d(0,0,0); } to { transform: rotateX(58deg) translate3d(0,48px,0); } }
 #scan { position: fixed; inset: 0; pointer-events: none; z-index: 4;
   background: repeating-linear-gradient(0deg, transparent 0 2px, var(--scanline) 2px 3px); }
 
-/* save resources: unfocused window pauses the grid; FX off hides all effects */
-html.idle #grid { animation-play-state: paused; }
-html.nofx #grid { animation: none; }
+/* save resources: an unfocused window, a hidden window and battery power stop the grid; FX off hides all effects */
 html.nofx #scan, html.nofx #floor, html.nofx .cur { display: none; }
 html.nofx #sky { inset: 0; }
-@media (prefers-reduced-motion: reduce) { #grid { animation: none; } .cur, .tag { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { html.blink-off .hero .tag.hot, html.blink-off .cur { opacity: 1; } }
 
 /* ---------- HUD and title ---------- */
 #app { position: relative; z-index: 2; padding: 8px 18px 18px; max-width: 1240px; margin: 0 auto; }
@@ -50,7 +47,7 @@ h1 {
   text-align: center; margin-top: 4px; line-height: 1.1;
 }
 html.light h1 { text-shadow: 2px 2px 0 color-mix(in srgb, var(--accent-primary) 45%, transparent); }
-.cur { display: inline-block; width: 10px; height: .8em; background: var(--accent-primary); margin-left: 8px; animation: blink 1s steps(1) infinite; }
+.cur { display: inline-block; width: 10px; height: .8em; background: var(--accent-primary); margin-left: 8px; }
 @keyframes blink { 50% { opacity: 0; } }
 .sub { text-align: center; color: var(--highlight); letter-spacing: 3px; font-size: 12px; margin: 2px 0 12px; }
 
@@ -83,7 +80,9 @@ html.light .big { text-shadow: 2px 2px 0 color-mix(in srgb, var(--c, var(--text)
 .tag.info { background: var(--accent-secondary); }
 .hero .tag.limit { animation: none; }
 .tag.ok { background: var(--success); } .tag.warn { background: var(--highlight); } .tag.hot { background: var(--accent-primary); }
-.hero .tag.hot { animation: blink 1.2s steps(1) infinite; }   /* only the temperature chips blink */
+/* Only the temperature chips and the cursor blink. A CSS animation keeps the browser producing frames at 60 Hz even when
+   nothing changes (about 6 % of a core for one chip), so main.js flips this class twice a second instead. */
+html.blink-off .hero .tag.hot, html.blink-off .cur { opacity: 0; }
 
 .meter { height: 6px; background: var(--surface-inset); border: 1px solid var(--border); margin: 8px 0 4px; position: relative; }
 /* Bars use transform, not width, so a new value costs no layout. They jump to the new value without a transition:

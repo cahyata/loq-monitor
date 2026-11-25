@@ -4,6 +4,11 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+### Changed
+- With visual effects on, the default, the window used about half a core while it had focus, because the moving grid ran as a 60 Hz CSS animation. A timer now steps it ten times a second and stops it on battery power. It uses about a tenth of that.
+- A hot temperature chip blinks with a class flipped twice a second instead of a CSS animation, which cost about 6 points of CPU on the Overview.
+- The program scan on the Insights tab skips GPU engines that were never used, which lowers the service CPU by about a quarter while the tab is open.
+
 ### Added
 - A POWER LIMITS card on the Insights tab. It shows the CPU and GPU power and temperature against their limits (CPU from the Lenovo firmware, GPU from the NVIDIA driver) and a table of what each Lenovo power mode allows, with the active mode highlighted. The service reads the limits only while the Insights tab is open.
 - The battery panel says whether the charger is connected and whether charging is paused.

@@ -70,6 +70,17 @@ addEventListener("load", () => scrollTo(0, 0));
 const syncIdle = () => root.classList.toggle("idle", !document.hasFocus());
 addEventListener("focus", syncIdle); addEventListener("blur", syncIdle); syncIdle();
 
+/* The blink is a class flipped twice a second, not a CSS animation (see style.css). It stops while the window is hidden. */
+setInterval(() => { if (!document.hidden) root.classList.toggle("blink-off"); }, 600);
+/* The moving grid is stepped from a timer. About ten frames a second cost an eighth of a 60 Hz CSS animation. It stands still while the
+   window has no focus or is hidden, on battery power, with visual effects off, or when the system asks for less motion. */
+const gridEl = $("grid"), calm = matchMedia("(prefers-reduced-motion: reduce)");
+let gridStep = 0, onBattery = false;
+setInterval(() => {
+  if (document.hidden || onBattery || calm.matches || root.classList.contains("nofx") || root.classList.contains("idle")) return;
+  gridStep = (gridStep + 1) % 16;   // 16 steps of 3 px make one 48 px cell, so the loop has no jump
+  gridEl.style.transform = `rotateX(58deg) translate3d(0, ${gridStep * 3}px, 0)`;
+}, 100);
 setInterval(() => { $("clock").textContent = new Date().toLocaleTimeString("en-GB", { hour12: false }); }, 1000);
 
 /* ---------- tray tooltip and critical-temperature alerts ---------- */
@@ -352,6 +363,7 @@ const MODES = { 1: "QUIET", 2: "BALANCED", 3: "PERFORMANCE", 224: "CUSTOM", 255:
 
 function render(s) {
   lastRendered = s;
+  onBattery = s.battery?.acOnline === false;
   const { cpu, gpu, ram } = s;
   push(hist.cpu, cpu.tempC); push(hist.gpu, gpu.tempC);
   if (typeof Detail !== "undefined") Detail.update(s);

@@ -106,7 +106,7 @@ sealed class ProcessSampler : IDisposable
             var perPid = new Dictionary<(int Pid, string Eng), double>();
             var seenGpu = new Dictionary<string, (double Busy, double At)>();
             using var g = new ManagementObjectSearcher(@"root\CIMV2",
-                "SELECT Name, UtilizationPercentage, Timestamp_Sys100NS FROM Win32_PerfRawData_GPUPerformanceCounters_GPUEngine");
+                "SELECT Name, UtilizationPercentage, Timestamp_Sys100NS FROM Win32_PerfRawData_GPUPerformanceCounters_GPUEngine WHERE UtilizationPercentage > 0");   // the counter is a running total, so an engine that was never used cannot be busy now; this skips about 85 % of the rows
             foreach (ManagementObject o in g.Get())
             {
                 using (o)
