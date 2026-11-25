@@ -1,7 +1,8 @@
 "use strict";
 
 const WS_URL = "ws://127.0.0.1:47821/ws";
-const HISTORY = 90;                 // seconds of chart history
+const HISTORY = 3600;               // samples kept per series (one per second)
+let range = 600;                    // seconds shown in the charts
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -28,6 +29,7 @@ $("btnFx").onclick = () => { store.set("fx", store.get("fx", "on") === "on" ? "o
 $("btnTheme").onclick = () => { store.set("theme", store.get("theme", "dark") === "dark" ? "light" : "dark"); applyPrefs(); drawAll(); };
 applyPrefs();
 for (const k of Object.keys(DEFAULTS)) { const v = parseFloat(store.get("cfg." + k, "")); if (Number.isFinite(v)) CFG[k] = v; }
+{ const r = parseInt(store.get("range", "600"), 10); if ([60, 600, 3600].includes(r)) range = r; }
 addEventListener("load", () => scrollTo(0, 0));
 
 /* save resources: the grid stops while the window is unfocused */
@@ -68,6 +70,28 @@ function trayUpdate(s) {
   checkAlert("hotspot", "GPU hotspot", s.gpu.hotspotC, CFG.spot);
 }
 
+/* ---------- sustained-heat banner ---------- */
+const HEAT_AFTER_MS = 30_000, SNOOZE_MS = 1_800_000;
+const heat = { cpu: {}, gpu: {}, spot: {}, snoozeUntil: 0 };
+const duration = (ms) => { const m = Math.floor(ms / 60000); return m < 1 ? Math.floor(ms / 1000) + " s" : m < 60 ? m + " min" : Math.floor(m / 60) + " h " + (m % 60) + " min"; };
+function heatUpdate(s) {
+  const now = Date.now();
+  const items = [["cpu", "CPU", s.cpu.tempC, CFG.hot], ["gpu", "GPU", s.gpu.tempC, CFG.hot], ["spot", "GPU hotspot", s.gpu.hotspotC, CFG.spot]];
+  const live = [];
+  for (const [key, label, v, limit] of items) {
+    const st = heat[key];
+    if (v == null || v < limit) { st.since = null; st.dismissed = false; continue; }
+    st.since ??= now;
+    if (!st.dismissed && now - st.since >= HEAT_AFTER_MS) live.push([key, `${label} ${fmt(v)}°C for ${duration(now - st.since)}`]);
+  }
+  const show = live.length > 0 && now >= heat.snoozeUntil;
+  $("heat").hidden = !show;
+  if (show) $("heatMsg").textContent = "Running hot: " + live.map((x) => x[1]).join(", ") + ". Check airflow, power mode and dust.";
+  heat.live = live.map((x) => x[0]);
+}
+$("heatDismiss").onclick = () => { (heat.live ?? []).forEach((k) => { heat[k].dismissed = true; }); $("heat").hidden = true; };
+$("heatSnooze").onclick = () => { heat.snoozeUntil = Date.now() + SNOOZE_MS; $("heat").hidden = true; };
+
 /* ---------- helper render ---------- */
 function setTemp(el, tagEl, t) {
   el.textContent = fmt(t);
@@ -87,26 +111,65 @@ function setDd(id, text, cls = "") { const e = $(id); e.textContent = text; e.cl
 function drawChart(canvas, series, color) {
   const dpr = devicePixelRatio || 1;
   const w = canvas.clientWidth, h = canvas.clientHeight;
-  if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+  if (!w || !h) return;
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
-  if (series.length < 2) return;
-  const min = 30, max = 100, offset = HISTORY - series.length;
-  const px = (i) => ((i + offset) / (HISTORY - 1)) * w;
-  const py = (v) => h - ((Math.min(max, Math.max(min, v)) - min) / (max - min)) * (h - 4) - 2;
+  const min = 30, max = 100;
+  const py = (v) => h - ((Math.min(max, Math.max(min, v)) - min) / (max - min)) * (h - 6) - 3;
+
+  // limit lines with their values
+  ctx.font = "11px " + css("--font-mono"); ctx.textBaseline = "bottom"; ctx.textAlign = "right";
+  ctx.lineWidth = 1;
+  [[CFG.warn, css("--highlight")], [CFG.hot, css("--danger")]].forEach(([t, c]) => {
+    const y = Math.round(py(t)) + 0.5;
+    ctx.setLineDash([4, 4]); ctx.strokeStyle = c; ctx.globalAlpha = 0.7;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1; ctx.fillStyle = c; ctx.fillText(t + "°", w - 2, y - 1);
+  });
+
+  const n = Math.min(series.length, range);
+  if (n < 2) return;
+  const data = series.slice(series.length - n);
+  const bucket = Math.max(1, Math.ceil(n / Math.max(1, w)));        // average samples so a 1 hour range stays light
+  const pts = [];
+  for (let k = 0; k * bucket < n; k++) {
+    const part = data.slice(k * bucket, (k + 1) * bucket);
+    const v = part.reduce((a, b) => a + b, 0) / part.length;
+    const j = k * bucket + (part.length - 1) / 2;
+    pts.push([(j / (n - 1)) * w, py(v)]); // the range is a maximum: a short history fills the width
+  }
   ctx.beginPath();
-  series.forEach((v, i) => (i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(i), py(v))));
+  pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
   ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
-  ctx.lineTo(px(series.length - 1), h); ctx.lineTo(px(0), h); ctx.closePath();
+  ctx.lineTo(pts[pts.length - 1][0], h); ctx.lineTo(pts[0][0], h); ctx.closePath();
   const g = ctx.createLinearGradient(0, 0, 0, h);
   g.addColorStop(0, color + "44"); g.addColorStop(1, color + "00");
   ctx.fillStyle = g; ctx.fill();
 }
+const RANGE_NAMES = { 60: "1 min", 600: "10 min", 3600: "1 hour" };
+function caption(el, series) {
+  const n = Math.min(series.length, range);
+  if (!n) { el.textContent = ""; return; }
+  let lo = Infinity, hi = -Infinity, sum = 0;
+  for (let i = series.length - n; i < series.length; i++) { const v = series[i]; if (v < lo) lo = v; if (v > hi) hi = v; sum += v; }
+  const span = n < range ? (n < 60 ? n + " s" : Math.floor(n / 60) + " min") : RANGE_NAMES[range];
+  el.textContent = `last ${span} · min ${fmt(lo)}° · avg ${fmt(sum / n)}° · max ${fmt(hi)}°`;
+}
 function drawAll() {
   drawChart($("cpuChart"), hist.cpu, css("--accent-primary"));
   drawChart($("gpuChart"), hist.gpu, css("--accent-secondary"));
+  caption($("cpuCap"), hist.cpu); caption($("gpuCap"), hist.gpu);
 }
+document.querySelectorAll(".seg button").forEach((b) => {
+  b.classList.toggle("on", +b.dataset.r === range);
+  b.onclick = () => {
+    range = +b.dataset.r; store.set("range", String(range));
+    document.querySelectorAll(".seg button").forEach((x) => x.classList.toggle("on", x === b));
+    drawAll();
+  };
+});
 function push(series, v) {
   if (v == null) return;
   series.push(v);
@@ -148,6 +211,7 @@ function render(s) {
   push(hist.cpu, cpu.tempC); push(hist.gpu, gpu.tempC);
   if (typeof Detail !== "undefined") Detail.update(s);
   trayUpdate(s); // runs while the window is hidden in the tray
+  heatUpdate(s);
   if (document.hidden) return; // window hidden: keep the history, skip drawing
   if (miniOn) { updateMini(s); return; }
 
@@ -255,6 +319,7 @@ function connect() {
   ws.onclose = () => { if (mine !== ws) return; setLink(false); retryTimer = setTimeout(connect, Math.min(5000, 1000 + retry++ * 500)); };
   ws.onerror = () => mine.close();
 }
+function sendWs(msg) { try { if (ws && ws.readyState === 1) ws.send(msg); } catch { /* connection closing */ } }
 connect();
 $("btnRetry").onclick = () => { $("offlineMsg").textContent = "Trying now…"; try { ws.onclose = null; ws.close(); } catch { /* already closed */ } connect(); };
 $("btnStart").onclick = () => {

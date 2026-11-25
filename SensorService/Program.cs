@@ -94,6 +94,9 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
             {
                 var r = await ws.ReceiveAsync(buf, ct);
                 if (r.MessageType == WebSocketMessageType.Close) break;
+                // The only command: restart min and max tracking. It never touches hardware settings.
+                if (r.MessageType == WebSocketMessageType.Text && r.EndOfMessage &&
+                    Encoding.UTF8.GetString(buf, 0, r.Count) == "reset-minmax") reader.RequestMinMaxReset();
             }
             clients.TryRemove(ws, out _);
             ws.Dispose();
@@ -262,8 +265,24 @@ sealed class SensorReader : IDisposable
         catch { return []; }
     }
 
+    volatile bool _resetMinMax;
+    public void RequestMinMaxReset() => _resetMinMax = true;
+
+    void ApplyMinMaxReset()
+    {
+        _resetMinMax = false;
+        void Reset(IHardware hw)
+        {
+            foreach (var x in hw.Sensors) { x.ResetMin(); x.ResetMax(); }
+            foreach (var sub in hw.SubHardware) Reset(sub);
+        }
+        foreach (var hw in _pc.Hardware) Reset(hw);
+        _range.Clear();
+    }
+
     public Snapshot Read()
     {
+        if (_resetMinMax) ApplyMinMaxReset();
         foreach (var hw in _pc.Hardware) { hw.Update(); foreach (var sub in hw.SubHardware) sub.Update(); }
 
         var cpu = _pc.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);

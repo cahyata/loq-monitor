@@ -48,6 +48,11 @@
       </span>
     </div>
 
+    <div id="heat" role="status" hidden>
+      <span id="heatMsg"></span>
+      <span class="hb"><button id="heatSnooze">SNOOZE 30 MIN</button><button id="heatDismiss">DISMISS</button></span>
+    </div>
+
     <div id="miniview" aria-live="off">
       <span class="ml">CPU</span><span class="mv" id="mCpu">--</span><span class="mp" id="mCpuL">--</span>
       <span class="ml">GPU</span><span class="mv" id="mGpu">--</span><span class="mp" id="mGpuL">--</span>
@@ -60,11 +65,15 @@
 
     <nav id="tabs" role="tablist"><button id="tabOverview" role="tab" class="on">OVERVIEW</button><button id="tabDetail" role="tab">DETAILED</button></nav>
     <main id="overview">
+      <div class="rangebar"><span>TEMPERATURE HISTORY</span>
+        <span class="seg" role="group" aria-label="History range"><button data-r="60">1 MIN</button><button data-r="600">10 MIN</button><button data-r="3600">1 HOUR</button></span>
+      </div>
       <section class="panel pink" id="cpu">
         <div class="ph"><span class="ptit">[ CPU ]</span><span class="dim" id="cpuName"></span></div>
         <div class="hero"><span class="big" id="cpuTemp">--</span><span class="unit">°C</span><span class="tag" id="cpuTag" title="CPU temperature status. Limits are in Settings.">--</span></div>
         <div class="meter"><i id="cpuLoadBar"></i></div>
-        <canvas id="cpuChart" height="46"></canvas>
+        <canvas id="cpuChart" height="72"></canvas>
+        <div class="cap" id="cpuCap"></div>
         <dl>
           <div><dt title="Share of CPU time in use, averaged over all threads">LOAD</dt><dd id="cpuLoad">--</dd></div>
           <div><dt title="CPU fan speed, read from the laptop embedded controller">FAN</dt><dd id="cpuFan">--</dd></div>
@@ -78,7 +87,8 @@
         <div class="ph"><span class="ptit">[ GPU ]</span><span class="dim" id="gpuName"></span></div>
         <div class="hero"><span class="big" id="gpuTemp">--</span><span class="unit">°C</span><span class="tag" id="gpuTag" title="GPU temperature status. Limits are in Settings.">--</span></div>
         <div class="meter"><i id="gpuLoadBar"></i></div>
-        <canvas id="gpuChart" height="46"></canvas>
+        <canvas id="gpuChart" height="72"></canvas>
+        <div class="cap" id="gpuCap"></div>
         <dl>
           <div><dt title="GPU core utilization">LOAD</dt><dd id="gpuLoad">--</dd></div>
           <div><dt title="Hottest point on the GPU die. Usually 5 to 15 degrees above the core temperature">HOTSPOT</dt><dd id="gpuHot">--</dd></div>
@@ -106,7 +116,10 @@
         <div id="log" class="log"></div></section>
     </main>
     <section id="detail" hidden>
-      <div class="dtools"><input id="dfilter" type="search" placeholder="Filter sensors" aria-label="Filter sensors"><button id="dexp">EXPAND ALL</button><button id="dcol">COLLAPSE ALL</button></div>
+      <div class="dtools"><input id="dfilter" type="search" placeholder="Filter sensors" aria-label="Filter sensors"><select id="dsort" aria-label="Sort sensors"><option value="default">SORT: DEFAULT</option><option value="name">SORT: NAME</option><option value="value">SORT: VALUE</option></select>
+        <label class="chk"><input id="dhide" type="checkbox" checked> HIDE VIRTUAL / IDLE NETWORK</label>
+        <button id="dreset" title="Restart minimum and maximum tracking for every sensor">RESET MIN/MAX</button>
+        <button id="dexp">EXPAND ALL</button><button id="dcol">COLLAPSE ALL</button></div>
       <div id="dtree"></div>
     </section>
   </div>

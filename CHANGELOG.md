@@ -10,6 +10,9 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 - `scripts/install-service.ps1` and `scripts/uninstall-service.ps1` register or remove a scheduled task that starts SensorService at logon with the highest run level.
 - CPU clock and CPU package power in the CPU panel. Power needs the PawnIO driver (see `docs/SENSORS.md`).
 - DETAILED tab next to OVERVIEW: every sensor (LibreHardwareMonitor, Lenovo EC, ACPI thermal zones, network) grouped by hardware with value, min and max, a filter box, and expand or collapse controls. The snapshot gains a `hardware` array.
+- Banner when the CPU, GPU or GPU hotspot stays at or above its limit for 30 seconds, with Snooze (30 minutes) and Dismiss.
+- Chart range switch (1 minute, 10 minutes, 1 hour), warm and hot limit lines, and a min, average and max caption.
+- Detailed tab: sort by default, name or value, a switch that hides virtual and idle network adapters, and a RESET MIN/MAX button. The service accepts the WebSocket message `reset-minmax`.
 - Status chip next to each temperature (NORMAL, WARM, HOT) so state does not depend on colour alone.
 - Tooltips on the CPU and GPU labels that explain each reading.
 - SETTINGS dialog for the warm, hot and GPU hotspot limits and the alert delay, saved between launches.

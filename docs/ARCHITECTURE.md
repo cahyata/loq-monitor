@@ -39,7 +39,9 @@ A `PeriodicTimer` calls `Read()` every 1000 ms. The service serializes the resul
 
 `main.js` connects to the WebSocket and, after a disconnect, retries after 1 to 5 seconds (the delay grows by 0.5 s per attempt). `render(s)` updates the DOM and skips drawing while the window is hidden, though it still records the history. The code builds DOM nodes with `createElement` and `textContent` and never assigns `innerHTML`. The window has no native frame. `index.html` draws its own title bar (drag region plus minimize, maximize and close buttons that call the Tauri window API), and the page scrolls inside `#scroller` so the scrollbar starts below the bar. Closing the window hides it to the system tray instead of exiting. The tray icon shows a tooltip with the CPU and GPU temperatures, and its menu has Show and Quit. When a CPU or GPU temperature stays at or above its limit for 10 seconds, the UI asks the Rust side for a desktop notification (cooldown 10 minutes per sensor). The theme, FX, alerts and selected tab preferences go to `localStorage` inside `try/catch`, so the app still renders when storage is blocked.
 
-The app has two tabs. Overview shows the panels. Detailed (`detail.js`) lists every sensor in `hardware`, grouped by hardware and sensor type with value, minimum and maximum, a filter box, and expand and collapse controls. It refreshes only the sections that are open.
+The UI keeps one hour of history (one sample per second, in memory only). The temperature charts show the last 1 minute, 10 minutes or 1 hour with the warm and hot limit lines and a min, average and max caption. When a CPU or GPU temperature or the GPU hotspot stays at or above its limit for 30 seconds, a banner appears with Snooze and Dismiss buttons.
+
+The app has two tabs. Overview shows the panels. Detailed (`detail.js`) lists every sensor in `hardware`, grouped by hardware and sensor type with value, minimum and maximum, a filter box, and expand and collapse controls. It sorts by default order, name or value, hides virtual and idle network adapters on request, and has a Reset min/max button that sends `reset-minmax`. It refreshes only the sections that are open.
 
 `ds-tokens.css` is generated from the NeonNet design system (`neon-design-system`) and must not be edited by hand. `tokens.css` holds only the values that system does not define.
 
@@ -51,6 +53,7 @@ Tauri embeds the frontend files at compile time, so a frontend change in a relea
 |---|---|
 | `ws://127.0.0.1:47821/ws` | Sends the latest snapshot on connect, then one every 1000 ms. |
 | `GET http://127.0.0.1:47821/snapshot` | Returns the latest snapshot as JSON. |
+| WebSocket text `reset-minmax` | Resets the minimum and maximum of every sensor, including the Lenovo EC and ACPI values the service tracks itself. |
 
 The allowed origins are the empty origin (non-browser clients), `tauri://localhost`, `http://tauri.localhost`, `https://tauri.localhost` and `http://localhost:1420`.
 
@@ -89,7 +92,7 @@ The records in `SensorService/Program.cs` define this schema. A numeric field is
 - The listener binds to `127.0.0.1`, so the network cannot reach it.
 - Every request is checked against the origin allowlist.
 - The app CSP is `default-src 'self'; style-src 'self' 'unsafe-inline'; connect-src ws://127.0.0.1:47821 http://127.0.0.1:47821`.
-- The service ignores incoming WebSocket messages except a close frame.
+- The service ignores incoming WebSocket messages except a close frame and the text message `reset-minmax`, which restarts min and max tracking. No message changes a hardware or power setting.
 
 ## Build and run
 
