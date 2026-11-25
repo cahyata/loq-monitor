@@ -63,5 +63,4 @@ jobs:
           releaseBody: See CHANGELOG.md for the changes in this version.
           releaseDraft: false
           prerelease: false
-          uploadUpdaterJson: true
           args: --bundles nsis
