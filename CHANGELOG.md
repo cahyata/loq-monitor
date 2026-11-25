@@ -4,6 +4,10 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+### Changed
+- The window uses about one eighth of the CPU on the Overview tab (40 % of a core before, about 5 % now). The bars grow with `transform` and no longer animate, which stops the layout and GPU work that ran on every frame.
+- The service reads the Lenovo values once per tick and refreshes the power mode, the ACPI zones and the battery power less often. One tick takes 159 ms instead of 260 ms. See `docs/PERFORMANCE.md`.
+
 ### Added
 - FPS, frame time and 1% low readings in the game overlay, measured by PresentMon for the program that has the focus. The service starts PresentMon only while the overlay is visible and shows one of these readings. `scripts/get-presentmon.ps1` downloads it, and the release workflow adds it to the installer.
 - More overlay settings: eight positions including top center, bottom center and the middle of each side, separate horizontal and vertical offsets, a choice of display, an accent color, three fonts, three spacings, a corner radius, a switch for status colors, and a list that sets the order of the readings.

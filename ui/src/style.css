@@ -86,7 +86,9 @@ html.light .big { text-shadow: 2px 2px 0 color-mix(in srgb, var(--c, var(--text)
 .hero .tag.hot { animation: blink 1.2s steps(1) infinite; }   /* only the temperature chips blink */
 
 .meter { height: 6px; background: var(--surface-inset); border: 1px solid var(--border); margin: 8px 0 4px; position: relative; }
-.meter i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent-secondary); transition: width .4s ease; }
+/* Bars use transform, not width, so a new value costs no layout. They jump to the new value without a transition:
+   the data changes once a second, and animating every bar for 0.4 s of each second kept the GPU busy (about 30% of a core). */
+.meter i { position: absolute; inset: 0; transform: scaleX(0); transform-origin: left center; background: var(--accent-secondary); }
 /* bar colour carries the status: cyan normal, green healthy battery, yellow high, pink critical */
 .meter.load i, .meter.st-ok i { background: var(--accent-secondary); }
 .meter.st-good i { background: var(--success); } .meter.st-warn i { background: var(--highlight); } .meter.st-hot i { background: var(--accent-primary); }
@@ -99,8 +101,8 @@ dd { font-size: 15px; font-weight: bold; color: var(--text); font-variant-numeri
 #gpu dl { grid-template-columns: repeat(4, 1fr); }
 dd.warn { color: var(--highlight); } dd.hot { color: var(--accent-primary); }
 
-.cores { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; margin-top: 4px; flex: 1; min-height: 44px; align-items: end; }
-.cores i { display: block; background: var(--accent-secondary); min-height: 2px; transition: height .4s; opacity: .85; }
+.cores { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; margin-top: 4px; flex: 1; min-height: 44px; }
+.cores i { display: block; background: var(--accent-secondary); transform: scaleY(.08); transform-origin: bottom; opacity: .85; }
 
 .v { font: italic 900 26px/1.1 Impact, "Arial Black", sans-serif; letter-spacing: 1px; font-variant-numeric: tabular-nums; }
 .v small { font: 11px var(--font-mono); color: var(--text-muted); letter-spacing: 0; margin-left: 4px; font-style: normal; }

@@ -181,7 +181,7 @@ const CAP_LABEL = { ok: "OK", warn: "HIGH", hot: "CRITICAL" };
 const BAT_LABEL = { good: "OK", warn: "LOW", hot: "CRITICAL" };
 function setMeter(barId, pct, state = "load") {
   const bar = $(barId);
-  bar.style.width = Math.max(0, Math.min(100, pct ?? 0)) + "%";
+  bar.style.transform = `scaleX(${Math.max(0, Math.min(100, pct ?? 0)) / 100})`;
   bar.parentElement.className = "meter " + (state === "load" ? "load" : "st-" + state);
 }
 function setChip(el, state, labels) {
@@ -357,7 +357,7 @@ function render(s) {
   if (cores.children.length !== cpu.coreLoads.length) {
     cores.replaceChildren(...cpu.coreLoads.map(() => document.createElement("i")));
   }
-  cpu.coreLoads.forEach((l, i) => { cores.children[i].style.height = Math.max(8, l) + "%"; });
+  cpu.coreLoads.forEach((l, i) => { cores.children[i].style.transform = `scaleY(${Math.max(8, l) / 100})`; });
 
   // GPU
   $("gpuName").textContent = (gpu.name ?? "").replace("NVIDIA GeForce ", "");
@@ -418,7 +418,7 @@ function diskCard(d) {
   hd.append(n, mk("span", "t " + ssdState(d.tempC), tdeg(d.tempC)));
   const us = capState(d.usedPct ?? 0);
   const meter = mk("div", "meter st-" + us); const bar = document.createElement("i");
-  bar.style.width = Math.min(100, d.usedPct ?? 0) + "%"; meter.append(bar);
+  bar.style.transform = `scaleX(${Math.min(100, d.usedPct ?? 0) / 100})`; meter.append(bar);
   const line = (label, valueEl, chip) => { const l = mk("div", "ln"); const lab = mk("span", null, label); if (chip) lab.append(chip); l.append(lab, valueEl); return l; };
   const life = mk("b", d.lifePct != null && d.lifePct <= 80 ? "warn" : "", fmt(d.lifePct) + "%");
   const used = mk("b", (d.usedPct ?? 0) >= 90 ? "hot" : "", fmt(d.usedPct) + "%");

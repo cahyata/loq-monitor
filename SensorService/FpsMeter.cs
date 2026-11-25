@@ -120,19 +120,11 @@ sealed class FpsMeter : IDisposable
         catch { /* the process was stopped */ }
     }
 
-    static readonly bool Debug = Environment.GetEnvironmentVariable("LOQ_FPS_DEBUG") == "1";
-
-    string[] PresentingPids()
-    {
-        lock (_frames) return _frames.Where(k => k.Value.Count > 0).Select(k => $"{k.Key}({k.Value.Count})").ToArray();
-    }
-
     /// <summary>The latest reading for the program in front, or null when nothing is presenting.</summary>
     public FpsInfo? Current()
     {
         if (_proc is null) return null;
         var fg = ForegroundPid();
-        if (Debug) Log($"foreground pid {fg}; presenting pids: " + string.Join(", ", PresentingPids()));
         if (fg == 0) return null;
         (long At, double Ms)[] all;
         lock (_frames)

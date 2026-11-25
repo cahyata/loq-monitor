@@ -107,7 +107,6 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
                     // Commands: restart min and max tracking, and ask for or release frame rate data.
                     // None of them touches hardware settings.
                     var command = Encoding.UTF8.GetString(buf, 0, r.Count);
-                    if (Environment.GetEnvironmentVariable("LOQ_FPS_DEBUG") == "1") File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "service.log"), $"{DateTime.Now:s} command {command}{Environment.NewLine}");
                     switch (command)
                     {
                         case "reset-minmax": reader.RequestMinMaxReset(); break;
@@ -148,6 +147,20 @@ static Task Send(WebSocket ws, string json) =>
 
 // ============================================================================
 
+/// <summary>Runs a slow read at most once per interval and hands back the last result in between.</summary>
+sealed class Throttled<T>(Func<T> read, int everyMs)
+{
+    bool _has;
+    long _at;
+    T _value = default!;
+    public T Get()
+    {
+        var now = Environment.TickCount64;
+        if (!_has || now - _at >= everyMs) { _value = read(); _at = now; _has = true; }
+        return _value;
+    }
+}
+
 sealed class SensorReader : IDisposable
 {
     // Lenovo capability IDs for LENOVO_OTHER_METHOD.GetFeatureValue (read-only).
@@ -161,8 +174,22 @@ sealed class SensorReader : IDisposable
     };
     ManagementObject? _other, _zone;
     PerformanceCounter? _cpuFreq, _cpuPerf;
+    ManagementBaseObject? _featureArgs;                 // reused for every GetFeatureValue call
+    readonly Dictionary<int, int?> _features = new();   // Lenovo readings of the current tick, so each is read once
+    // The Lenovo power mode and the ACPI zones change slowly and each read costs tens of milliseconds, so they refresh less often.
+    readonly Throttled<int?> _mode;
+    readonly Throttled<SensorInfo[]> _acpi;
+    readonly Throttled<float?> _batteryRate;
 
     public SensorReader()
+    {
+        _mode = new(ReadPowerMode, 3000);
+        _acpi = new(ReadAcpiZones, 3000);
+        _batteryRate = new(ReadBatteryRateW, 2000);
+        Open();
+    }
+
+    void Open()
     {
         try { _pc.Open(); } catch (Exception e) { Console.WriteLine("LHM open failed: " + e.Message); }
         try
@@ -200,7 +227,9 @@ sealed class SensorReader : IDisposable
     }
 
     /// Lenovo power mode (Fn+Q): 1 quiet, 2 balanced, 3 performance, 255 custom (224 on some models). Read-only.
-    int? PowerMode()
+    int? PowerMode() => _mode.Get();
+
+    int? ReadPowerMode()
     {
         if (_zone is null) return null;
         foreach (var m in new[] { "GetSmartFanMode", "GetThermalMode" })
@@ -218,14 +247,17 @@ sealed class SensorReader : IDisposable
     int? Feature(int id)
     {
         if (_other is null) return null;
+        if (_features.TryGetValue(id, out var cached)) return cached;
+        int? value = null;
         try
         {
-            var p = _other.GetMethodParameters("GetFeatureValue");
-            p["IDs"] = id;
-            var r = _other.InvokeMethod("GetFeatureValue", p, null);
-            return Convert.ToInt32(r?["value"]);
+            _featureArgs ??= _other.GetMethodParameters("GetFeatureValue");
+            _featureArgs["IDs"] = id;
+            var r = _other.InvokeMethod("GetFeatureValue", _featureArgs, null);
+            value = Convert.ToInt32(r?["value"]);
         }
-        catch { return null; }
+        catch { }
+        return _features[id] = value;
     }
 
     static float? Val(IHardware hw, SensorType t, string name) =>
@@ -269,7 +301,9 @@ sealed class SensorReader : IDisposable
     }
 
     /// ACPI thermal zones (tenths of a kelvin), the same source HWMonitor shows as \_TZ.TZxx.
-    SensorInfo[] AcpiZones()
+    SensorInfo[] AcpiZones() => _acpi.Get();
+
+    SensorInfo[] ReadAcpiZones()
     {
         try
         {
@@ -302,6 +336,7 @@ sealed class SensorReader : IDisposable
     public Snapshot Read()
     {
         if (_resetMinMax) ApplyMinMaxReset();
+        _features.Clear();
         foreach (var hw in _pc.Hardware) { hw.Update(); foreach (var sub in hw.SubHardware) sub.Update(); }
 
         var cpu = _pc.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
@@ -374,7 +409,9 @@ sealed class SensorReader : IDisposable
     /// Windows reports it in milliwatts through root\WMI BatteryStatus. LibreHardwareMonitor leaves its
     /// rate sensor empty while the battery discharges on this machine, so this is the primary source.
     /// </summary>
-    static float? BatteryRateW()
+    float? BatteryRateW() => _batteryRate.Get();
+
+    static float? ReadBatteryRateW()
     {
         try
         {
@@ -393,7 +430,7 @@ sealed class SensorReader : IDisposable
         return null;
     }
 
-    public void Dispose() { try { _pc.Close(); } catch { } _other?.Dispose(); _zone?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }
+    public void Dispose() { try { _pc.Close(); } catch { } _featureArgs?.Dispose(); _other?.Dispose(); _zone?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }
 }
 
 record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode, List<HwInfo> Hardware, FpsInfo? Fps = null);
