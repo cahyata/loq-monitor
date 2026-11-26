@@ -4,6 +4,19 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ## [Unreleased]
 
+### Added
+
+- A Storage card on the Insights tab: life left, total data written and read, data written this session and today, power-on hours, power cycles, spare blocks and temperature for each drive, from its SMART health report.
+- A table of the programs using the drives, with reading and writing speed and the totals since the tab was opened.
+
+### Changed
+
+- The disk ranking moved from Top programs to the Storage card.
+
+### Fixed
+
+- The disk ranking counted pipes, network traffic and cached reads as disk use, and could show tens of MB/s while the drives were idle. It now counts only data that goes to or from a drive.
+
 ## [0.3.0] - 2026-11-25
 
 ### Added

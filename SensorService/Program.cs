@@ -33,6 +33,7 @@ if (!firstInstance) return;
 using var cts = new CancellationTokenSource();
 try { Console.CancelKeyPress += (_, e) => { e.Cancel = true; cts.Cancel(); }; } catch { /* no console (windowless run) */ }
 
+DiskTracer.StopLeftover();
 var reader = new SensorReader();
 var fps = new FpsMeter();
 var procs = new ProcessSampler();

@@ -12,8 +12,18 @@
 
   <ItemGroup>
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.2.8" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="8.0.1" />
     <PackageReference Include="System.Management" Version="10.0.2" />
   </ItemGroup>
+
+  <!-- TraceEvent also copies symbol readers and native files for other processors. The disk trace needs none of them. -->
+  <Target Name="RemoveUnusedTraceFiles" AfterTargets="Build;Publish">
+    <ItemGroup>
+      <_UnusedTraceFiles Include="$(OutDir)x86\**\*;$(OutDir)arm64\**\*;$(OutDir)amd64\msdia140.dll" />
+      <_UnusedTraceFiles Include="$(PublishDir)x86\**\*;$(PublishDir)arm64\**\*;$(PublishDir)amd64\msdia140.dll" />
+    </ItemGroup>
+    <Delete Files="@(_UnusedTraceFiles)" />
+  </Target>
 
 </Project>

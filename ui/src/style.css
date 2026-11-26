@@ -365,6 +365,20 @@ dl.kv dd { font-size: 13px; font-weight: normal; color: var(--text-strong); over
 .insgrid .panel.wide { grid-column: 1 / -1; }
 .bigrow { display: flex; align-items: baseline; gap: 6px; margin: 6px 0 0; }
 .bignum { font: italic 900 52px/1 Impact, "Arial Black", sans-serif; font-variant-numeric: tabular-nums; color: var(--accent-primary); }
+.drvgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; align-items: start; }
+.drv { display: grid; gap: 8px; min-width: 0; }
+.drvhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.drvname { margin: 0; font-size: 13px; color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drvhead .dim { white-space: nowrap; }
+.drvlife { display: flex; align-items: baseline; gap: 8px; }
+.drv h3.drvname { text-transform: none; }
+.drvhead .dim.ok { color: var(--success); } .drvhead .dim.warn { color: var(--highlight); } .drvhead .dim.hot { color: var(--accent-primary); }
+.drv .ltrack { height: 8px; background: var(--surface-inset); border: 1px solid var(--border); position: relative; overflow: hidden; }
+.drv .ltrack i { position: absolute; inset: 0; background: var(--accent-secondary); transform-origin: left center; }
+.drv .ltrack i.warn { background: var(--highlight); } .drv .ltrack i.hot { background: var(--accent-primary); }
+.sysrow.diskrow { grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr)); }
+.sysrow.diskrow span:nth-child(n+2) { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) { .sysrow.diskrow { grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 1fr)); } .sysrow.diskrow span:nth-child(n+4) { display: none; } }
 .proclist { list-style: none; margin: 8px 0 4px; padding: 0; display: grid; gap: 4px; }
 .proclist li { display: grid; grid-template-columns: 18px minmax(120px, 34%) 1fr 84px; align-items: center; gap: 10px; font-size: 13px; min-height: 24px; }
 .proclist li.empty { display: block; color: var(--text-muted); font-size: 12px; padding: 10px 0; }

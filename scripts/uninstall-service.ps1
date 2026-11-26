@@ -18,3 +18,6 @@ if (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue) {
     Write-Host "Task '$TaskName' not found."
 }
 Get-Process SensorService -ErrorAction SilentlyContinue | Stop-Process -Force
+
+# A service that was ended while the Insights tab was open can leave its disk trace running.
+if (Get-Command logman -ErrorAction SilentlyContinue) { & logman stop LOQMonitorDisk -ets 2>&1 | Out-Null }

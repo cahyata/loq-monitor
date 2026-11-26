@@ -3,7 +3,7 @@
 // Copyright (c) 2026 cahyata
 "use strict";
 /* The INSIGHTS tab: the programs that use the most resources, the power draw and the energy used,
-   why the GPU is being held back, and min, average and max for this session. The session numbers
+   why the GPU is being held back, drive health and data written, and min, average and max for this session. The session numbers
    and the energy total are collected from every snapshot, also while another tab or the tray is
    showing, so they are right when the tab is opened. The program list is measured by the service
    only while this tab is open. Shares $, store, sendWs, tf, deg, GPU_LIMITS and limitsOf with main.js. */
@@ -15,7 +15,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   /** One bucket of statistics per measured value. */
   const bucket = () => ({ min: Infinity, max: -Infinity, sum: 0, n: 0 });
   const add = (b, v) => { if (v == null || !Number.isFinite(v)) return; b.min = Math.min(b.min, v); b.max = Math.max(b.max, v); b.sum += v; b.n++; };
-  const fresh = () => ({ start: Date.now(), wh: 0, limitSec: {}, stats: { cpuTemp: bucket(), gpuTemp: bucket(), cpuLoad: bucket(), gpuLoad: bucket(), gpuPower: bucket(), ram: bucket() }, secs: 0 });
+  const fresh = () => ({ start: Date.now(), wh: 0, limitSec: {}, disk: {}, stats: { cpuTemp: bucket(), gpuTemp: bucket(), cpuLoad: bucket(), gpuLoad: bucket(), gpuPower: bucket(), ram: bucket() }, secs: 0 });
   let sess = fresh();
 
   // Energy and limit time for today, kept across restarts.
@@ -24,6 +24,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     try { const d = JSON.parse(store.get("insday", "null")); if (d && d.date === dayKey()) return d; } catch { /* start a new day */ }
     return { date: dayKey(), wh: 0, limitSec: {} };
   })();
+  day.disk ??= {};   // data written by each drive at the first reading of the day
   let savedAt = 0;
   const saveDay = () => { savedAt = Date.now(); store.set("insday", JSON.stringify(day)); };
 
@@ -78,14 +79,39 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
       sess.wh += wh; day.wh += wh; sess.secs += dt;
       if (p.estimated) sess.est = true;
       for (const l of limitsOf(s.gpu?.throttleMask)) { sess.limitSec[l.bit] = (sess.limitSec[l.bit] ?? 0) + dt; day.limitSec[l.bit] = (day.limitSec[l.bit] ?? 0) + dt; }
-      if (day.date !== dayKey()) day = { date: dayKey(), wh, limitSec: {} };
+      if (day.date !== dayKey()) day = { date: dayKey(), wh, limitSec: {}, disk: {} };
       if (now - savedAt > 30000) saveDay();
     }
+    markDrives(s);
     netHist.push(netRates(s)); if (netHist.length > NET_KEEP) netHist.shift();
     const st = sess.stats;
     add(st.cpuTemp, s.cpu?.tempC); add(st.gpuTemp, s.gpu?.tempC); add(st.cpuLoad, s.cpu?.load); add(st.gpuLoad, s.gpu?.load);
     add(st.gpuPower, s.gpu?.powerW); add(st.ram, s.ram?.usedGB);
     if (active && !document.hidden) paint();
+  }
+
+  /* ---- drives ---- */
+  /** Health and totals of each drive, taken from its SMART sensors. */
+  function drives(s) {
+    return (s.hardware ?? []).filter((h) => h.type === "Storage").map((h, i) => {
+      const v = (type, name) => h.sensors.find((x) => x.type === type && x.name === name)?.value ?? null;
+      return {
+        key: i + " " + h.name, name: h.name,
+        life: v("Level", "Life"), spare: v("Level", "Available Spare"), spareMin: v("Level", "Available Spare Threshold"),
+        written: v("Data", "Data Written"), read: v("Data", "Data Read"),
+        hours: v("Factor", "Power On Hours"), cycles: v("Factor", "Power On Count"),
+        temp: v("Temperature", "Composite Temperature") ?? v("Temperature", "Temperature #1"), tempWarn: v("Temperature", "Warning Temperature"),
+      };
+    });
+  }
+
+  /** Remembers where each drive's write counter stood at the start of the session and of the day. */
+  function markDrives(s) {
+    for (const d of drives(s)) {
+      if (d.written == null) continue;
+      sess.disk[d.key] ??= d.written;
+      if (day.disk[d.key] == null) { day.disk[d.key] = d.written; saveDay(); }
+    }
   }
 
   /* ---- what the service should measure ---- */
@@ -102,7 +128,6 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     cpu: { unit: "%", fmt: (v) => v.toFixed(1) + " %", empty: "Nothing is using noticeable CPU right now." },
     memMB: { unit: "MB", fmt: (v) => (v >= 1024 ? (v / 1024).toFixed(1) + " GB" : Math.round(v) + " MB"), empty: "No data yet." },
     gpu: { unit: "%", fmt: (v) => v.toFixed(0) + " %", empty: "No program is using the GPU right now." },
-    diskMBs: { unit: "MB/s", fmt: (v) => v.toFixed(1) + " MB/s", empty: "No program is reading or writing much right now." },
   };
 
   function paintProcs(s) {
@@ -118,7 +143,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
       return;
     }
     if (!rows.length) { list.replaceChildren(el("li", "empty", f.empty)); return; }
-    const top = procKey === "memMB" || procKey === "diskMBs" ? Math.max(...rows.map((r) => r.value)) : 100;
+    const top = procKey === "memMB" ? Math.max(...rows.map((r) => r.value)) : 100;
     list.replaceChildren(...rows.map((r, i) => {
       const li = el("li");
       const name = el("span", "pname", r.name + (r.count > 1 ? "  ×" + r.count : ""));
@@ -320,6 +345,60 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     if (n.dns && n.dns.ip === n.gateway?.ip) ping.append(el("p", "note", "The DNS server is the router, so one measurement covers both."));
   }
 
+  /* ---- storage card ---- */
+  const bytes = (gb) => (gb == null ? "--" : gb >= 1000 ? (gb / 1000).toFixed(1) + " TB" : Math.round(gb) + " GB");
+  const moved = (mb) => (mb >= 1048576 ? (mb / 1048576).toFixed(1) + " TB" : mb >= 1024 ? (mb / 1024).toFixed(1) + " GB" : mb.toFixed(mb < 10 ? 1 : 0) + " MB");
+  const speed = (v) => (v < 0.005 ? "0" : v < 10 ? v.toFixed(2) : v.toFixed(0)) + " MB/s";
+
+  /** The worst thing the drive reports about itself comes first. */
+  function driveState(d) {
+    if (d.spare != null && d.spareMin != null && d.spare <= d.spareMin) return { level: "hot", label: "Replace soon" };
+    if (d.life != null && d.life <= 0) return { level: "hot", label: "Past rated life" };
+    if (d.temp != null && d.tempWarn != null && d.temp >= d.tempWarn) return { level: "hot", label: "Too hot" };
+    if (d.life != null && d.life <= 20) return { level: "warn", label: "Wearing out" };
+    return d.life == null ? { level: "", label: "No wear data" } : { level: "ok", label: "Healthy" };
+  }
+
+  function driveBox(d) {
+    const box = el("div", "drv"), head = el("div", "drvhead"), state = driveState(d);
+    const name = el("h3", "drvname", d.name); name.title = d.name;
+    head.append(name, el("span", "dim " + state.level, state.label));
+    const life = el("div", "drvlife"); life.append(el("span", "bignum", d.life == null ? "--" : d.life.toFixed(0)), el("span", "unit", "% life left"));
+    const track = el("div", "ltrack"), fill = el("i"); fill.className = state.level;
+    fill.style.transform = `scaleX(${d.life == null ? 0 : Math.max(0, Math.min(1, d.life / 100))})`; track.append(fill);
+    const since = (base) => (d.written == null || base == null ? "--" : bytes(Math.max(0, d.written - base)));
+    const dl = el("dl", "kv");
+    const item = (label, value) => dl.append(el("dt", null, label), el("dd", null, value));
+    item("Written in total", bytes(d.written));
+    item("Read in total", bytes(d.read));
+    item("Written this session", since(sess.disk[d.key]));
+    item("Written today", since(day.disk[d.key]));
+    item("Powered on", d.hours == null ? "--" : Math.round(d.hours).toLocaleString("en-US") + " h");
+    item("Power cycles", d.cycles == null ? "--" : Math.round(d.cycles).toLocaleString("en-US"));
+    item("Spare blocks", d.spare == null ? "--" : d.spare.toFixed(0) + " %" + (d.spareMin == null ? "" : " (warns at " + d.spareMin.toFixed(0) + " %)"));
+    item("Temperature", d.temp == null ? "--" : tf(d.temp) + deg() + (d.tempWarn == null ? "" : " (warns at " + tf(d.tempWarn) + deg() + ")"));
+    box.append(head, life, track, dl);
+    return box;
+  }
+
+  function paintStorage(s) {
+    const list = drives(s);
+    $("insDiskState").textContent = list.length ? list.length + (list.length === 1 ? " drive" : " drives") : "";
+    $("insDrives").replaceChildren(...(list.length ? list.map(driveBox) : [el("p", "note", "No drive reports its health.")]));
+
+    const wrap = $("insDiskProcs"), rows = s.processes?.disk;
+    if (s.processes && rows === null) { wrap.replaceChildren(el("p", "note", "Windows did not allow measuring disk activity. The sensor service needs administrator rights.")); return; }
+    if (!rows) {
+      const old = askedAt && Date.now() - askedAt > 12000;
+      wrap.replaceChildren(el("p", "note", old ? "No data. The sensor service that is running is older than this app. Update LOQ Monitor, or restart the service from the new install." : "Measuring... the first numbers appear in a few seconds."));
+      return;
+    }
+    const line = (cells, head) => { const x = row(cells, head); x.classList.add("diskrow"); return x; };
+    wrap.replaceChildren(line(["PROGRAM", "READING", "WRITING", "READ TOTAL", "WRITTEN TOTAL"], true),
+      ...(rows.length ? rows.map((r) => line([r.name + (r.count > 1 ? "  ×" + r.count : ""), speed(r.readMBs), speed(r.writeMBs), moved(r.readMB), moved(r.writtenMB)]))
+                      : [el("p", "note", "No program is reading or writing a drive right now.")]));
+  }
+
   function paintStats() {
     $("insSessionLen").textContent = "Running for " + clock((Date.now() - sess.start) / 1000);
     const st = sess.stats, T = (b, k) => (b.n ? tf(k === "avg" ? b.sum / b.n : b[k], 0) + deg() : "--");
@@ -334,7 +413,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
 
   function paint() {
     if (!last) return;
-    paintProcs(last); paintPower(last); paintLimits(last); paintLimitsCard(last); paintNetwork(last); paintStats();
+    paintProcs(last); paintPower(last); paintLimits(last); paintLimitsCard(last); paintNetwork(last); paintStorage(last); paintStats();
   }
 
   /* ---- controls ---- */
@@ -346,7 +425,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   document.querySelectorAll("#insProcSeg button").forEach((b) => { b.onclick = () => setKey(b.dataset.k); });
   setKey(procKey in FORMATS ? procKey : "cpu");
   $("insNetMask").onclick = () => { netMask = !netMask; store.set("insmask", netMask ? "on" : "off"); if (last) paintNetwork(last); };
-  $("insReset").onclick = () => { sess = fresh(); if (last) paint(); };
+  $("insReset").onclick = () => { sess = fresh(); if (last) { markDrives(last); paint(); } };
   $("insTariff").onclick = () => $("btnSettings").click();
   addEventListener("beforeunload", saveDay);
 
