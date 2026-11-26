@@ -12,9 +12,11 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 ### Changed
 
 - The disk ranking moved from Top programs to the Storage card.
+- Settings are saved and applied as soon as you change them. The Save and Cancel buttons are gone.
 
 ### Fixed
 
+- Using a control in Settings or Help with the keyboard no longer closes the window.
 - The disk ranking counted pipes, network traffic and cached reads as disk use, and could show tens of MB/s while the drives were idle. It now counts only data that goes to or from a drive.
 
 ## [0.3.0] - 2026-11-25

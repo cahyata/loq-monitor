@@ -517,45 +517,67 @@ $("btnStart").onclick = () => {
 };
 
 /* ---------- settings dialog ---------- */
+// Every control saves and applies as soon as it changes. A number that is not valid yet (for example half typed)
+// is not saved, so the last good value stays in use, and the reason is shown once the field is left.
 const dlg = $("settings");
 const cfgIds = { warn: "cfgWarn", hot: "cfgHot", spot: "cfgSpot", hold: "cfgHold" };
 const TEMP_KEYS = ["warn", "hot", "spot"];
-let dlgUnit = unit;
-function fillCfg(src, u) {
-  dlgUnit = u; $("cfgUnit").value = u; $("cfgKeys").checked = keysOn;
+const shownLimit = (k) => (TEMP_KEYS.includes(k) ? Math.round(conv(CFG[k], unit)) : CFG[k]);
+function fillLimits() {
+  document.querySelectorAll(".dlg-deg").forEach((e) => { e.textContent = "\u00B0" + unit; });
+  for (const [k, id] of Object.entries(cfgIds)) $(id).value = shownLimit(k);
+}
+function fillCfg() {
+  $("cfgUnit").value = unit; $("cfgKeys").checked = keysOn;
   $("cfgTheme").value = themePref(); $("cfgFx").checked = store.get("fx", "on") === "on"; $("cfgAlerts").checked = store.get("alerts", "on") === "on";
-  document.querySelectorAll(".dlg-deg").forEach((e) => { e.textContent = "\u00B0" + u; });
-  for (const [k, id] of Object.entries(cfgIds)) $(id).value = TEMP_KEYS.includes(k) ? Math.round(conv(src[k], u)) : src[k];
+  fillLimits();
   $("cfgTariff").value = store.get("tariff", ""); $("cfgCurrency").value = store.get("currency", "");
   $("cfgErr").textContent = "";
 }
-$("btnSettings").onclick = () => { fillCfg(CFG, unit); dlg.showModal(); };
-$("cfgCancel").onclick = () => dlg.close();
-$("cfgReset").onclick = () => fillCfg(DEFAULTS, dlgUnit);
-$("cfgUnit").onchange = () => {   // convert the numbers on screen so they keep their meaning
-  const next = $("cfgUnit").value;
-  for (const k of TEMP_KEYS) { const e = $(cfgIds[k]), v = parseFloat(e.value); if (Number.isFinite(v)) e.value = Math.round(conv(unconv(v, dlgUnit), next)); }
-  dlgUnit = next;
-  document.querySelectorAll(".dlg-deg").forEach((e) => { e.textContent = "\u00B0" + next; });
+const redraw = () => { if (lastRendered) render(lastRendered); };
+
+/** Saves the four limits when they make sense together. Returns the reason when they do not. */
+function saveLimits() {
+  const v = {};
+  for (const [k, id] of Object.entries(cfgIds)) {
+    const n = parseFloat($(id).value);
+    if (!Number.isFinite(n)) return "Fill in every field with a number.";
+    // An untouched field keeps its exact value, so rounding in \u00B0F does not move it.
+    v[k] = n === shownLimit(k) ? CFG[k] : TEMP_KEYS.includes(k) ? Math.round(unconv(n, unit) * 10) / 10 : n;   // stored in \u00B0C
+  }
+  if (TEMP_KEYS.some((k) => v[k] < 30 || v[k] > 120) || v.hold < 0 || v.hold > 300) return "Limits must be 30 to 120 \u00B0C (86 to 248 \u00B0F) and the delay 0 to 300 s.";
+  if (v.warn >= v.hot) return "Warm must be lower than Hot.";
+  if (Object.keys(v).some((k) => v[k] !== CFG[k])) {
+    Object.assign(CFG, v);
+    for (const k of Object.keys(v)) store.set("cfg." + k, String(v[k]));
+    Object.keys(alertState).forEach((k) => delete alertState[k]);
+    redraw();
+  }
+  return "";
+}
+for (const id of Object.values(cfgIds)) {
+  $(id).oninput = () => { if (!saveLimits()) $("cfgErr").textContent = ""; };
+  $(id).onchange = () => { $("cfgErr").textContent = saveLimits(); };
+}
+
+$("cfgTheme").onchange = () => { store.set("theme", $("cfgTheme").value); applyPrefs(); drawAll(); };
+$("cfgFx").onchange = () => { store.set("fx", $("cfgFx").checked ? "on" : "off"); applyPrefs(); drawAll(); };
+$("cfgAlerts").onchange = () => { store.set("alerts", $("cfgAlerts").checked ? "on" : "off"); applyPrefs(); redraw(); };
+$("cfgKeys").onchange = () => { keysOn = $("cfgKeys").checked; store.set("keys", keysOn ? "on" : "off"); };
+$("cfgUnit").onchange = () => { setUnit($("cfgUnit").value); fillLimits(); $("cfgErr").textContent = ""; };
+$("cfgTariff").oninput = () => {
+  const e = $("cfgTariff"), tariff = e.value.trim();
+  if (e.validity.badInput || (tariff !== "" && !(parseFloat(tariff) >= 0))) { $("cfgErr").textContent = "The electricity price must be a number, or empty."; return; }
+  $("cfgErr").textContent = ""; store.set("tariff", tariff); redraw();
 };
-$("settingsForm").onsubmit = (e) => {
-  const v = {}; for (const [k, id] of Object.entries(cfgIds)) v[k] = parseFloat($(id).value);
-  if (Object.values(v).some((x) => !Number.isFinite(x))) { e.preventDefault(); $("cfgErr").textContent = "Fill in every field with a number."; return; }
-  for (const k of TEMP_KEYS) v[k] = Math.round(unconv(v[k], dlgUnit) * 10) / 10;   // back to °C
-  if (v.warn >= v.hot) { e.preventDefault(); $("cfgErr").textContent = "Warm must be lower than Hot."; return; }
-  if (TEMP_KEYS.some((k) => v[k] < 30 || v[k] > 120) || v.hold < 0 || v.hold > 300) { e.preventDefault(); $("cfgErr").textContent = "Limits must be 30 to 120 \u00B0C (86 to 248 \u00B0F) and the delay 0 to 300 s."; return; }
-  const tariff = $("cfgTariff").value.trim();
-  if (tariff !== "" && !(parseFloat(tariff) >= 0)) { e.preventDefault(); $("cfgErr").textContent = "The electricity price must be a number, or empty."; return; }
-  store.set("tariff", tariff); store.set("currency", $("cfgCurrency").value.trim());
-  keysOn = $("cfgKeys").checked; store.set("keys", keysOn ? "on" : "off");
-  store.set("theme", $("cfgTheme").value); store.set("fx", $("cfgFx").checked ? "on" : "off"); store.set("alerts", $("cfgAlerts").checked ? "on" : "off");
-  applyPrefs(); drawAll();
-  if (dlgUnit !== unit) setUnit(dlgUnit);
-  Object.assign(CFG, v);
-  for (const k of Object.keys(v)) store.set("cfg." + k, String(v[k]));
+$("cfgCurrency").oninput = () => { store.set("currency", $("cfgCurrency").value.trim()); redraw(); };
+$("cfgReset").onclick = () => {
+  Object.assign(CFG, DEFAULTS);
+  for (const k of Object.keys(DEFAULTS)) store.set("cfg." + k, String(DEFAULTS[k]));
   Object.keys(alertState).forEach((k) => delete alertState[k]);
-  if (lastRendered) render(lastRendered);
+  fillLimits(); $("cfgErr").textContent = ""; redraw();
 };
+$("btnSettings").onclick = () => { fillCfg(); dlg.showModal(); };
 
 /* ---------- mini mode: small always-on-top window ---------- */
 let miniOn = false, fullSize = null, lastRendered = null;
@@ -618,6 +640,7 @@ $("helpClose").onclick = () => $("help").close();
 /* ---------- close a dialog by clicking outside it ---------- */
 for (const d of [$("settings"), $("help")]) {
   d.addEventListener("click", (e) => {
+    if (e.target !== d) return;   // a control inside, also when pressed with the keyboard (which reports position 0, 0)
     const r = d.getBoundingClientRect();
     if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) d.close();
   });
