@@ -2,6 +2,33 @@
 
 This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-11-26
+
+### Added
+
+- A Diagnosis tab.
+- Heat history: when a CPU, GPU or GPU hotspot temperature passed its limit, how high it went, how long it lasted and the power mode. It is kept across restarts.
+- Windows problems from the Event Log for the last 7, 30 or 90 days: hardware errors (WHEA), blue screens and shutdowns without warning, graphics driver and drive errors, and programs that crashed or stopped responding.
+- Export of the sensor readings of the last 6 hours to a CSV file in the Downloads folder, with a decimal point or a decimal comma.
+- A Care tab: what shortens the life of the battery, cooling, SSD and adapter and what helps, with a link to the source of each tip, and advice drawn from the current readings.
+- The installer includes the MIT license of LOQ Monitor and the license texts of the software it ships.
+
+### Changed
+
+- Key 5 opens Diagnosis, key 6 opens Care, and the Overlay tab moved to key 7.
+- The row of pages stays fixed, and the scrollbar starts under it.
+- A tidier layout: Overview fits the default window without scrolling and keeps the CPU and GPU side by side in the smallest window, Settings keeps CLOSE in view, the program crash list starts with eight entries, and the Care cards fill their columns.
+
+### Fixed
+
+- The sensor service no longer stops on processors whose threads are named by core and thread, which is expected on Intel models with Hyper-Threading.
+- On laptops with both a built-in AMD graphics processor and an NVIDIA GPU, the GPU panel uses the NVIDIA GPU.
+- CPU power and the fallback CPU temperature are read on Intel processors.
+- The window can be dragged by the status text in the title bar (service, power mode, alerts and clock).
+- A sensor that reports infinity or no number no longer stops the service. The value shows as `--`.
+
+The processor, graphics and sensor fixes are tested with simulated sensors, not on Intel or Radeon hardware.
+
 ## [0.4.0] - 2026-11-26
 
 ### Added
