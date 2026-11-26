@@ -17,6 +17,17 @@ The workflow stops when the tag does not match `version` in `tauri.conf.json`.
 
 The workflow also copies the section of the new version from `CHANGELOG.md` into the notes of the GitHub Release, using `scripts/release-notes.ps1`. The workflow fails when `CHANGELOG.md` has no `## [x.y.z]` heading for the tag. To print the notes yourself: `./scripts/release-notes.ps1 -Version 0.1.2`.
 
+## License texts
+
+The installer ships `LICENSE`, `THIRD-PARTY-NOTICES.md` and `THIRD-PARTY-LICENSES.txt`. The workflow generates the last file again before it builds. After you change a dependency, update the committed copy and the overview in `THIRD-PARTY-NOTICES.md`:
+
+```powershell
+dotnet publish SensorService -c Release -r win-x64 --self-contained true -o SensorService\publish
+node scripts\collect-licenses.mjs
+```
+
+The script stops when a component has no license text, or is available only under a GPL family license.
+
 ## Signing key
 
 Update packages are signed with a minisign key pair. The app trusts only the public key in `tauri.conf.json` (`plugins.updater.pubkey`).
