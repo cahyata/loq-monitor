@@ -120,7 +120,7 @@ dd.warn { color: var(--highlight); } dd.hot { color: var(--accent-primary); }
 .log .lv { font-weight: bold; margin-right: 8px; }
 .log .WARN { color: var(--highlight); } .log .CRIT { color: var(--accent-primary); } .log .INFO { color: var(--accent-secondary); } .log .OK { color: var(--success); }
 
-@media (max-width: 860px) { main { grid-template-columns: repeat(2, 1fr); } #cpu, #gpu, .span2 { grid-column: 1 / -1; } }
+@media (max-width: 720px) { main { grid-template-columns: repeat(2, 1fr); } #cpu, #gpu, .span2 { grid-column: 1 / -1; } }
 @media (max-width: 480px) { main { grid-template-columns: 1fr; } }
 
 /* ---------- tabs and detailed view ---------- */
@@ -167,8 +167,10 @@ dd.warn { color: var(--highlight); } dd.hot { color: var(--accent-primary); }
 #titlebar .wc button.x { color: var(--accent-primary); border-color: var(--accent-primary); }
 #titlebar .wc button.x:hover { background: var(--accent-primary); color: var(--surface-inset); box-shadow: 0 0 10px var(--accent-primary); }
 html, body { overflow: hidden; height: 100%; }
-/* the page scrolls inside this box, below the title bar, so the scrollbar stops at the bar */
-#scroller { position: fixed; top: 36px; left: 0; right: 0; bottom: 0; overflow-y: auto; overflow-x: hidden; z-index: 2; }
+/* Below the title bar: the row of pages stays in place and only the page under it scrolls, so the scrollbar starts under both.
+   The scrollbar keeps its room on every page, so nothing shifts sideways between a short and a long page. */
+#shell { position: fixed; top: 36px; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; z-index: 2; }
+#scroller { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
 #scroller::-webkit-scrollbar { width: 12px; }
 #scroller::-webkit-scrollbar-track { background: var(--surface-inset); border-left: 1px solid var(--divider); }
 #scroller::-webkit-scrollbar-thumb { background: var(--accent-secondary); border: 3px solid var(--surface-inset); }
@@ -192,6 +194,8 @@ dialog#settings .btns button.go { background: var(--accent-secondary); color: va
 html.mini #app > :not(#miniview) { display: none; }
 html.mini #miniview { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: baseline; padding: 4px 2px; }
 html.mini #app { padding: 6px 10px; }
+html.mini #toolbar { display: none; }
+html.mini #scroller { scrollbar-gutter: auto; }
 html.mini #titlebar .path { display: none; }
 #miniview .ml { color: var(--text-muted); font-size: 11px; letter-spacing: 1.5px; }
 #miniview .mv { font: italic 900 30px/1 Impact, "Arial Black", sans-serif; color: var(--c, var(--text)); }
@@ -209,10 +213,10 @@ html.mini #titlebar .path { display: none; }
 
 /* ---------- heat banner, chart range, detail toolbar ---------- */
 #heat { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0 10px; padding: 8px 14px; font-weight: bold; font-size: 12px;
-  color: var(--text-strong); background: color-mix(in srgb, var(--accent-primary) 18%, var(--surface-inset)); border: 1px solid var(--accent-primary); border-left-width: 5px; clip-path: var(--clip-sm); }
+  color: var(--text-strong); background: color-mix(in srgb, var(--accent-primary) 18%, var(--surface-inset)); border: 1px solid var(--accent-primary); clip-path: var(--clip-sm); }
 #heat[hidden] { display: none; }
 #updBar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0 10px; padding: 8px 14px; font-weight: bold; font-size: 12px;
-  color: var(--text-strong); background: color-mix(in srgb, var(--accent-secondary) 16%, var(--surface-inset)); border: 1px solid var(--accent-secondary); border-left-width: 5px; clip-path: var(--clip-sm); }
+  color: var(--text-strong); background: color-mix(in srgb, var(--accent-secondary) 16%, var(--surface-inset)); border: 1px solid var(--accent-secondary); clip-path: var(--clip-sm); }
 #updBar[hidden] { display: none; }
 #updBar .hb { display: flex; gap: 6px; flex-shrink: 0; }
 #updBar button { font: bold 11px var(--font-mono); letter-spacing: 1px; color: var(--accent-secondary); background: none; border: 1px solid var(--accent-secondary); padding: 2px 10px; min-height: 24px; cursor: pointer; }
@@ -379,6 +383,44 @@ dl.kv dd { font-size: 13px; font-weight: normal; color: var(--text-strong); over
 .sysrow.diskrow { grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr)); }
 .sysrow.diskrow span:nth-child(n+2) { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 560px) { .sysrow.diskrow { grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 1fr)); } .sysrow.diskrow span:nth-child(n+4) { display: none; } }
+/* ---------- diagnosis page ---------- */
+.diagbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 4px 0; font-size: 12px; }
+.diagbar label { display: inline-flex; align-items: center; gap: 8px; }
+.diagbar select { font: 12px var(--font-mono); color: var(--text-strong); background: var(--surface-inset); border: 1px solid var(--text-muted); padding: 3px 6px; min-height: 24px; }
+.diagbar button:disabled { opacity: .5; cursor: default; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 6px 0; }
+.tile { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface-inset); border: 1px solid var(--divider); font-size: 12px; line-height: 1.35; }
+.tile .bignum { font-size: 34px; min-width: 1.2em; }
+.sysrow.heatrow { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.3fr) repeat(2, minmax(0, .8fr)) minmax(0, 1.4fr) minmax(0, 1.2fr); }
+.sysrow.evrow { grid-template-columns: minmax(0, 3fr) minmax(0, 1fr) minmax(0, 1.2fr); align-items: center; }
+.sysrow.progrow { grid-template-columns: minmax(0, 2fr) minmax(0, .8fr) minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 2fr); }
+.evwhat b { display: block; font-weight: normal; color: var(--text-strong); white-space: normal; }
+.evwhat small { display: block; color: var(--text-muted); font-size: 11px; white-space: normal; }
+.sysrow .hot, .evwhat b.hot, .tile b.hot { color: var(--danger); }
+.evwhat b.warn, .tile b.warn { color: var(--highlight); }
+.tile b.ok { color: var(--success); }
+/* ---------- care page ---------- */
+.insgrid > .wide { grid-column: 1 / -1; }
+.caregrid { columns: 2 340px; column-gap: 12px; }
+.caregrid > .panel { break-inside: avoid; margin-bottom: 12px; }
+#careTab .insgrid { gap: 12px; }
+#careTab .caregrid { margin-bottom: -12px; }
+.advice, .tips { list-style: none; margin: 4px 0 0; padding: 0; }
+.advice li { display: grid; grid-template-columns: 74px 1fr auto; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--divider); font-size: 13px; }
+.advice li:first-child { border-top: 0; }
+.advice li.none { display: block; color: var(--text-muted); font-size: 12px; }
+.advice p { margin: 0; line-height: 1.5; }
+.advice .mark { font: bold 10px var(--font-mono); letter-spacing: 1px; color: var(--highlight); }
+.advice .mark.hot { color: var(--danger); }
+.tips li { position: relative; padding: 4px 0 4px 18px; margin-bottom: 8px; }
+.tips li::before { content: ""; position: absolute; left: 1px; top: 10px; width: 7px; height: 7px; background: var(--success); }
+.tips.wear li::before { background: var(--highlight); transform: rotate(45deg); }
+.tips b { font-size: 13px; color: var(--text-strong); }
+.tips p { margin: 3px 0 0; font-size: 12px; line-height: 1.5; }
+.tips p.srcs { display: flex; flex-wrap: wrap; gap: 4px 12px; }
+button.src { font: 11px var(--font-mono); color: var(--accent-secondary); background: none; border: 0; padding: 2px 0; min-height: 24px; text-decoration: underline; text-align: left; cursor: pointer; }
+button.src:hover { color: var(--text-strong); }
+@media (max-width: 560px) { .advice li { grid-template-columns: 1fr; gap: 2px; } }
 .proclist { list-style: none; margin: 8px 0 4px; padding: 0; display: grid; gap: 4px; }
 .proclist li { display: grid; grid-template-columns: 18px minmax(120px, 34%) 1fr 84px; align-items: center; gap: 10px; font-size: 13px; min-height: 24px; }
 .proclist li.empty { display: block; color: var(--text-muted); font-size: 12px; padding: 10px 0; }
@@ -390,29 +432,30 @@ dl.kv dd { font-size: 13px; font-weight: normal; color: var(--text-strong); over
 #insProcSeg { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 6px 0 4px; }
 #insProcSeg button { font: bold 11px var(--font-mono); letter-spacing: 1px; color: var(--text-muted); background: none; border: 1px solid var(--border); padding: 3px 10px; min-height: 24px; cursor: pointer; }
 #insProcSeg button.on { color: var(--surface-inset); background: var(--accent-secondary); border-color: var(--accent-secondary); }
-#insights .more, #insightsTab .more { margin: 8px 0 0; }
+#insightsTab .more, #diagTab .more { margin: 8px 0 0; }
+#diagTab .more:not(:has(button:not([hidden]))) { display: none; }
 #insightsTab .systable { min-width: 0; }
 #insightsTab .sysrow { min-width: 0; }
 @media (max-width: 560px) { .proclist li { grid-template-columns: 18px 1fr 76px; } .proclist .pbar { display: none; } }
 
 /* ---------- Layout pass ---------- */
-/* The tabs stay in view while a long page scrolls, so the way to another page is never out of reach. */
-#toolbar { position: sticky; top: 0; z-index: 6; margin: 0 0 12px; padding: 6px 0 8px; background: var(--surface); border-bottom: 1px solid var(--divider); }
+/* The pages are always in view. The padding lines the row up with the page below, which loses 12px to the scrollbar. */
+#toolbar { flex: none; margin: 0; padding: 12px 30px 0 18px; }
+#toolbar .navrow { max-width: 1204px; margin: 0 auto; padding-bottom: 8px; border-bottom: 1px solid var(--divider); }
 /* System page: paired cards share a height, and the key column is narrower inside full-width cards. */
 .sysgrid { align-items: stretch; }
 .sysgrid .panel.wide dl.kv { grid-template-columns: 140px 1fr; }
 /* Overlay page: the preview stays in view while the settings scroll under it. */
 .ovside { position: static; }
-.ovside > section:first-child { position: sticky; top: 48px; z-index: 3; background: var(--surface-inset); }
+.ovside > section:first-child { position: sticky; top: 8px; z-index: 3; background: var(--surface-inset); }
 .stage { min-height: 110px; }
 .ovform h3.sub { grid-column: 1 / -1; text-align: left; margin: 12px 0 0; padding-top: 8px; font-size: 11px; letter-spacing: 1.5px; color: var(--accent-primary); border-top: 1px solid var(--divider); }
 .ovform h3.sub.first { margin-top: 0; padding-top: 0; border-top: 0; }
 .ovside .ovform select, .ovside .ovform input[type="number"] { max-width: 170px; }
 .ovside .ovform input[type="range"] { width: 130px; }
 @media (max-width: 900px) { .ovside > section:first-child { position: static; } }
-#overview > #rangeSeg { grid-column: 1 / -1; justify-self: end; margin: 0; }
-/* A focused control scrolls into view below the sticky tabs, not under them (WCAG 2.2 Focus Not Obscured). */
-#scroller { scroll-padding-top: 72px; }
+/* A focused control scrolls fully into view. */
+#scroller { scroll-padding-block: 8px; }
 
 /* Network card on the Insights page */
 .netgrid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; align-items: start; }
@@ -448,6 +491,8 @@ html.mini #titlebar .wc { margin-left: auto; }
 #tabs button:first-child { margin-left: 0; }
 #tabs button.on { z-index: 1; }
 #tabs .tabsep { width: 16px; }
+/* in a narrow window the six pages and the two buttons still share one row */
+@media (max-width: 880px) { #tabs button { padding-left: 8px; padding-right: 8px; letter-spacing: .5px; } #tabs .tabsep { width: 8px; } .acts { gap: 6px; } .acts button { padding-left: 7px; padding-right: 7px; } }
 #tabs .tabsep + button { margin-left: 0; }
 .odot { display: none; width: 7px; height: 7px; margin-left: 7px; border-radius: 50%; background: var(--success); vertical-align: middle; }
 .odot.on { display: inline-block; }
@@ -460,8 +505,10 @@ html.mini #titlebar .wc { margin-left: auto; }
 #toolbar #summary { flex: none; min-width: 0; height: 30px; margin-top: 8px; }
 #sumText { -webkit-line-clamp: 1; }
 @media (max-width: 900px) { #toolbar #summary { height: 40px; } #sumText { -webkit-line-clamp: 2; } }
-/* Only the row of pages and actions stays pinned. The status line scrolls away with the content. */
-#toolbar { margin-bottom: 8px; }
+/* The status line scrolls away with the content. */
+#sumrow { display: flex; align-items: center; gap: 16px; margin: 0 0 10px; }
+#sumrow #summary { flex: 1; margin: 0; }
+#rangeSeg { flex-shrink: 0; }
 #summary { flex: none; min-width: 0; height: 30px; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; }
 @media (max-width: 900px) { #summary { height: 40px; } }
 
@@ -479,3 +526,48 @@ html.mini #titlebar .wc { margin-left: auto; }
 .sysrow.modes span.now { color: var(--accent-secondary); font-weight: bold; }
 .sysrow.head span.now { color: var(--accent-secondary); }
 @media (max-width: 760px) { .plgrid { grid-template-columns: 1fr; } }
+
+/* ---------- consistency pass ---------- */
+/* Parts the browser draws take the theme too. */
+::selection { background: var(--accent-primary); color: var(--surface-inset); }
+input { caret-color: var(--accent-secondary); }
+input[type="checkbox"], input[type="range"] { accent-color: var(--accent-secondary); }
+/* The first section heading of a card sits under the card title without a second rule. */
+.panel h3.sub.first { margin-top: 0; padding-top: 0; border-top: 0; }
+/* Cards that share a row share its height. */
+#insightsTab .insgrid { align-items: stretch; }
+/* Running text stays readable in full width cards. */
+.panel p.note { max-width: 92ch; }
+/* One gap between a page's tool row and its first card. */
+.sysbar, .dtools { margin-bottom: 12px; }
+legend { text-transform: uppercase; }
+/* Settings: one column of equally wide controls, a themed scrollbar, and CLOSE always in reach. */
+dialog#settings { width: 460px; max-width: calc(100vw - 32px); padding-bottom: 0; scrollbar-width: thin; scrollbar-color: var(--accent-secondary) var(--surface-inset); }
+dialog#settings label > select, dialog#settings label > input:not([type="checkbox"]) { width: 96px; flex-shrink: 0; min-height: 26px; }
+dialog#settings label > input[type="checkbox"] { width: 16px; height: 16px; margin-right: 40px; flex-shrink: 0; }
+dialog#settings .btns { position: sticky; bottom: 0; margin: 10px -20px 0; padding: 10px 20px 14px; background: var(--surface-raised); border-top: 1px solid var(--divider); }
+dialog#settings { scroll-padding-bottom: 64px; }
+/* Overlay appearance: selects and number fields line up. */
+.ovside .ovform select, .ovside .ovform input[type="number"] { width: 160px; }
+/* A short window keeps all of Overview in view. */
+@media (min-width: 721px) and (max-height: 900px) {
+  #app { padding-bottom: 12px; }
+  main { gap: 10px; }
+  .panel { padding-top: 8px; padding-bottom: 10px; }
+  .ph { margin-bottom: 4px; }
+  #cpu .big, #gpu .big { font-size: 52px; }
+  .loadrow { margin: 6px 0 2px; }
+  #cpuChart, #gpuChart { height: 76px; }
+  .cap { margin-bottom: 4px; }
+  .lab { margin-top: 6px; }
+  .cores { min-height: 30px; }
+  #overview .mini .meter { margin: 5px 0 2px; }
+  #overview .disk .meter { margin: 4px 0 2px; }
+  #overview .log { line-height: 1.55; }
+}
+
+/* Every control shows the same focus ring. */
+
+select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-secondary); outline-offset: 1px; }
+/* CPU and GPU stay side by side down to the smallest window; the narrower cards use fewer columns. */
+@media (min-width: 721px) and (max-width: 940px) { #gpu dl { grid-template-columns: repeat(3, 1fr); } .disks { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } .vrow { gap: 6px; } #overview .v { font-size: 22px; white-space: nowrap; } #overview .v small { margin-left: 2px; } }

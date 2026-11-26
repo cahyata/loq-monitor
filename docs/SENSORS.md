@@ -6,10 +6,10 @@ This document lists the source of each reading and its status on the test machin
 
 | Reading | Source | Status |
 |---|---|---|
-| CPU temperature | Lenovo EC (WMI), fallback LHM `Core (Tctl/Tdie)` | Works |
+| CPU temperature | Lenovo EC (WMI), fallback LHM `Core (Tctl/Tdie)` (AMD) or `CPU Package` (Intel) | Works |
 | CPU total load and load per thread | LHM | Works |
 | CPU fan | Lenovo EC (WMI) | Works |
-| CPU package power | LHM `Package` (needs PawnIO) | Works |
+| CPU package power | LHM `Package` (AMD) or `CPU Package` (Intel), needs PawnIO | Works |
 | CPU clock | LHM `Cores (Average Effective)` (needs PawnIO), fallback Windows counters | Works |
 | GPU temperature, hotspot, VRAM temperature | LHM | Works |
 | GPU load, power, core clock, memory clock | LHM | Works |
@@ -107,4 +107,4 @@ The service assumes that a positive rate means charging and a negative rate mean
 ## References
 
 - [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor), MPL-2.0.
-- [Legion Toolkit](https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit), GPL-3.0. The WMI class names and capability IDs come from reading its source. No code was copied.
+- [Legion Toolkit](https://github.com/LenovoLegionToolkit-Team/LenovoLegionToolkit), GPL-3.0. The WMI class names and capability IDs come from reading its source. No code was copied, and none may be: see `THIRD-PARTY-NOTICES.md`. Confirm interface facts on a real machine (the firmware describes its own WMI classes) and write the code from those findings.

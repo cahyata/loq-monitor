@@ -47,7 +47,7 @@ const Detail = (() => {
       d.addEventListener("toggle", () => { if (d.open) open.add(h.name); else open.delete(h.name); if (last) refresh(last); });
       const sm = document.createElement("summary");
       const a = document.createElement("span"), b = document.createElement("span");
-      a.textContent = h.name; b.className = "dim"; b.textContent = rows.length + " sensors";
+      a.textContent = h.name; b.className = "dim"; b.textContent = rows.length + (rows.length === 1 ? " sensor" : " sensors");
       sm.title = SensorHelp.hardware(h.name, h.type);
       sm.append(a, b); d.append(sm);
       if (sort === "name") rows.sort((p, q) => p.x.name.localeCompare(q.x.name, undefined, { numeric: true }));
@@ -106,8 +106,8 @@ const Detail = (() => {
     });
   }
 
-  const TABS = { overview: ["tabOverview", "overview"], detail: ["tabDetail", "detail"], overlay: ["tabOverlay", "overlayTab"], system: ["tabSystem", "systemTab"], insights: ["tabInsights", "insightsTab"] };
-  /** Shows one tab: "overview", "detail", "overlay", "system" or "insights". Booleans from older callers mean detail or overview. */
+  const TABS = { overview: ["tabOverview", "overview"], detail: ["tabDetail", "detail"], overlay: ["tabOverlay", "overlayTab"], system: ["tabSystem", "systemTab"], insights: ["tabInsights", "insightsTab"], diagnosis: ["tabDiag", "diagTab"], care: ["tabCare", "careTab"] };
+  /** Shows one tab: "overview", "detail", "overlay", "system", "insights", "diagnosis" or "care". Booleans from older callers mean detail or overview. */
   function setTab(which) {
     const name = which === true ? "detail" : which === false || !TABS[which] ? "overview" : which;
     on = name === "detail";
@@ -123,6 +123,8 @@ const Detail = (() => {
     if (typeof OverlayUI !== "undefined") OverlayUI.setActive(name === "overlay");
     if (typeof SystemPage !== "undefined") SystemPage.setActive(name === "system");
     if (typeof Insights !== "undefined") Insights.setActive(name === "insights");
+    if (typeof Diagnosis !== "undefined") Diagnosis.setActive(name === "diagnosis");
+    if (typeof Care !== "undefined") Care.setActive(name === "care");
     if (name === "detail") { sig = ""; if (last) refresh(last); } else if (name === "overview") drawAll();
   }
 
@@ -131,6 +133,8 @@ const Detail = (() => {
   $("tabOverlay").onclick = () => setTab("overlay");
   $("tabSystem").onclick = () => setTab("system");
   $("tabInsights").onclick = () => setTab("insights");
+  $("tabDiag").onclick = () => setTab("diagnosis");
+  $("tabCare").onclick = () => setTab("care");
   $("dsort").value = sort;
   $("dhide").checked = hideNet;
   $("dsort").onchange = () => { sort = $("dsort").value; store.set("dsort", sort); sig = ""; if (last) refresh(last); };

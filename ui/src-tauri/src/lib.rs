@@ -39,6 +39,73 @@ fn start_service() -> Result<(), String> {
   if out.status.success() { Ok(()) } else { Err(String::from_utf8_lossy(&out.stderr).trim().to_string()) }
 }
 
+/// Saves a CSV export in the Downloads folder and returns its path. An existing file is never overwritten.
+/// Async, so writing a large file does not stall the window.
+#[tauri::command]
+async fn save_csv(app: AppHandle, name: String, content: String) -> Result<String, String> {
+  use std::io::Write;
+  let stem = name
+    .strip_suffix(".csv")
+    .filter(|s| !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_'))
+    .ok_or("that file name is not allowed")?;
+  let dir = app.path().download_dir().map_err(|e| e.to_string())?;
+  for n in 1..100 {
+    let file = if n == 1 { format!("{stem}.csv") } else { format!("{stem}-{n}.csv") };
+    let path = dir.join(file);
+    match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
+      Ok(mut f) => {
+        f.write_all(content.as_bytes()).map_err(|e| e.to_string())?;
+        return Ok(path.to_string_lossy().into_owned());
+      }
+      Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+      Err(e) => return Err(e.to_string()),
+    }
+  }
+  Err("there are too many files with that name".into())
+}
+
+/// Opens the Downloads folder with an exported file selected. Only a CSV file in that folder is accepted.
+#[tauri::command]
+fn reveal_file(app: AppHandle, path: String) -> Result<(), String> {
+  use std::os::windows::process::CommandExt;
+  let dir = app.path().download_dir().map_err(|e| e.to_string())?;
+  let file = std::path::Path::new(&path);
+  if file.parent() != Some(dir.as_path()) || file.extension().is_none_or(|e| e != "csv") || !file.is_file() {
+    return Err("the file is not there any more".into());
+  }
+  std::process::Command::new("explorer.exe")
+    .raw_arg(format!("/select,\"{}\"", file.display()))
+    .spawn()
+    .map(|_| ())
+    .map_err(|e| e.to_string())
+}
+
+/// Hosts of the pages the Care tab links to. A new source needs its host here.
+const SOURCE_HOSTS: [&str; 8] = [
+  "support.lenovo.com",
+  "pcsupport.lenovo.com",
+  "www.lenovo.com",
+  "download.lenovo.com",
+  "support.microsoft.com",
+  "www.batteryuniversity.com",
+  "www.kingston.com",
+  "www.crucial.com",
+];
+
+/// Opens a source page of the Care tab in the default browser. Only an HTTPS address on a listed host is accepted.
+#[tauri::command]
+fn open_source(url: String) -> Result<(), String> {
+  let host = url.strip_prefix("https://").and_then(|rest| rest.split('/').next()).unwrap_or("");
+  if !SOURCE_HOSTS.contains(&host) || !url.chars().all(|c| c.is_ascii_graphic() && c != '"') {
+    return Err("that address is not on the list of sources".into());
+  }
+  std::process::Command::new("rundll32.exe")
+    .args(["url.dll,FileProtocolHandler", &url])
+    .spawn()
+    .map(|_| ())
+    .map_err(|e| e.to_string())
+}
+
 // ---------------------------------------------------------------------------
 // Game overlay: a second window that is transparent, always on top and ignores the mouse, so clicks
 // go through to the game. It is created the first time it is shown and only hidden afterwards.
@@ -260,6 +327,9 @@ pub fn run() {
       set_tooltip,
       notify,
       start_service,
+      save_csv,
+      reveal_file,
+      open_source,
       overlay_configure,
       overlay_monitors,
       overlay_resize,

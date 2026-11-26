@@ -370,6 +370,8 @@ function render(s) {
   if (typeof OverlayUI !== "undefined") OverlayUI.update(s);
   if (typeof SystemPage !== "undefined") SystemPage.update(s);
   if (typeof Insights !== "undefined") Insights.update(s);
+  if (typeof Diagnosis !== "undefined") Diagnosis.update(s);
+  if (typeof Care !== "undefined") Care.update(s);
   trayUpdate(s); // runs while the window is hidden in the tray
   heatUpdate(s);
   if (document.hidden) return; // window hidden: keep the history, skip drawing
@@ -485,7 +487,7 @@ let retry = 0, ws = null, retryTimer = null, offlineTimer = null;
 function showOffline(show) {
   const was = !$("offline").hidden;
   $("offline").hidden = !show;
-  $("scroller").inert = show;                      // the page behind the overlay cannot take focus
+  $("shell").inert = show;                         // the pages behind the overlay cannot take focus
   if (show && !was) $("btnStart").focus();
   if (!show && was) $("btnSettings").focus({ preventScroll: true });
 }
@@ -626,7 +628,9 @@ addEventListener("keydown", (e) => {
   else if (k === "2") Detail.show("insights");
   else if (k === "3") Detail.show("detail");
   else if (k === "4") Detail.show("system");
-  else if (k === "5") Detail.show("overlay");
+  else if (k === "5") Detail.show("diagnosis");
+  else if (k === "6") Detail.show("care");
+  else if (k === "7") Detail.show("overlay");
   else if (k === "o") OverlayUI.toggle();
   else if (k === "/" || k === "f") { Detail.show(true); $("dfilter").focus(); e.preventDefault(); }
   else if (k === "t") cycleTheme();

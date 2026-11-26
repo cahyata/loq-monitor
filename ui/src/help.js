@@ -27,7 +27,7 @@ const SensorHelp = (() => {
     // Load
     ["Load", /^CPU Total$/, "How busy the whole processor is. 100% means every thread is fully used."],
     ["Load", /^CPU Core Max$/, "The busiest processor thread right now. Many games load one thread much harder than the rest."],
-    ["Load", /^CPU Core #\d+$/, "How busy one processor thread is. Each physical core shows as two threads."],
+    ["Load", /^CPU Core #\d+( Thread #\d+)?$/, "How busy one processor thread is. Each physical core shows as two threads."],
     ["Load", /^GPU Core$/, "How busy the graphics chip is. Close to 100% while gaming is normal."],
     ["Load", /^GPU Memory Controller$/, "How busy the circuit that moves data in and out of video memory."],
     ["Load", /^GPU Memory$/, "How full the video memory (VRAM) is."],

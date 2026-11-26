@@ -18,7 +18,7 @@ A hardware monitor and game overlay for the Lenovo LOQ laptop, with a NeonNet cy
 LOQ Monitor shows what the CPU, GPU, memory, drives, battery and network are doing, including values that only the Lenovo embedded controller reports: CPU temperature, fan speeds, power mode and power limits. It only reads. It never changes fan, power or any other hardware setting.
 
 > [!NOTE]
-> The app is built and tested on one model: the Lenovo LOQ 83JC (Ryzen 7 7435HS, RTX 4060 Laptop, Windows 11). Other machines can work, but some readings can be missing or wrong. [docs/SENSORS.md](docs/SENSORS.md) lists the source and status of each reading.
+> The app is built and tested on one model: the Lenovo LOQ 83JC (Ryzen 7 7435HS, RTX 4060 Laptop, Windows 11). Other LOQ models, including those with Intel processors, are not tested. Some readings can be missing or wrong on them. [docs/SENSORS.md](docs/SENSORS.md) lists the source and status of each reading.
 
 <div align="center">
 
@@ -44,6 +44,8 @@ LOQ Monitor shows what the CPU, GPU, memory, drives, battery and network are doi
 | **Insights** | Programs that use the most CPU, memory and GPU. Drive health, total data written and the programs using the drives. Power draw, energy and cost. CPU and GPU power limits per power mode. Network speed, Wi-Fi signal and ping. Session minimum, average and maximum. |
 | **Detailed** | Every sensor grouped by hardware, with value, minimum and maximum, a filter and pinned favorites. |
 | **System** | Device, firmware, Windows, processor, graphics, memory, drives, network and battery facts, with hidden addresses and a plain text report to copy. |
+| **Diagnosis** | The times a temperature passed its limit. Hardware errors, blue screens, driver and drive errors and program crashes from the Windows Event Log. CSV export of the sensor readings of the last 6 hours. |
+| **Care** | What shortens the life of the battery, cooling, drives and adapter and what helps, each tip with its source, plus advice drawn from the current readings. |
 | **Overlay** | A click-through panel over your game with the readings you pick, including FPS, frame time and 1% low. Presets, order, position, display, size, color and font are adjustable. |
 
 Also included:
@@ -89,7 +91,7 @@ flowchart LR
 
 - **SensorService** reads the hardware once per second and publishes a JSON snapshot. It runs as a scheduled task with the highest run level, so it starts without a UAC prompt.
 - **The app** draws the snapshot and runs without administrator rights.
-- **Costly measurements** (frame rate, program ranking, disk activity, network probe, power limits) run only while a window asks for them.
+- **Costly measurements** (frame rate, program ranking, disk activity, network probe, power limits) run only while a window asks for them. The Event Log is read only when the Diagnosis tab asks.
 
 The service listens on the local machine only and rejects web pages from other origins. The network traffic the app itself causes is the update check against GitHub and, while Insights is open, pings to your router and DNS server. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) describes the protocol and design decisions.
 
@@ -129,10 +131,10 @@ To build the installer, run `npx tauri build --bundles nsis` in `ui`. The build 
 | `SensorProbe/` | A console tool that prints raw sensor reads for diagnosis |
 | `ui/src/` | The interface in plain HTML, CSS and JavaScript, without a bundler |
 | `ui/src-tauri/` | The Rust shell: tray, overlay window, updater and installer hooks |
-| `scripts/` | Service install, PresentMon download and release notes scripts |
+| `scripts/` | Service install, PresentMon download, release notes and license collection scripts |
 | `docs/` | [Architecture](docs/ARCHITECTURE.md), [sensors](docs/SENSORS.md), [performance](docs/PERFORMANCE.md) and [releasing](docs/RELEASING.md) |
 
-Third-party components are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Third-party components are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). LOQ Monitor is an independent project and is not affiliated with Lenovo.
 
 ## Troubleshooting
 

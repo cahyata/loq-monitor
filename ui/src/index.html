@@ -19,9 +19,9 @@
   <div id="floor"><div id="grid"></div></div>
   <div id="scan"></div>
 
-  <header id="titlebar" data-tauri-drag-region>
-    <img src="icon.png" alt="" width="16" height="16" data-tauri-drag-region>
-    <span class="ttl" data-tauri-drag-region>LOQ//NET</span><span class="path" data-tauri-drag-region>// HARDWARE MONITOR</span>
+  <header id="titlebar" data-tauri-drag-region="deep">
+    <img src="icon.png" alt="" width="16" height="16">
+    <span class="ttl">LOQ//NET</span><span class="path">// HARDWARE MONITOR</span>
     <span class="status" role="group" aria-label="Status">
       <span class="st" title="Connection to the sensor service, the background program that reads the sensors">SERVICE <b id="link">OFFLINE</b></span>
       <span class="st mode" title="Lenovo power mode (Fn+Q)">POWER MODE <b id="mode">--</b></span>
@@ -47,6 +47,18 @@
 
   <div id="toast" role="status" aria-live="polite" hidden></div>
 
+  <div id="shell">
+  <div id="toolbar">
+    <div class="navrow">
+      <nav id="tabs" role="tablist" aria-label="Pages">
+        <button id="tabOverview" title="Overview (key 1)" role="tab" class="on" aria-selected="true" aria-controls="overview" aria-keyshortcuts="1">OVERVIEW</button><button id="tabInsights" title="Insights (key 2)" role="tab" aria-selected="false" aria-controls="insightsTab" aria-keyshortcuts="2">INSIGHTS</button><button id="tabDetail" title="Detailed (key 3)" role="tab" aria-selected="false" aria-controls="detail" aria-keyshortcuts="3">DETAILED</button><button id="tabSystem" title="System (key 4)" role="tab" aria-selected="false" aria-controls="systemTab" aria-keyshortcuts="4">SYSTEM</button><button id="tabDiag" title="Diagnosis (key 5)" role="tab" aria-selected="false" aria-controls="diagTab" aria-keyshortcuts="5">DIAGNOSIS</button><button id="tabCare" title="Hardware care (key 6)" role="tab" aria-selected="false" aria-controls="careTab" aria-keyshortcuts="6">CARE</button><span class="tabsep" aria-hidden="true"></span><button id="tabOverlay" title="Game overlay (key 7)" role="tab" aria-selected="false" aria-controls="overlayTab" aria-keyshortcuts="7">OVERLAY<i class="odot" id="ovDot" aria-hidden="true"></i></button>
+      </nav>
+      <span class="acts" role="group" aria-label="Window and preferences">
+        <button id="btnMini" title="Small always-on-top window (M)"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="7" width="8" height="7" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="6" y="2" width="8" height="7" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>MINI</button>
+        <button id="btnSettings" title="Appearance, alerts, limits and shortcuts (S)"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 4h5M11 4h3M2 8h2M8 8h6M2 12h7M13 12h1" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="4" r="1.7" fill="currentColor"/><circle cx="6" cy="8" r="1.7" fill="currentColor"/><circle cx="11" cy="12" r="1.7" fill="currentColor"/></svg>SETTINGS</button>
+      </span>
+    </div>
+  </div>
   <div id="scroller">
   <div id="app">
     <div id="announce" class="sr-only" role="status" aria-live="polite"></div>
@@ -69,20 +81,11 @@
 
     <h1 class="sr-only">LOQ//NET hardware monitor, <span id="sub">HARDWARE MONITOR</span></h1>
 
-    <div id="toolbar">
-      <div class="navrow">
-        <nav id="tabs" role="tablist" aria-label="Pages">
-          <button id="tabOverview" title="Overview (key 1)" role="tab" class="on" aria-selected="true" aria-controls="overview" aria-keyshortcuts="1">OVERVIEW</button><button id="tabInsights" title="Insights (key 2)" role="tab" aria-selected="false" aria-controls="insightsTab" aria-keyshortcuts="2">INSIGHTS</button><button id="tabDetail" title="Detailed (key 3)" role="tab" aria-selected="false" aria-controls="detail" aria-keyshortcuts="3">DETAILED</button><button id="tabSystem" title="System (key 4)" role="tab" aria-selected="false" aria-controls="systemTab" aria-keyshortcuts="4">SYSTEM</button><span class="tabsep" aria-hidden="true"></span><button id="tabOverlay" title="Game overlay (key 5)" role="tab" aria-selected="false" aria-controls="overlayTab" aria-keyshortcuts="5">OVERLAY<i class="odot" id="ovDot" aria-hidden="true"></i></button>
-        </nav>
-        <span class="acts" role="group" aria-label="Window and preferences">
-          <button id="btnMini" title="Small always-on-top window (M)"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="7" width="8" height="7" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="6" y="2" width="8" height="7" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>MINI</button>
-          <button id="btnSettings" title="Appearance, alerts, limits and shortcuts (S)"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 4h5M11 4h3M2 8h2M8 8h6M2 12h7M13 12h1" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="4" r="1.7" fill="currentColor"/><circle cx="6" cy="8" r="1.7" fill="currentColor"/><circle cx="11" cy="12" r="1.7" fill="currentColor"/></svg>SETTINGS</button>
-        </span>
-      </div>
-    </div>
-    <div id="summary"><span class="tag ok" id="sumTag">--</span><span id="sumText">Waiting for data</span></div>
-    <main id="overview" aria-labelledby="tabOverview">
+    <div id="sumrow">
+      <div id="summary"><span class="tag ok" id="sumTag">--</span><span id="sumText">Waiting for data</span></div>
       <span class="seg" id="rangeSeg" role="group" aria-label="Temperature history range"><span class="seglab">HISTORY</span><button data-r="60" aria-pressed="false">1 MIN</button><button data-r="600" aria-pressed="false">10 MIN</button><button data-r="3600" aria-pressed="false">1 HOUR</button></span>
+    </div>
+    <main id="overview" aria-labelledby="tabOverview">
       <section class="panel pink" id="cpu">
         <div class="ph"><h2 class="ptit">CPU</h2><span class="dim" id="cpuName"></span></div>
         <div class="hero"><span class="big" id="cpuTemp">--</span><span class="unit u-deg">°C</span><span class="tag" id="cpuTag" title="CPU temperature status. Limits are in Settings.">--</span></div>
@@ -217,6 +220,55 @@
       <p class="note" id="sysMsg" role="status"></p>
       <div id="sysGrid" class="sysgrid"></div>
     </section>
+    <section id="diagTab" role="tabpanel" aria-labelledby="tabDiag" hidden>
+      <div class="insgrid">
+        <section class="panel mini pinkb wide">
+          <div class="ph"><h2 class="ptit">HEAT HISTORY</h2><span class="dim" id="diagHeatState"></span></div>
+          <p class="note" id="diagHeatSum"></p>
+          <div class="systable" id="diagHeat" role="table"></div>
+          <p class="more"><button type="button" id="diagHeatMore" class="act" hidden></button> <button type="button" id="diagHeatClear" class="act" hidden>CLEAR HISTORY</button></p>
+          <p class="note">An entry is added when a temperature stays at or above its limit for the alert delay set in Settings, also while notifications are off. It is recorded only while the app runs, in the window or in the tray, and the newest 500 entries are kept.</p>
+        </section>
+        <section class="panel mini yellow wide">
+          <div class="ph"><h2 class="ptit">WINDOWS PROBLEMS</h2><span class="dim" id="diagEvState"></span></div>
+          <div class="diagbar">
+            <label>Period <select id="diagEvDays"><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select></label>
+            <button type="button" id="diagEvRefresh" class="act">REFRESH</button>
+          </div>
+          <p class="note warn" id="diagEvMsg" role="status"></p>
+          <div class="tiles" id="diagTiles"></div>
+          <div class="systable" id="diagEvents" role="table"></div>
+          <h3 class="sub" id="diagProgTitle" hidden>PROGRAMS THAT CRASHED OR STOPPED RESPONDING</h3>
+          <div class="systable" id="diagPrograms" role="table"></div>
+          <p class="more"><button type="button" id="diagProgMore" class="act" hidden></button></p>
+          <p class="note">This comes from the Windows Event Log. A few entries over some weeks are common. Repeated blue screens, hardware errors or drive errors are a reason to back up your files and check the laptop. A shutdown without warning is dated at the next start.</p>
+        </section>
+        <section class="panel mini cyan wide">
+          <div class="ph"><h2 class="ptit">EXPORT SENSOR HISTORY</h2><span class="dim" id="diagKept"></span></div>
+          <div class="diagbar">
+            <label>Time range <select id="diagRange"><option value="0">Everything kept</option><option value="3600">Last hour</option><option value="600">Last 10 minutes</option></select></label>
+            <label>Format <select id="diagFormat"><option value="comma">Comma, decimal point (1.5)</option><option value="semi">Semicolon, decimal comma (1,5)</option></select></label>
+            <button type="button" id="diagCsv" class="act">SAVE CSV</button>
+            <button type="button" id="diagReveal" class="act" hidden>SHOW IN FOLDER</button>
+          </div>
+          <p class="note" id="diagExportNote"></p>
+          <p class="note" id="diagCsvMsg" role="status"></p>
+          <p class="note">The app keeps one reading per second for the last 6 hours while it runs, and quitting it clears them. The file goes to your Downloads folder. If Excel puts everything in one column, choose the other format.</p>
+        </section>
+      </div>
+    </section>
+    <section id="careTab" role="tabpanel" aria-labelledby="tabCare" hidden>
+      <div class="insgrid">
+        <section class="panel mini yellow wide">
+          <div class="ph"><h2 class="ptit">FOR THIS LAPTOP NOW</h2><span class="dim" id="careState"></span></div>
+          <ul class="advice" id="careNow"></ul>
+          <p class="note warn" id="careMsg" role="status"></p>
+          <p class="note">Based on the current readings and the heat history. This is general advice, not a diagnosis; the guide for your model comes first.</p>
+        </section>
+        <div class="caregrid wide" id="careTopics"></div>
+        <p class="note wide">The tips are short summaries of the pages they link to, and some of those pages cover other Lenovo models. <span id="careChecked"></span>. LOQ Monitor is not affiliated with the publishers.</p>
+      </div>
+    </section>
     <section id="overlayTab" role="tabpanel" aria-labelledby="tabOverlay" hidden>
       <div class="ovwrap">
         <div class="ovcol">
@@ -275,6 +327,7 @@
     </section>
   </div>
   </div>
+  </div>
 
   <dialog id="settings" aria-label="Settings">
     <form method="dialog" id="settingsForm">
@@ -308,7 +361,7 @@
   <dialog id="help" aria-label="Keyboard shortcuts">
     <h2>KEYBOARD SHORTCUTS</h2>
     <dl class="keys">
-      <dt><kbd>1</kbd> to <kbd>5</kbd></dt><dd>Overview, Insights, Detailed, System, Overlay</dd>
+      <dt><kbd>1</kbd> to <kbd>7</kbd></dt><dd>Overview, Insights, Detailed, System, Diagnosis, Care, Overlay</dd>
       <dt><kbd>O</kbd></dt><dd>Show or hide the game overlay</dd>
       <dt><kbd>/</kbd> or <kbd>F</kbd></dt><dd>Filter sensors</dd>
       <dt><kbd>T</kbd></dt><dd>Theme: auto, dark, light</dd>
@@ -327,6 +380,8 @@
   <script src="overlayui.js"></script>
   <script src="system.js"></script>
   <script src="insights.js"></script>
+  <script src="diag.js"></script>
+  <script src="care.js"></script>
   <script src="updater.js"></script>
 </body>
 </html>

@@ -24,6 +24,7 @@ var jsonOptions = new JsonSerializerOptions
 {
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    Converters = { new FiniteFloatConverter(), new FiniteDoubleConverter() },
 };
 
 // One instance only: a second copy (for example a manual start while the scheduled task runs) exits quietly.
@@ -42,6 +43,7 @@ var clients = new ConcurrentDictionary<WebSocket, byte>();
 string latestJson = "{}";
 string? systemJson = null;      // the System page data, read once because it takes a second or two
 var systemGate = new object();
+var eventCache = new Dictionary<int, (long At, string Json)>();   // Event Log reads, per number of days
 
 var listener = new HttpListener();
 listener.Prefixes.Add($"http://127.0.0.1:{Port}/");
@@ -143,6 +145,23 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
                 if (systemJson is null || ctx.Request.QueryString["refresh"] == "1")
                     systemJson = JsonSerializer.Serialize(SystemInfo.Collect(), jsonOptions);
                 json = systemJson;
+            }
+            var bytes = Encoding.UTF8.GetBytes(json);
+            ctx.Response.ContentType = "application/json";
+            if (origin != "") ctx.Response.Headers["Access-Control-Allow-Origin"] = origin;   // the app fetches this from its own origin
+            ctx.Response.OutputStream.Write(bytes);
+            ctx.Response.Close();
+        }
+        else if (path == "/events")
+        {
+            var days = int.TryParse(ctx.Request.QueryString["days"], out var d) ? Math.Clamp(d, 1, 90) : 30;
+            string json;
+            lock (eventCache)
+            {
+                // A minute-old answer is good enough, and it stops repeated requests from reading the log again and again.
+                var fresh = eventCache.TryGetValue(days, out var hit) && Environment.TickCount64 - hit.At < (ctx.Request.QueryString["refresh"] == "1" ? 5_000 : 60_000);
+                json = fresh ? hit.Json : JsonSerializer.Serialize(EventHistory.Collect(days), jsonOptions);
+                if (!fresh) eventCache[days] = (Environment.TickCount64, json);
             }
             var bytes = Encoding.UTF8.GetBytes(json);
             ctx.Response.ContentType = "application/json";
@@ -402,21 +421,18 @@ sealed class SensorReader : IDisposable
         foreach (var hw in _pc.Hardware) { hw.Update(); foreach (var sub in hw.SubHardware) sub.Update(); }
 
         var cpu = _pc.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
-        var gpu = _pc.Hardware.FirstOrDefault(h => h.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd);
+        var gpu = HardwarePick.Gpu(_pc.Hardware);
         var mem = _pc.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory && h.Name == "Total Memory");
         var bat = _pc.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Battery);
 
-        // CPU temp: Lenovo EC first (works with Memory Integrity on), LHM Tctl as fallback.
+        // CPU temp: Lenovo EC first (works with Memory Integrity on), LHM (AMD Tctl, Intel package) as fallback.
         float? cpuTemp = Feature(CpuTemp);
-        if (cpuTemp is null or <= 0) { var t = cpu is null ? null : Val(cpu, SensorType.Temperature, "Core (Tctl/Tdie)"); cpuTemp = t > 0 ? t : null; }
+        if (cpuTemp is null or <= 0) cpuTemp = HardwarePick.Positive(cpu, SensorType.Temperature, "Core (Tctl/Tdie)", "CPU Package");
 
         float? gpuTemp = gpu is null ? null : Val(gpu, SensorType.Temperature, "GPU Core");
         gpuTemp ??= Feature(GpuTemp);
 
-        var cpuLoads = cpu?.Sensors
-            .Where(s => s.SensorType == SensorType.Load && s.Name.StartsWith("CPU Core #"))
-            .OrderBy(s => int.Parse(s.Name[10..]))
-            .Select(s => Round(s.Value) ?? 0).ToArray() ?? [];
+        var cpuLoads = HardwarePick.ThreadLoads(cpu).Select(s => Round(s.Value) ?? 0).ToArray();
 
         var storage = _pc.Hardware.Where(h => h.HardwareType == HardwareType.Storage).Select(h => new StorageInfo(
             h.Name,
@@ -437,7 +453,7 @@ sealed class SensorReader : IDisposable
                 Round(cpuTemp), Feature(CpuFan),
                 // Average effective clock from LHM (needs PawnIO); Windows counters as fallback.
                 Round(cpu is null ? null : Val(cpu, SensorType.Clock, "Cores (Average Effective)")) ?? CpuClockMHz(),
-                Round(cpu is null ? null : Val(cpu, SensorType.Power, "Package")), cpuLoads),
+                Round(HardwarePick.Positive(cpu, SensorType.Power, "Package", "CPU Package")), cpuLoads),   // AMD, Intel
             Gpu: new GpuInfo(
                 gpu?.Name,
                 Round(gpu is null ? null : Val(gpu, SensorType.Load, "GPU Core")),
