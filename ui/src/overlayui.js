@@ -70,7 +70,7 @@ const OverlayUI = (() => {
     $("ovToggle").classList.toggle("on", visible);
     $("ovState").textContent = visible ? "Showing over your game" : "Hidden";
     $("ovDot").classList.toggle("on", visible);
-    $("tabOverlay").title = "Game overlay (key 7)" + (visible ? ", showing" : "");
+    Pages.note("overlay", visible ? ", showing" : "");
   }
   function setVisible(v) { visible = !!v; paintState(); }
 
@@ -174,10 +174,11 @@ const OverlayUI = (() => {
     msg("Open the desktop app to use the overlay.");
   }
 
-  return {
-    setActive(on) { active = on; if (on) { fillForm(); redraw(); } },
-    update(s) { last = s; redraw(); },
-    toggle() { $("ovToggle").click(); },
-  };
+  Pages.add("overlay", {
+    show() { active = true; fillForm(); redraw(); },
+    hide() { active = false; },
+    draw(s) { last = s; redraw(); },
+  });
+
+  return { toggle() { $("ovToggle").click(); } };
 })();
-OverlayUI.setActive(store.get("tab", "overview") === "overlay");   // the saved tab was restored before this file loaded

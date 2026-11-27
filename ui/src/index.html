@@ -51,7 +51,7 @@
   <div id="toolbar">
     <div class="navrow">
       <nav id="tabs" role="tablist" aria-label="Pages">
-        <button id="tabOverview" title="Overview (key 1)" role="tab" class="on" aria-selected="true" aria-controls="overview" aria-keyshortcuts="1">OVERVIEW</button><button id="tabInsights" title="Insights (key 2)" role="tab" aria-selected="false" aria-controls="insightsTab" aria-keyshortcuts="2">INSIGHTS</button><button id="tabDetail" title="Detailed (key 3)" role="tab" aria-selected="false" aria-controls="detail" aria-keyshortcuts="3">DETAILED</button><button id="tabSystem" title="System (key 4)" role="tab" aria-selected="false" aria-controls="systemTab" aria-keyshortcuts="4">SYSTEM</button><button id="tabDiag" title="Diagnosis (key 5)" role="tab" aria-selected="false" aria-controls="diagTab" aria-keyshortcuts="5">DIAGNOSIS</button><button id="tabCare" title="Hardware care (key 6)" role="tab" aria-selected="false" aria-controls="careTab" aria-keyshortcuts="6">CARE</button><span class="tabsep" aria-hidden="true"></span><button id="tabOverlay" title="Game overlay (key 7)" role="tab" aria-selected="false" aria-controls="overlayTab" aria-keyshortcuts="7">OVERLAY<i class="odot" id="ovDot" aria-hidden="true"></i></button>
+        <button id="tabOverview" role="tab" class="on" aria-selected="true" aria-controls="overview">OVERVIEW</button><button id="tabInsights" role="tab" aria-selected="false" aria-controls="insightsTab">INSIGHTS</button><button id="tabDetail" role="tab" aria-selected="false" aria-controls="detail">DETAILED</button><button id="tabSystem" role="tab" aria-selected="false" aria-controls="systemTab">SYSTEM</button><button id="tabDiag" role="tab" aria-selected="false" aria-controls="diagTab">DIAGNOSIS</button><button id="tabCare" role="tab" aria-selected="false" aria-controls="careTab">CARE</button><span class="tabsep" aria-hidden="true"></span><button id="tabOverlay" role="tab" aria-selected="false" aria-controls="overlayTab">OVERLAY<i class="odot" id="ovDot" aria-hidden="true"></i></button>
       </nav>
       <span class="acts" role="group" aria-label="Window and preferences">
         <button id="btnMini" title="Small always-on-top window (M)"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect x="2" y="7" width="8" height="7" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="6" y="2" width="8" height="7" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>MINI</button>
@@ -375,9 +375,11 @@
 
   <script src="rules.js"></script>
   <script src="metrics.js"></script>
+  <script src="pages.js"></script>
   <script src="main.js"></script>
   <script src="help.js"></script>
   <script src="detail.js"></script>
+  <script src="overview.js"></script>
   <script src="overlayui.js"></script>
   <script src="system.js"></script>
   <script src="insights.js"></script>

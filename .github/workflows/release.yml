@@ -55,7 +55,7 @@ jobs:
         working-directory: ui
         run: npm ci
 
-      - name: Test the UI rules
+      - name: Test the UI modules
         working-directory: ui
         run: npm test
 

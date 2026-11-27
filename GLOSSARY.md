@@ -4,6 +4,10 @@ A read-only view of the health of one laptop's hardware.
 
 ## Language
 
+**Page**:
+One of the views of the main window, opened by its tab or number key.
+_Avoid_: Tab (that is the button), screen, view
+
 **Snapshot**:
 All values the sensor service measured at one moment.
 _Avoid_: Frame, sample

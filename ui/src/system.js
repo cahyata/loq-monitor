@@ -7,9 +7,9 @@
    so this page asks when it is opened and again on REFRESH. A few values (uptime, memory in use,
    battery health) stay live from the sensor snapshot. Shares $ and store with main.js. */
 
-var SystemPage = (() => {   // var, so a failure while loading this file cannot break the typeof checks in main.js
+(() => {
   const SYSTEM_URL = "http://127.0.0.1:47821/system";
-  let data = null, active = false, last = null, fetchedAt = 0, loading = false;
+  let data = null, last = null, fetchedAt = 0, loading = false;
   let mask = store.get("sysmask", "on") === "on", showVirtual = store.get("sysvirtual", "off") === "on";
 
   const GB = (b) => (b == null ? "--" : (b / 1024 ** 3).toFixed(b >= 100 * 1024 ** 3 ? 0 : 1) + " GB");
@@ -182,15 +182,12 @@ var SystemPage = (() => {   // var, so a failure while loading this file cannot 
     try { await navigator.clipboard.writeText(report()); say("Report copied" + (mask ? ", with addresses hidden." : ". It includes your host name and addresses.")); }
     catch { say("Could not copy. Select the text on the page instead."); }
   };
-  setInterval(() => { if (active && data) refreshLive(); }, 1000);
 
-  return {
-    setActive(on) {
-      active = on;
-      if (on && (!data || Date.now() - fetchedAt > 60000)) load(data != null);   // reopen: refresh drive space after a minute
-      else if (on) render();
+  Pages.add("system", {
+    show() {
+      if (!data || Date.now() - fetchedAt > 60000) load(data != null);   // reopen: refresh drive space after a minute
+      else render();
     },
-    update(s) { last = s; },
-  };
+    draw(s) { last = s; refreshLive(); },
+  });
 })();
-SystemPage.setActive(store.get("tab", "overview") === "system");   // the saved tab was restored before this file loaded

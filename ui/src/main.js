@@ -1,15 +1,12 @@
-// LOQ Monitor | UI main script (overview, settings, shortcuts)
+// LOQ Monitor | UI main script (connection, status line, alerts, settings, shortcuts)
 // Author: cahyata
 // Copyright (c) 2026 cahyata
 "use strict";
 
 const WS_URL = "ws://127.0.0.1:47821/ws";
-const HISTORY = 3600;               // samples kept per series (one per second)
-let range = 600;                    // seconds shown in the charts
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
-const hist = { cpu: [], gpu: [] };
 const fmt = (v, d = 0) => (v == null ? "--" : Number(v).toFixed(d));
 const tempClass = (t) => Rules.temp(t, CFG);
 const css = (name) => getComputedStyle(root).getPropertyValue(name).trim();
@@ -31,8 +28,7 @@ const tdeg = (c, d = 0) => (c == null ? "--" : tf(c, d) + deg());         // num
 function applyUnit() { document.querySelectorAll(".u-deg").forEach((e) => { e.textContent = deg(); }); }
 function setUnit(u) {
   unit = u === "F" ? "F" : "C"; store.set("unit", unit); applyUnit();
-  if (lastRendered) render(lastRendered);
-  drawAll();
+  redraw();
 }
 
 /* theme: "system" follows the operating system, otherwise dark or light */
@@ -42,7 +38,7 @@ const systemLight = matchMedia("(prefers-color-scheme: light)");
 function cycleTheme() {
   const order = ["system", "dark", "light"];
   store.set("theme", order[(order.indexOf(themePref()) + 1) % 3]);
-  applyPrefs(); drawAll();
+  applyPrefs(); redraw();
   toast("Theme: " + THEME_LABEL[themePref()]);
 }
 
@@ -60,10 +56,9 @@ function applyPrefs() {
   root.classList.toggle("nofx", store.get("fx", "on") === "off");
   $("alertsOff").hidden = store.get("alerts", "on") === "on";     // the bar says so when notifications are off
 }
-systemLight.addEventListener("change", () => { if (themePref() === "system") { applyPrefs(); drawAll(); } });
+systemLight.addEventListener("change", () => { if (themePref() === "system") { applyPrefs(); redraw(); } });
 applyPrefs(); applyUnit();
 for (const k of Object.keys(DEFAULTS)) { const v = parseFloat(store.get("cfg." + k, "")); if (Number.isFinite(v)) CFG[k] = v; }
-{ const r = parseInt(store.get("range", "600"), 10); if ([60, 600, 3600].includes(r)) range = r; }
 addEventListener("load", () => scrollTo(0, 0));
 
 /* save resources: the grid stops while the window is unfocused */
@@ -135,18 +130,6 @@ const Pins = (() => {
     },
   };
 })();
-function renderFavs(s) {
-  const items = Pins.resolve(s);
-  $("favPanel").hidden = items.length === 0;
-  if (!items.length || typeof Detail === "undefined") return;
-  $("favList").replaceChildren(...items.map(({ hw, x }) => {
-    const row = document.createElement("div"); row.className = "fav";
-    const a = document.createElement("span"); a.textContent = hw + " \u203A " + x.name; row.title = a.textContent + "\n" + SensorHelp.sensor(x.type, x.name);
-    const b = document.createElement("b"); b.textContent = Detail.fmt(x.type, x.value);
-    row.append(a, b); return row;
-  }));
-}
-
 /* ---------- sustained-heat banner ---------- */
 const HEAT_AFTER_MS = 30_000, SNOOZE_MS = 1_800_000;
 const heat = { cpu: {}, gpu: {}, spot: {}, snoozeUntil: 0 };
@@ -177,134 +160,6 @@ $("heatDismiss").onclick = () => { (heat.live ?? []).forEach((k) => { heat[k].di
 $("heatSnooze").onclick = () => { heat.snoozeUntil = Date.now() + SNOOZE_MS; $("heat").hidden = true; };
 
 /* ---------- helper render ---------- */
-function setTemp(el, tagEl, t) {
-  el.textContent = tf(t);
-  el.className = "big " + tempClass(t);
-  const c = tempClass(t);
-  tagEl.textContent = c === "hot" ? "HOT" : c === "warn" ? "WARM" : c === "ok" ? "NORMAL" : "--";
-  tagEl.className = "tag " + c;
-}
-/* The rules call a normal battery "ok"; its meter and chip have their own green. */
-const batState = (p) => { const level = Rules.battery(p); return level === "ok" ? "good" : level; };
-const CAP_LABEL = { ok: "OK", warn: "HIGH", hot: "CRITICAL" };
-const BAT_LABEL = { good: "OK", warn: "LOW", hot: "CRITICAL" };
-function setMeter(barId, pct, state = "load") {
-  const bar = $(barId);
-  bar.style.transform = `scaleX(${Math.max(0, Math.min(100, pct ?? 0)) / 100})`;
-  bar.parentElement.className = "meter " + (state === "load" ? "load" : "st-" + state);
-}
-function setLimit(el, mask) {
-  const worst = Rules.gpuLimits(mask)[0];
-  el.hidden = !worst;
-  if (!worst) return;
-  el.textContent = worst.label; el.className = "tag limit " + worst.level; el.title = worst.text;
-}
-function setChip(el, state, labels) {
-  el.textContent = labels[state] ?? "--";
-  el.className = "tag " + (state === "good" ? "ok" : state);
-}
-function setDd(id, text, cls = "") { const e = $(id); e.textContent = text; e.className = cls; }
-
-function drawChart(canvas, series, color) {
-  const dpr = devicePixelRatio || 1;
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  if (!w || !h) return;
-  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
-  const ctx = canvas.getContext("2d");
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, w, h);
-
-  const n = Math.min(series.length, range);
-  const data = series.slice(series.length - n);
-  // The scale follows the data but always includes both limits, rounded to tidy 5 degree steps.
-  let lo = CFG.warn - 5, hi = CFG.hot + 5;
-  for (const v of data) { if (v - 4 < lo) lo = v - 4; if (v + 4 > hi) hi = v + 4; }
-  lo = Math.floor(lo / 5) * 5; hi = Math.ceil(hi / 5) * 5;
-  if (hi - lo < 30) lo = hi - 30;
-  const padL = 36, padT = 7, padB = 7, pw = w - padL;
-  const py = (v) => padT + (1 - (Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo)) * (h - padT - padB);
-
-  // axis labels live in a left gutter so they never sit on the data line
-  ctx.font = "11px " + css("--font-mono"); ctx.textBaseline = "middle"; ctx.textAlign = "right";
-  const muted = css("--text-muted"), ticks = [];
-  const mark = (v, c, line) => {
-    const y = py(v);
-    if (ticks.some((t) => Math.abs(t - y) < 15)) return;       // skip a label that would overlap another
-    ticks.push(y);
-    if (line) { ctx.setLineDash([4, 4]); ctx.strokeStyle = c; ctx.globalAlpha = 0.75; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(padL, Math.round(y) + 0.5); ctx.lineTo(w, Math.round(y) + 0.5); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1; }
-    ctx.fillStyle = c; ctx.fillText(Math.round(conv(v)) + "\u00B0", padL - 6, y);
-  };
-  mark(CFG.hot, css("--danger"), true);
-  mark(CFG.warn, css("--highlight"), true);
-  mark(hi, muted, false); mark(lo, muted, false);
-
-  if (n < 2) return;
-  const bucket = Math.max(1, Math.ceil(n / Math.max(1, pw)));        // average samples so a 1 hour range stays light
-  const pts = [];
-  for (let k = 0; k * bucket < n; k++) {
-    const part = data.slice(k * bucket, (k + 1) * bucket);
-    const v = part.reduce((a, b) => a + b, 0) / part.length;
-    const j = k * bucket + (part.length - 1) / 2;
-    pts.push([padL + (j / (n - 1)) * pw, py(v)]); // the range is a maximum: a short history fills the width
-  }
-  ctx.beginPath();
-  pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.stroke();
-  ctx.lineTo(pts[pts.length - 1][0], h); ctx.lineTo(pts[0][0], h); ctx.closePath();
-  const g = ctx.createLinearGradient(0, 0, 0, h);
-  g.addColorStop(0, color + "44"); g.addColorStop(1, color + "00");
-  ctx.fillStyle = g; ctx.fill();
-}
-const RANGE_NAMES = { 60: "1 min", 600: "10 min", 3600: "1 hour" };
-function caption(el, series, canvas, name) {
-  const n = Math.min(series.length, range);
-  if (!n) { el.textContent = ""; return; }
-  let lo = Infinity, hi = -Infinity, sum = 0;
-  for (let i = series.length - n; i < series.length; i++) { const v = series[i]; if (v < lo) lo = v; if (v > hi) hi = v; sum += v; }
-  const span = n < range ? (n < 60 ? n + " s" : Math.floor(n / 60) + " min") : RANGE_NAMES[range];
-  el.textContent = `last ${span} · min ${tf(lo)}\u00B0 · avg ${tf(sum / n)}\u00B0 · max ${tf(hi)}\u00B0`;
-  canvas.setAttribute("aria-label", `${name} temperature history, ${el.textContent.replace(/\u00B0/g, " degrees")}`);
-}
-function drawAll() {
-  drawChart($("cpuChart"), hist.cpu, css("--accent-primary"));
-  drawChart($("gpuChart"), hist.gpu, css("--accent-secondary"));
-  caption($("cpuCap"), hist.cpu, $("cpuChart"), "CPU"); caption($("gpuCap"), hist.gpu, $("gpuChart"), "GPU");
-}
-document.querySelectorAll(".seg button").forEach((b) => {
-  b.classList.toggle("on", +b.dataset.r === range); b.setAttribute("aria-pressed", String(+b.dataset.r === range));
-  b.onclick = () => {
-    range = +b.dataset.r; store.set("range", String(range));
-    document.querySelectorAll(".seg button").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-pressed", String(x === b)); });
-    drawAll();
-  };
-});
-function push(series, v) {
-  if (v == null) return;
-  series.push(v);
-  if (series.length > HISTORY) series.shift();
-}
-
-function logLines(s) {
-  // The log keeps to what is urgent: memory only when nearly full, and one line for the GPU temperatures.
-  const found = Rules.findings(s, CFG);
-  const of = (part) => found.find((f) => f.part === part);
-  const out = [];
-  const add = (level, msg) => out.push([level === "hot" ? "CRIT" : "WARN", msg]);
-  const cpu = of("cpu"), gpu = of("gpu"), spot = of("hotspot");
-  if (cpu) add(cpu.level, `cpu.temp ${tdeg(cpu.value)}${cpu.level === "hot" ? ", near thermal limit" : ""}`);
-  if (spot) add(spot.level, `gpu.hotspot ${tdeg(spot.value)}`);
-  else if (gpu) add(gpu.level, `gpu.temp ${tdeg(gpu.value)}`);
-  for (const part of ["vram", "ram"]) { const f = of(part); if (f?.level === "hot") add("warn", `${part} ${fmt(f.value)}% used`); }
-  const DRIVE = { temp: (f) => tdeg(f.value), fill: (f) => `${fmt(f.value)}% full`, life: (f) => `${fmt(f.value)}% life left`, spare: () => "spare blocks low" };
-  for (const f of found) if (f.part === "drive") add(f.level, `ssd ${f.name} ${DRIVE[f.kind](f)}`);
-  const bat = of("battery");
-  if (bat) add(bat.level, `battery ${fmt(bat.value)}%`);
-  if (!out.length) out.push(["OK", "all sensors within normal range"]);
-  out.push(["INFO", "ec.wmi link established"]);
-  return out;
-}
-
 function updateMini(s) {
   const t = (id, v) => { const e = $(id); e.textContent = tf(v) + "\u00B0"; e.className = "mv " + tempClass(v); };
   t("mCpu", s.cpu.tempC); t("mGpu", s.gpu.tempC);
@@ -342,126 +197,29 @@ function renderSummary(s) {
 
 const modeLabel = (code) => Rules.powerMode(code)?.toUpperCase() ?? "--";
 
-function render(s) {
-  lastRendered = s;
-  onBattery = s.battery?.acOnline === false;
-  const { cpu, gpu, ram } = s;
-  push(hist.cpu, cpu.tempC); push(hist.gpu, gpu.tempC);
-  if (typeof Detail !== "undefined") Detail.update(s);
-  if (typeof OverlayUI !== "undefined") OverlayUI.update(s);
-  if (typeof SystemPage !== "undefined") SystemPage.update(s);
-  if (typeof Insights !== "undefined") Insights.update(s);
-  if (typeof Diagnosis !== "undefined") Diagnosis.update(s);
-  if (typeof Care !== "undefined") Care.update(s);
+/* ---------- every snapshot ---------- */
+let miniOn = false, lastSnapshot = null;
+const Pages = createPages({ element: $, store, visible: () => !document.hidden && !miniOn });
+
+/** What belongs to no single page: tray, alerts, the heat banner, the power mode, the status line and mini mode. */
+function drawStatus(s) {
   trayUpdate(s); // runs while the window is hidden in the tray
   heatUpdate(s);
-  if (document.hidden) return; // window hidden: keep the history, skip drawing
-  if (miniOn) { updateMini(s); return; }
-
-  // CPU
-  $("cpuName").textContent = cpu.name ? `${cpu.name} · ${cpu.coreLoads.length}T` : "";
-  setTemp($("cpuTemp"), $("cpuTag"), cpu.tempC);
-  setMeter("cpuLoadBar", cpu.load);
-  setDd("cpuLoad", fmt(cpu.load) + "%");
-  renderSummary(s);
-  setDd("cpuFan", cpu.fanRpm != null ? cpu.fanRpm + " rpm" : "--");
-  setDd("cpuPower", cpu.powerW != null ? fmt(cpu.powerW, 1) + " W" : "--");
-  setDd("cpuClock", cpu.clockMHz != null ? fmt(cpu.clockMHz) + " MHz" : "--");
+  if (document.hidden) return;
   $("mode").textContent = modeLabel(s.powerMode);
-  const cores = $("cores");
-  if (cores.children.length !== cpu.coreLoads.length) {
-    cores.replaceChildren(...cpu.coreLoads.map(() => document.createElement("i")));
-  }
-  cpu.coreLoads.forEach((l, i) => { cores.children[i].style.transform = `scaleY(${Math.max(8, l) / 100})`; });
-
-  // GPU
-  $("gpuName").textContent = (gpu.name ?? "").replace("NVIDIA GeForce ", "");
-  setTemp($("gpuTemp"), $("gpuTag"), gpu.tempC);
-  setMeter("gpuLoadBar", gpu.load);
-  setDd("gpuLoad", fmt(gpu.load) + "%");
-  const spot = Rules.hotspot(gpu.hotspotC, CFG);
-  setDd("gpuHot", tdeg(gpu.hotspotC), spot === "ok" ? "" : spot);
-  setDd("gpuPower", fmt(gpu.powerW) + " W");
-  setDd("gpuFan", gpu.fanRpm != null ? gpu.fanRpm + " rpm" : "--");
-  setDd("gpuClock", fmt(gpu.coreClockMHz) + " MHz");
-  setDd("gpuVt", tdeg(gpu.vramTempC));
-  setDd("gpuMem", fmt(gpu.memClockMHz) + " MHz");
-  setLimit($("gpuLimit"), gpu.throttleMask);
-  setDd("gpuRx", fmt(gpu.pcieRxMBs, 1) + " MB/s");
-  setDd("gpuTx", fmt(gpu.pcieTxMBs, 1) + " MB/s");
-  drawAll();
-
-  // RAM / VRAM
-  setBig("ramV", fmt(ram.usedGB, 1), `GB · ${fmt(ram.loadPct)}%`);
-  const rs = Rules.capacity(ram.loadPct);
-  setMeter("ramBar", ram.loadPct, rs); setChip($("ramTag"), rs, CAP_LABEL);
-  $("ramSub").textContent = `free ${fmt(ram.availableGB, 1)} GB`;
-  setBig("vramV", fmt(gpu.vramUsedMB / 1024, 1), `/ ${fmt(gpu.vramTotalMB / 1024, 1)} GB`);
-  const vp = Rules.vramPct(gpu), vs = Rules.capacity(vp);
-  setMeter("vramBar", vp, vs); setChip($("vramTag"), vs, CAP_LABEL);
-  $("vramSub").textContent = `free ${fmt((gpu.vramTotalMB - gpu.vramUsedMB) / 1024, 1)} GB · ${fmt(gpu.memClockMHz)} MHz`;
-
-  // Baterai
-  const b = s.battery;
-  if (b) {
-    setBig("batV", fmt(b.levelPct), "%");
-    const bs = batState(b.levelPct);
-    setMeter("batBar", b.levelPct, bs); setChip($("batTag"), bs, BAT_LABEL);
-    $("batSub").textContent = `health ${fmt(100 - (b.degradationPct ?? 0), 1)}% · ${fmt(b.fullWh)}/${fmt(b.designedWh)} Wh`;
-    const r = b.rateW ?? 0;
-    // The reading jumps with the load, so the time left uses a running average that restarts when the charger changes.
-    batAvg = batAvg != null && Math.sign(batAvg) === Math.sign(r) ? batAvg * 0.85 + r * 0.15 : r;
-    const stored = (b.fullWh ?? 0) * (b.levelPct ?? 0) / 100;
-    const left = r < -0.5 && stored > 0 ? ` · about ${hm(stored / -batAvg)} left` : r > 0.5 && b.fullWh ? ` · full in about ${hm(Math.max(0, b.fullWh - stored) / batAvg)}` : "";
-    $("batRate").textContent = (r > 0.5 ? `charging +${fmt(r, 1)} W` : r < -0.5 ? `draining ${fmt(r, 1)} W`
-      : b.acOnline && b.charging === false && (b.levelPct ?? 0) < 98 ? "AC \u00B7 charging paused (battery protection)" : b.acOnline ? "AC \u00B7 not charging (0.0 W)" : "idle (0.0 W)") + left;
-  }
-
-  // Storage
-  $("storage").replaceChildren(...Rules.drives(s).map(diskCard));
-
-  renderFavs(s);
-
-  // Log
-  $("log").replaceChildren(...logLines(s).map(([lv, msg]) => {
-    const row = document.createElement("div");
-    const a = document.createElement("span"); a.className = "lv " + lv; a.textContent = "> " + lv;
-    row.append(a, document.createTextNode(msg));
-    return row;
-  }));
+  if (miniOn) updateMini(s); else renderSummary(s);
 }
-
-function diskCard(d) {
-  const el = document.createElement("div"); el.className = "disk";
-  const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-  const hd = mk("div", "hd");
-  const n = mk("span", "n", d.name.replace(/\s*(SSD|\d+GB)\s*/g, " ").trim()); n.title = d.name;
-  hd.append(n, mk("span", "t " + Rules.driveTemp(d.temp, d.tempWarn), tdeg(d.temp)));
-  const us = Rules.driveFill(d.fill);
-  const meter = mk("div", "meter st-" + us); const bar = document.createElement("i");
-  bar.style.transform = `scaleX(${Math.min(100, d.fill ?? 0) / 100})`; meter.append(bar);
-  const line = (label, valueEl, chip) => { const l = mk("div", "ln"); const lab = mk("span", null, label); if (chip) lab.append(chip); l.append(lab, valueEl); return l; };
-  const lifeLevel = Rules.driveLife(d.life), full = Rules.driveIssues(d).some((x) => x.kind === "fill");
-  const life = mk("b", lifeLevel === "ok" ? "" : lifeLevel, fmt(d.life) + "%");
-  const used = mk("b", full ? "warn" : "", fmt(d.fill) + "%");
-  const io = mk("b", "", `${fmt(d.readMBs, 1)} / ${fmt(d.writeMBs, 1)} MB/s`);
-  const usedChip = us === "ok" ? null : mk("span", "tag " + us, CAP_LABEL[us]);
-  el.append(hd, meter, line("USED", used, usedChip), line("LIFE LEFT", life), line("R / W", io));
-  return el;
+function receive(s) {
+  lastSnapshot = s;
+  onBattery = s.battery?.acOnline === false;
+  Pages.update(s);
+  drawStatus(s);
 }
-
-let batAvg = null;
-/** Hours as a short phrase: "35 min", "1 h 05 min". */
-function hm(hours) {
-  if (!Number.isFinite(hours)) return "--";
-  const m = Math.round(hours * 60);
-  if (m >= 1440) return "more than a day";
-  return m >= 60 ? Math.floor(m / 60) + " h " + String(m % 60).padStart(2, "0") + " min" : Math.max(1, m) + " min";
-}
-function setBig(id, value, unit) {
-  const el = $(id);
-  const small = document.createElement("small"); small.textContent = unit;
-  el.replaceChildren(document.createTextNode(value), small);
+/** Draws the latest snapshot again, after a change of settings, theme or window mode. */
+function redraw() {
+  if (!lastSnapshot) return;
+  drawStatus(lastSnapshot);
+  Pages.draw();
 }
 
 /* ---------- WebSocket + auto-reconnect, offline screen ---------- */
@@ -485,8 +243,8 @@ function connect() {
   clearTimeout(retryTimer);
   ws = new WebSocket(WS_URL);
   const mine = ws;
-  ws.onopen = () => { retry = 0; setLink(true); if (typeof Insights !== "undefined") Insights.resync(); };
-  ws.onmessage = (e) => { try { render(JSON.parse(e.data)); } catch (err) { console.error(err); } };
+  ws.onopen = () => { retry = 0; setLink(true); Pages.connected(); };
+  ws.onmessage = (e) => { try { receive(JSON.parse(e.data)); } catch (err) { console.error(err); } };
   ws.onclose = () => { if (mine !== ws) return; setLink(false); retryTimer = setTimeout(connect, Math.min(5000, 1000 + retry++ * 500)); };
   ws.onerror = () => mine.close();
 }
@@ -518,7 +276,6 @@ function fillCfg() {
   $("cfgTariff").value = store.get("tariff", ""); $("cfgCurrency").value = store.get("currency", "");
   $("cfgErr").textContent = "";
 }
-const redraw = () => { if (lastRendered) render(lastRendered); };
 
 /** Saves the four limits when they make sense together. Returns the reason when they do not. */
 function saveLimits() {
@@ -544,8 +301,8 @@ for (const id of Object.values(cfgIds)) {
   $(id).onchange = () => { $("cfgErr").textContent = saveLimits(); };
 }
 
-$("cfgTheme").onchange = () => { store.set("theme", $("cfgTheme").value); applyPrefs(); drawAll(); };
-$("cfgFx").onchange = () => { store.set("fx", $("cfgFx").checked ? "on" : "off"); applyPrefs(); drawAll(); };
+$("cfgTheme").onchange = () => { store.set("theme", $("cfgTheme").value); applyPrefs(); redraw(); };
+$("cfgFx").onchange = () => { store.set("fx", $("cfgFx").checked ? "on" : "off"); applyPrefs(); redraw(); };
 $("cfgAlerts").onchange = () => { store.set("alerts", $("cfgAlerts").checked ? "on" : "off"); applyPrefs(); redraw(); };
 $("cfgKeys").onchange = () => { keysOn = $("cfgKeys").checked; store.set("keys", keysOn ? "on" : "off"); };
 $("cfgUnit").onchange = () => { setUnit($("cfgUnit").value); fillLimits(); $("cfgErr").textContent = ""; };
@@ -564,7 +321,7 @@ $("cfgReset").onclick = () => {
 $("btnSettings").onclick = () => { fillCfg(); dlg.showModal(); };
 
 /* ---------- mini mode: small always-on-top window ---------- */
-let miniOn = false, fullSize = null, lastRendered = null;
+let fullSize = null;
 async function setMini(on) {
   const T = window.__TAURI__, w = T?.window?.getCurrentWindow?.();
   miniOn = on; root.classList.toggle("mini", on);
@@ -583,7 +340,7 @@ async function setMini(on) {
       await w.setSize(new LS(fullSize?.w ?? 1040, fullSize?.h ?? 780));
     }
   } catch (e) { console.error(e); }
-  if (lastRendered) render(lastRendered);
+  redraw();
 }
 $("btnMini").onclick = () => setMini(true);
 $("btnFull").onclick = () => setMini(false);
@@ -606,15 +363,10 @@ addEventListener("keydown", (e) => {
   if (k === "escape" && miniOn) { setMini(false); return; }
   if (k === "m") { setMini(!miniOn); return; }
   if (miniOn) return;
-  if (k === "1") Detail.show(false);
-  else if (k === "2") Detail.show("insights");
-  else if (k === "3") Detail.show("detail");
-  else if (k === "4") Detail.show("system");
-  else if (k === "5") Detail.show("diagnosis");
-  else if (k === "6") Detail.show("care");
-  else if (k === "7") Detail.show("overlay");
+  const page = Pages.byKey(k);
+  if (page) Pages.show(page);
   else if (k === "o") OverlayUI.toggle();
-  else if (k === "/" || k === "f") { Detail.show(true); $("dfilter").focus(); e.preventDefault(); }
+  else if (k === "/" || k === "f") { Pages.show("detail"); $("dfilter").focus(); e.preventDefault(); }
   else if (k === "t") cycleTheme();
   else if (k === "u") { setUnit(unit === "C" ? "F" : "C"); toast("Unit: \u00B0" + unit); }
   else if (k === "s") $("btnSettings").click();

@@ -3,7 +3,7 @@
 // Copyright (c) 2026 cahyata
 "use strict";
 /* Detailed tab: every sensor the service reports, grouped by hardware like HWMonitor.
-   Shares $, fmt, store, CFG and drawAll with main.js (classic scripts share one global scope); rules.js colors the readings. */
+   Shares $, fmt, store and CFG with main.js (classic scripts share one global scope); rules.js colors the readings. */
 
 const Detail = (() => {
   const UNITS = { Voltage: "V", Current: "A", Power: "W", Clock: "MHz", Temperature: "°C", Load: "%", Frequency: "Hz",
@@ -17,7 +17,7 @@ const Detail = (() => {
     TimeSpan: "Time", Noise: "Noise", Humidity: "Humidity", Conductivity: "Conductivity" };
 
   const open = new Set(["Favorites", "Lenovo embedded controller", "ACPI thermal zones"]); // expanded sections survive refreshes
-  let sig = "", on = false, last = null;
+  let sig = "", last = null;
   let sort = store.get("dsort", "default"), hideNet = store.get("dhide", "on") === "on";
   const idleNet = (h) => h.type === "Network" && (Rules.isVirtualAdapter(h.name) || h.sensors.every((x) => !x.value));
   const shown = (s) => s.hardware.filter((h) => !(hideNet && idleNet(h)));
@@ -65,7 +65,7 @@ const Detail = (() => {
           const paint = () => { const on = Pins.has(key); pin.textContent = on ? "\u2605" : "\u2606"; pin.setAttribute("aria-pressed", String(on)); pin.title = on ? "Remove from favorites" : "Add to favorites"; };
           paint();
           pin.setAttribute("aria-label", "Favorite " + x.name);
-          pin.onclick = (ev) => { ev.stopPropagation(); Pins.toggle(key); sig = ""; if (last) { refresh(last); if (typeof renderFavs === "function") renderFavs(last); } };
+          pin.onclick = (ev) => { ev.stopPropagation(); Pins.toggle(key); sig = ""; if (last) refresh(last); };
           r.children[0].append(pin, document.createTextNode(x.name));
           r.title = x.name + "\n" + SensorHelp.sensor(x.type, x.name);   // plain-language hint on hover
           g.append(r);
@@ -105,35 +105,6 @@ const Detail = (() => {
     });
   }
 
-  const TABS = { overview: ["tabOverview", "overview"], detail: ["tabDetail", "detail"], overlay: ["tabOverlay", "overlayTab"], system: ["tabSystem", "systemTab"], insights: ["tabInsights", "insightsTab"], diagnosis: ["tabDiag", "diagTab"], care: ["tabCare", "careTab"] };
-  /** Shows one tab: "overview", "detail", "overlay", "system", "insights", "diagnosis" or "care". Booleans from older callers mean detail or overview. */
-  function setTab(which) {
-    const name = which === true ? "detail" : which === false || !TABS[which] ? "overview" : which;
-    on = name === "detail";
-    for (const [key, [tab, panel]] of Object.entries(TABS)) {
-      const sel = key === name;
-      $(panel).hidden = !sel;
-      $(tab).classList.toggle("on", sel);
-      $(tab).setAttribute("aria-selected", String(sel));
-    }
-    $("rangeSeg").hidden = name !== "overview";       // the history range only applies to the Overview charts
-    store.set("tab", name);
-    $("scroller").scrollTop = 0;   // each page starts at its top
-    if (typeof OverlayUI !== "undefined") OverlayUI.setActive(name === "overlay");
-    if (typeof SystemPage !== "undefined") SystemPage.setActive(name === "system");
-    if (typeof Insights !== "undefined") Insights.setActive(name === "insights");
-    if (typeof Diagnosis !== "undefined") Diagnosis.setActive(name === "diagnosis");
-    if (typeof Care !== "undefined") Care.setActive(name === "care");
-    if (name === "detail") { sig = ""; if (last) refresh(last); } else if (name === "overview") drawAll();
-  }
-
-  $("tabOverview").onclick = () => setTab(false);
-  $("tabDetail").onclick = () => setTab(true);
-  $("tabOverlay").onclick = () => setTab("overlay");
-  $("tabSystem").onclick = () => setTab("system");
-  $("tabInsights").onclick = () => setTab("insights");
-  $("tabDiag").onclick = () => setTab("diagnosis");
-  $("tabCare").onclick = () => setTab("care");
   $("dsort").value = sort;
   $("dhide").checked = hideNet;
   $("dsort").onchange = () => { sort = $("dsort").value; store.set("dsort", sort); sig = ""; if (last) refresh(last); };
@@ -143,11 +114,10 @@ const Detail = (() => {
   $("dexp").onclick = () => { document.querySelectorAll("#dtree details").forEach((d) => (d.open = true)); };
   $("dcol").onclick = () => { document.querySelectorAll("#dtree details").forEach((d) => (d.open = false)); };
 
-  return {
-    fmt: fmtSensor,
-    show: setTab,
-    update(s) { last = s; if (on && s.hardware && !document.hidden) refresh(s); },
-    restore() { const t = store.get("tab", "overview"); if (t in TABS && t !== "overview") setTab(t); },
-  };
+  Pages.add("detail", {
+    show() { sig = ""; },
+    draw(s) { last = s; if (s.hardware) refresh(s); },
+  });
+
+  return { fmt: fmtSensor };
 })();
-Detail.restore();

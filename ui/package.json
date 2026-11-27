@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tauri dev",
     "tauri": "tauri",
-    "test": "node --test test/rules.test.js"
+    "test": "node --test test/rules.test.js test/pages.test.js"
   },
   "keywords": [],
   "author": "",

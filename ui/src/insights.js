@@ -8,7 +8,7 @@
    showing, so they are right when the tab is opened. The program list is measured by the service
    only while this tab is open. Shares $, store, sendWs, tf and deg with main.js; rules.js judges the readings. */
 
-var Insights = (() => {   // var, so a failure while loading this file cannot break the typeof checks in main.js
+(() => {
   let active = false, last = null, procKey = store.get("insproc", "cpu"), askedProcs = false, askedNet = false, askedAt = 0;
   let prevAt = 0;
 
@@ -59,7 +59,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   const rate = (b) => (b >= 1e6 ? (b / 1e6).toFixed(b >= 1e7 ? 0 : 1) + " MB/s" : Math.round(b / 1e3) + " KB/s");
 
   /** Called for every snapshot. */
-  function update(s) {
+  function collect(s) {
     last = s;
     const now = Date.now(), dt = prevAt ? Math.min(5, (now - prevAt) / 1000) : 0;
     prevAt = now;
@@ -78,7 +78,6 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     const st = sess.stats;
     add(st.cpuTemp, s.cpu?.tempC); add(st.gpuTemp, s.gpu?.tempC); add(st.cpuLoad, s.cpu?.load); add(st.gpuLoad, s.gpu?.load);
     add(st.gpuPower, s.gpu?.powerW); add(st.ram, s.ram?.usedGB);
-    if (active && !document.hidden) paint();
   }
 
   /* ---- drives ---- */
@@ -406,11 +405,12 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   $("insTariff").onclick = () => $("btnSettings").click();
   addEventListener("beforeunload", saveDay);
 
-  return {
-    setActive(on) { active = on; syncProcs(); if (on) { loadModes(); paint(); } },
-    update,
+  Pages.add("insights", {
+    show() { active = true; syncProcs(); loadModes(); paint(); },
+    hide() { active = false; syncProcs(); },
+    collect,
+    draw: paint,
     /** After a reconnect the service has forgotten what this window asked for. */
-    resync() { askedProcs = false; askedNet = false; syncProcs(); },
-  };
+    connected() { askedProcs = false; askedNet = false; syncProcs(); },
+  });
 })();
-Insights.setActive(store.get("tab", "overview") === "insights");   // the saved tab was restored before this file loaded

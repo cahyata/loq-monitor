@@ -7,7 +7,7 @@
    When you change a tip, read its source again. A link opens only when its host is in the list in lib.rs.
    Shares $, store, tf, tdeg and invoke with main.js; rules.js judges the drives. */
 
-var Care = (() => {   // var, so a failure while loading this file cannot break the typeof checks in main.js
+(() => {
   const CHECKED = "26 November 2026";
   const SOURCES = {
     lenovoQa: ["Lenovo: Battery Q&A", "https://support.lenovo.com/us/en/solutions/ht509084"],
@@ -122,10 +122,9 @@ var Care = (() => {   // var, so a failure while loading this file cannot break 
     return out;
   }
 
-  let active = false, last = null, shown = "";
-  function paint() {
-    if (!last) return;
-    const list = advice(last), signature = JSON.stringify(list);
+  let shown = "";
+  function paint(s) {
+    const list = advice(s), signature = JSON.stringify(list);
     if (signature === shown) return;     // redraw only on a change, so a focused link stays focused
     shown = signature;
     $("careState").textContent = list.length ? list.length + (list.length === 1 ? " point" : " points") : "";
@@ -136,9 +135,5 @@ var Care = (() => {   // var, so a failure while loading this file cannot break 
     }) : [el("li", "none", "Nothing in the current readings calls for action.")]));
   }
 
-  return {
-    update(s) { last = s; if (active && !document.hidden) paint(); },
-    setActive(on) { active = on; if (on) paint(); },
-  };
+  Pages.add("care", { draw: paint });
 })();
-Care.setActive(store.get("tab", "overview") === "care");   // the saved tab was restored before this file loaded

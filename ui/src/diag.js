@@ -8,8 +8,8 @@
    is showing. The Event Log is read by the service only when this tab asks for it.
    Shares $, store, CFG, tf, tdeg, deg, conv, unit, modeLabel and invoke with main.js. */
 
-var Diagnosis = (() => {   // var, so a failure while loading this file cannot break the typeof checks in main.js
-  let active = false, lastTs = 0;
+(() => {
+  let lastTs = 0, drawn = null;
 
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const when = (ms) => new Date(ms).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -245,25 +245,27 @@ var Diagnosis = (() => {   // var, so a failure while loading this file cannot b
   $("diagReveal").onclick = () => { if (savedPath) invoke("reveal_file", { path: savedPath }).catch((e) => { $("diagCsvMsg").textContent = "Could not open the folder: " + e; }); };
 
   /* ---- every snapshot ---- */
-  function update(s) {
+  function collect(s) {
     const now = s.ts || Date.now();
-    if (now !== lastTs) {          // a settings change draws the same snapshot again
-      lastTs = now;
-      track(s, now); keep(s, now);
-    } else heatDirty = true;       // the unit or a limit may have changed
-    if (active && !document.hidden) { if (heatDirty) paintHeat(); paintExport(); }
+    if (now === lastTs) return;
+    lastTs = now;
+    track(s, now); keep(s, now);
+  }
+
+  function draw(s) {
+    if (heatDirty || s === drawn) paintHeat();   // the same snapshot again means the unit or a limit may have changed
+    drawn = s;
+    paintExport();
   }
 
   addEventListener("beforeunload", save);
 
-  return {
-    update,
-    setActive(on) {
-      active = on;
-      if (!on) return;
+  Pages.add("diagnosis", {
+    collect,
+    draw,
+    show() {
       paintHeat(); paintExport();
       if (!events || eventsFor !== days || Date.now() - eventsAt > 60_000) load(false);
     },
-  };
+  });
 })();
-Diagnosis.setActive(store.get("tab", "overview") === "diagnosis");   // the saved tab was restored before this file loaded
