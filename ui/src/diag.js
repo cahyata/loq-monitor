@@ -6,7 +6,7 @@
    Windows recorded in its Event Log, and the export of the recent sensor readings to a CSV file.
    The history and the readings are collected from every snapshot, also while another tab or the tray
    is showing. The Event Log is read by the service only when this tab asks for it.
-   Shares $, store, CFG, tf, tdeg, deg, conv, unit, MODES and invoke with main.js. */
+   Shares $, store, CFG, tf, tdeg, deg, conv, unit, modeLabel and invoke with main.js. */
 
 var Diagnosis = (() => {   // var, so a failure while loading this file cannot break the typeof checks in main.js
   let active = false, lastTs = 0;
@@ -82,7 +82,7 @@ var Diagnosis = (() => {   // var, so a failure while loading this file cannot b
       const name = el("span", null, NAME[r.s] ?? r.s);
       const peak = el("span", "hot", tdeg(r.p));
       const length = running.has(r) ? el("span", "hot", span((r.e - r.t) / 1000) + ", now") : span((r.e - r.t) / 1000);
-      return line("heatrow", [when(r.t), name, peak, tdeg(r.l), length, MODES[r.m] ?? "--"]);
+      return line("heatrow", [when(r.t), name, peak, tdeg(r.l), length, modeLabel(r.m)]);
     });
     wrap.replaceChildren(line("heatrow", ["STARTED", "SENSOR", "PEAK", "LIMIT", "LASTED", "POWER MODE"], true), ...rows);
   }
@@ -183,7 +183,7 @@ var Diagnosis = (() => {   // var, so a failure while loading this file cannot b
     ["cpu_temp", (s) => s.cpu?.tempC, true], ["cpu_load_pct", (s) => s.cpu?.load], ["cpu_clock_mhz", (s) => s.cpu?.clockMHz], ["cpu_power_w", (s) => s.cpu?.powerW], ["cpu_fan_rpm", (s) => s.cpu?.fanRpm],
     ["gpu_temp", (s) => s.gpu?.tempC, true], ["gpu_hotspot", (s) => s.gpu?.hotspotC, true], ["gpu_vram_temp", (s) => s.gpu?.vramTempC, true], ["gpu_load_pct", (s) => s.gpu?.load], ["gpu_power_w", (s) => s.gpu?.powerW],
     ["gpu_clock_mhz", (s) => s.gpu?.coreClockMHz], ["gpu_mem_clock_mhz", (s) => s.gpu?.memClockMHz], ["gpu_fan_rpm", (s) => s.gpu?.fanRpm], ["vram_used_mb", (s) => s.gpu?.vramUsedMB],
-    ["ram_used_gb", (s) => s.ram?.usedGB], ["ram_load_pct", (s) => s.ram?.loadPct], ["battery_pct", (s) => s.battery?.levelPct], ["battery_w", (s) => s.battery?.rateW], ["power_mode", (s) => MODES[s.powerMode]],
+    ["ram_used_gb", (s) => s.ram?.usedGB], ["ram_load_pct", (s) => s.ram?.loadPct], ["battery_pct", (s) => s.battery?.levelPct], ["battery_w", (s) => s.battery?.rateW], ["power_mode", (s) => Rules.powerMode(s.powerMode)?.toUpperCase()],
   ];
 
   function keep(s, now) {

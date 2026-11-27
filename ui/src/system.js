@@ -11,7 +11,6 @@ var SystemPage = (() => {   // var, so a failure while loading this file cannot 
   const SYSTEM_URL = "http://127.0.0.1:47821/system";
   let data = null, active = false, last = null, fetchedAt = 0, loading = false;
   let mask = store.get("sysmask", "on") === "on", showVirtual = store.get("sysvirtual", "off") === "on";
-  const VIRTUAL = /vmware|virtualbox|hyper-v|vethernet|loopback|bluetooth|wan miniport|tap-|wireguard|openvpn/i;
 
   const GB = (b) => (b == null ? "--" : (b / 1024 ** 3).toFixed(b >= 100 * 1024 ** 3 ? 0 : 1) + " GB");
   const dash = (v) => (v == null || v === "" ? "--" : String(v));
@@ -80,7 +79,7 @@ var SystemPage = (() => {   // var, so a failure while loading this file cannot 
       table2: { head: ["VOLUME", "LABEL", "FILE SYSTEM", "SIZE", "FREE"], rows: vol.map((v) => [
         v.drive, v.label, v.fileSystem, GB(v.bytes), v.bytes ? GB(v.freeBytes) + " (" + Math.round((v.freeBytes / v.bytes) * 100) + "%)" : "--"]) } });
 
-    const nets = (data.network ?? []).filter((n) => showVirtual || !VIRTUAL.test((n.name ?? "") + " " + (n.connection ?? "")));
+    const nets = (data.network ?? []).filter((n) => showVirtual || !Rules.isVirtualAdapter((n.name ?? "") + " " + (n.connection ?? "")));
     out.push({ title: "NETWORK", color: "green", wide: true, rows: [], table: { head: ["ADAPTER", "CONNECTION", "SPEED", "IPV4", "GATEWAY", "MAC"], rows: nets.map((n) => {
       const v4 = (n.ip ?? []).find((a) => /^\d+\.\d+\.\d+\.\d+$/.test(a));
       return [n.name, n.connection, n.speedMbps ? n.speedMbps + " Mbps" : "--", hide(v4 ?? "--"), hide(n.gateway ?? "--"), hide(n.mac ?? "--")];

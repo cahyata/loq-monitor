@@ -2,6 +2,22 @@
 
 This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Every page judges a reading by the same rules.
+- SSD remaining life is a warning at 20 % or less and critical at 10 % or less. The drive card no longer turns yellow at 80 %.
+- An SSD temperature is a warning at 70 °C and critical at 80 °C, or earlier at the warning temperature of the drive. Care and Insights follow the same limits.
+- The Overview summary, the system log and Care also report low drive life and low spare blocks.
+- A full drive is a warning and no longer shows CRITICAL.
+- The Detailed tab colors SSD temperatures by the SSD limits and leaves the warning and critical temperature rows uncolored.
+- Adapters named "Local Area Connection" count as virtual on every page.
+
+### Fixed
+
+- The tooltip of the Overlay tab named key 5. The key is 7.
+
 ## [0.5.0] - 2026-11-26
 
 ### Added

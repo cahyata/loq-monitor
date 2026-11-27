@@ -9,9 +9,6 @@
   --display: italic 900 1em var(--font-display);
   --clip: polygon(0 0, calc(100% - var(--cut-lg)) 0, 100% var(--cut-lg), 100% 100%, var(--cut-lg) 100%, 0 calc(100% - var(--cut-lg)));
   --clip-sm: polygon(0 0, calc(100% - var(--cut-sm)) 0, 100% var(--cut-sm), 100% 100%, 0 100%);
-  /* temperature limits (°C) */
-  --warn-at: 75;
-  --hot-at: 90;
 }
 html.light {
   --orange: #b45309;

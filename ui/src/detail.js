@@ -3,7 +3,7 @@
 // Copyright (c) 2026 cahyata
 "use strict";
 /* Detailed tab: every sensor the service reports, grouped by hardware like HWMonitor.
-   Shares $, fmt, store, tempClass and drawAll with main.js (classic scripts share one global scope). */
+   Shares $, fmt, store, CFG and drawAll with main.js (classic scripts share one global scope); rules.js colors the readings. */
 
 const Detail = (() => {
   const UNITS = { Voltage: "V", Current: "A", Power: "W", Clock: "MHz", Temperature: "°C", Load: "%", Frequency: "Hz",
@@ -19,8 +19,7 @@ const Detail = (() => {
   const open = new Set(["Favorites", "Lenovo embedded controller", "ACPI thermal zones"]); // expanded sections survive refreshes
   let sig = "", on = false, last = null;
   let sort = store.get("dsort", "default"), hideNet = store.get("dhide", "on") === "on";
-  const VIRTUAL = /vmware|virtualbox|hyper-v|vethernet|openvpn|wireguard|tap-|loopback|bluetooth|local area connection|wan miniport/i;
-  const idleNet = (h) => h.type === "Network" && (VIRTUAL.test(h.name) || h.sensors.every((x) => !x.value));
+  const idleNet = (h) => h.type === "Network" && (Rules.isVirtualAdapter(h.name) || h.sensors.every((x) => !x.value));
   const shown = (s) => s.hardware.filter((h) => !(hideNet && idleNet(h)));
 
   const rank = (t) => { const i = ORDER.indexOf(t); return i < 0 ? 99 : i; };
@@ -80,7 +79,7 @@ const Detail = (() => {
 
   function refresh(s) {
     const filter = $("dfilter").value.trim().toLowerCase();
-    const favs = Pins.resolve(s).map(({ key, hw: from, x }) => ({ ...x, key, name: from + " \u203A " + x.name }));
+    const favs = Pins.resolve(s).map(({ key, hw: from, source, x }) => ({ ...x, key, source, name: from + " \u203A " + x.name }));
     const hw = favs.length ? [{ name: "Favorites", type: "Pins", sensors: favs }, ...shown(s)] : shown(s);
     const next = filter + "|" + (sort === "name" ? "n" : "d") + "|" + hw.map((h) => h.name + ":" + h.sensors.length).join(",");
     const tree = $("dtree");
@@ -91,7 +90,7 @@ const Detail = (() => {
       d.querySelectorAll(".srow:not(.head)").forEach((r) => {
         const x = h.sensors[+r.dataset.i];
         if (!x) return;
-        const c = x.type === "Temperature" ? tempClass(x.value) : "";
+        const c = Rules.sensor(x.source ?? h, x, CFG);
         r.children[1].textContent = fmtSensor(x.type, x.value);
         r.children[1].className = "val" + (c && c !== "ok" ? " " + c : "");
         r.children[2].textContent = fmtSensor(x.type, x.min);

@@ -5,7 +5,7 @@
 /* The CARE tab: advice that makes the hardware last, and the advice that applies to this laptop right now.
    Every tip is written in our own words from the page it links to; the sources were read on the date in CHECKED.
    When you change a tip, read its source again. A link opens only when its host is in the list in lib.rs.
-   Shares $, store, tf, tdeg and invoke with main.js. */
+   Shares $, store, tf, tdeg and invoke with main.js; rules.js judges the drives. */
 
 var Care = (() => {   // var, so a failure while loading this file cannot break the typeof checks in main.js
   const CHECKED = "26 November 2026";
@@ -102,11 +102,13 @@ var Care = (() => {   // var, so a failure while loading this file cannot break 
   /** Advice drawn from the live readings. Each entry is [level, text, source key or null]. */
   function advice(s) {
     const out = [];
-    for (const d of s.storage ?? []) {
-      if ((d.usedPct ?? 0) >= 90) out.push(["warn", `${d.name} is ${Math.round(d.usedPct)} % full. Free up space so at least 10 % stays empty.`, "kingstonCare"]);
-      if ((d.tempC ?? 0) >= 70) out.push(["hot", `${d.name} is at ${tdeg(d.tempC)}. Check the airflow and pause long copies until it cools.`, "kingstonCare"]);
-      if (d.lifePct != null && d.lifePct <= 20) out.push(["hot", `${d.name} reports ${Math.round(d.lifePct)} % life left. Back up your files and plan a replacement.`, "kingstonCare"]);
-    }
+    const DRIVE = {
+      spare: (d) => [`${d.name} is running out of spare blocks. Back up your files and plan a replacement.`, null],
+      life: (d) => [`${d.name} reports ${Math.round(d.life)} % life left. Back up your files and plan a replacement.`, "kingstonCare"],
+      temp: (d) => [`${d.name} is at ${tdeg(d.temp)}. Check the airflow and pause long copies until it cools.`, "kingstonCare"],
+      fill: (d) => [`${d.name} is ${Math.round(d.fill)} % full. Free up space so at least 10 % stays empty.`, "kingstonCare"],
+    };
+    for (const d of Rules.drives(s)) for (const x of Rules.driveIssues(d)) out.push([x.level, ...DRIVE[x.kind](d)]);
     const b = s.battery;
     if (b) {
       if (b.acOnline && (b.levelPct ?? 0) >= 95) out.push(["warn", `The battery is at ${Math.round(b.levelPct)} % on mains power. If the laptop usually stays plugged in, turn on Conservation Mode in Lenovo Vantage.`, "lenovoQa"]);

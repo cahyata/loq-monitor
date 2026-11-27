@@ -9,26 +9,19 @@
 const OvMetrics = (() => {
   const get = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } };
   const num = (k, d) => { const v = parseFloat(get(k, "")); return Number.isFinite(v) ? v : d; };
-  const prefs = () => ({ unit: get("unit", "C") === "F" ? "F" : "C", warn: num("cfg.warn", 75), hot: num("cfg.hot", 90), spot: num("cfg.spot", 95) });
+  const prefs = () => ({ unit: get("unit", "C") === "F" ? "F" : "C", warn: num("cfg.warn", Rules.LIMITS.warn), hot: num("cfg.hot", Rules.LIMITS.hot), spot: num("cfg.spot", Rules.LIMITS.spot) });
 
   const f = (v, d = 0) => (v == null ? "--" : Number(v).toFixed(d));
-  const pct = (v) => ({ text: f(v) + "%", state: v == null ? "" : v >= 90 ? "hot" : v >= 80 ? "warn" : "ok" });
+  const pct = (v) => ({ text: f(v) + "%", state: v == null ? "" : Rules.capacity(v) });
   const plain = (v, d, unit) => ({ text: v == null ? "--" : Number(v).toFixed(d) + unit, state: "" });
-  const temp = (p, c, warn = p.warn, hot = p.hot) => ({
-    text: c == null ? "--" : (p.unit === "F" ? (c * 9) / 5 + 32 : c).toFixed(0) + "°",
-    state: c == null ? "" : c >= hot ? "hot" : c >= warn ? "warn" : "ok",
-  });
+  const temp = (p, c, state = Rules.temp(c, p)) => ({ text: c == null ? "--" : (p.unit === "F" ? (c * 9) / 5 + 32 : c).toFixed(0) + "°", state });
   const rate = (v) => (v == null ? "--" : v >= 1e6 ? (v / 1e6).toFixed(1) + " MB/s" : (v / 1e3).toFixed(0) + " KB/s");
-  const VIRTUAL = /vmware|virtualbox|hyper-v|vethernet|openvpn|wireguard|tap-|loopback|bluetooth|local area connection|wan miniport/i;
-  const netSum = (s, name) => {
-    let sum = 0;
-    for (const h of s.hardware ?? []) {
-      if (h.type !== "Network" || VIRTUAL.test(h.name)) continue;
-      for (const x of h.sensors) if (x.name === name && x.value) sum += x.value;
-    }
-    return sum;
+  /** The hottest drive's temperature, colored by the drive that is worst off (a drive may have a lower limit of its own). */
+  const driveTemps = (p, s) => {
+    const list = Rules.drives(s).filter((d) => d.temp != null);
+    const levels = list.map((d) => Rules.driveTemp(d.temp, d.tempWarn));
+    return temp(p, list.length ? Math.max(...list.map((d) => d.temp)) : null, ["hot", "warn", "ok"].find((l) => levels.includes(l)) ?? "");
   };
-  const MODES = { 1: "Quiet", 2: "Balanced", 3: "Performance", 224: "Custom", 255: "Custom" };
 
   // id, group, name in the settings list, short label on the overlay, value function
   const LIST = [
@@ -39,7 +32,7 @@ const OvMetrics = (() => {
     ["cpuFan", "CPU", "Fan speed", "CPU FAN", (s) => plain(s.cpu.fanRpm, 0, " rpm")],
 
     ["gpuTemp", "GPU", "Temperature", "GPU TEMP", (s, p) => temp(p, s.gpu.tempC)],
-    ["gpuHot", "GPU", "Hotspot temperature", "GPU HOT", (s, p) => temp(p, s.gpu.hotspotC, p.hot, p.spot)],
+    ["gpuHot", "GPU", "Hotspot temperature", "GPU HOT", (s, p) => temp(p, s.gpu.hotspotC, Rules.hotspot(s.gpu.hotspotC, p))],
     ["gpuLoad", "GPU", "Load", "GPU LOAD", (s) => ({ text: f(s.gpu.load) + "%", state: "" })],
     ["gpuPower", "GPU", "Power", "GPU PWR", (s) => plain(s.gpu.powerW, 0, " W")],
     ["gpuClock", "GPU", "Core clock", "GPU CLK", (s) => plain(s.gpu.coreClockMHz, 0, " MHz")],
@@ -53,16 +46,13 @@ const OvMetrics = (() => {
 
     ["ramUsed", "Memory", "RAM used", "RAM", (s) => ({ text: s.ram.usedGB == null ? "--" : s.ram.usedGB.toFixed(1) + " GB", state: pct(s.ram.loadPct).state })],
     ["ramPct", "Memory", "RAM used (percent)", "RAM", (s) => pct(s.ram.loadPct)],
-    ["ssdTemp", "Memory", "Hottest SSD temperature", "SSD TEMP", (s, p) => {
-      const t = Math.max(...s.storage.map((d) => d.tempC ?? -1));
-      return temp(p, t < 0 ? null : t, 70, 80);
-    }],
+    ["ssdTemp", "Memory", "Hottest SSD temperature", "SSD TEMP", (s, p) => driveTemps(p, s)],
 
-    ["battery", "System", "Battery level", "BAT", (s) => ({ text: s.battery ? f(s.battery.levelPct) + "%" : "--", state: !s.battery ? "" : s.battery.levelPct < 15 ? "hot" : s.battery.levelPct < 30 ? "warn" : "ok" })],
+    ["battery", "System", "Battery level", "BAT", (s) => ({ text: s.battery ? f(s.battery.levelPct) + "%" : "--", state: Rules.battery(s.battery?.levelPct) })],
     ["batteryRate", "System", "Battery power", "BAT PWR", (s) => ({ text: s.battery?.rateW == null ? "--" : (s.battery.rateW > 0 ? "+" : "") + s.battery.rateW.toFixed(0) + " W", state: "" })],
-    ["powerMode", "System", "Power mode", "MODE", (s) => ({ text: MODES[s.powerMode] ?? "--", state: "" })],
-    ["netDown", "System", "Network download", "DOWN", (s) => ({ text: rate(netSum(s, "Download Speed")), state: "" })],
-    ["netUp", "System", "Network upload", "UP", (s) => ({ text: rate(netSum(s, "Upload Speed")), state: "" })],
+    ["powerMode", "System", "Power mode", "MODE", (s) => ({ text: Rules.powerMode(s.powerMode) ?? "--", state: "" })],
+    ["netDown", "System", "Network download", "DOWN", (s) => ({ text: rate(Rules.netRates(s).down), state: "" })],
+    ["netUp", "System", "Network upload", "UP", (s) => ({ text: rate(Rules.netRates(s).up), state: "" })],
     ["fps", "Game", "Frame rate", "FPS", (s) => ({ text: s.fps?.fps == null ? "--" : s.fps.fps.toFixed(0), state: "" })],
     ["frameTime", "Game", "Frame time", "FRAME", (s) => plain(s.fps?.frameMs, 1, " ms")],
     ["fpsLow", "Game", "1% low frame rate", "1% LOW", (s) => ({ text: s.fps?.low1Fps == null ? "--" : s.fps.low1Fps.toFixed(0), state: "" })],

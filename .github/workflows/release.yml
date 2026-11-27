@@ -55,6 +55,10 @@ jobs:
         working-directory: ui
         run: npm ci
 
+      - name: Test the UI rules
+        working-directory: ui
+        run: npm test
+
       - name: Collect the license texts the installer ships
         run: node scripts/collect-licenses.mjs
 

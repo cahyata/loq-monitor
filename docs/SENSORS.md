@@ -88,15 +88,20 @@ The service assumes that a positive rate means charging and a negative rate mean
 
 ## UI thresholds
 
-| Metric | Warning | Critical |
+`ui/src/rules.js` holds these rules for every page. The first two rows are the defaults of the limits in SETTINGS.
+
+| Reading | Warning (yellow) | Critical (pink) |
 |---|---|---|
-| CPU and GPU temperature | 75 °C or more (yellow) | 90 °C or more (pink, HOT tag) |
-| GPU hotspot | 90 °C or more | 95 °C or more (CRIT log line) |
-| RAM and VRAM load | 90 % or more (WARN log line) | none |
-| SSD temperature | 70 °C or more (WARN log line) | none |
-| SSD remaining life | 80 % or less (yellow) | none |
-| SSD used space | none | 90 % or more (pink) |
-| Battery level | below 20 % (WARN log line) | none |
+| CPU and GPU temperature | 75 °C or more | 90 °C or more |
+| GPU hotspot | 90 °C or more (the hot limit) | 95 °C or more |
+| RAM and VRAM load | 80 % or more | 90 % or more |
+| SSD temperature | 70 °C or more | 80 °C or more, or the warning temperature of the drive if that is lower |
+| SSD remaining life | 20 % or less | 10 % or less |
+| SSD spare blocks | none | at or below the threshold of the drive |
+| SSD used space | 80 % or more on the drive card, 90 % or more in the summary, the log and Care | none |
+| Battery level | below 30 % | below 15 % |
+
+The Overview summary lists every row above. The system log leaves out the GPU hotspot below its critical level and lists RAM and VRAM only from 90 %.
 
 ## Investigating a new sensor
 

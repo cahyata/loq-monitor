@@ -6,7 +6,7 @@
    why the GPU is being held back, drive health and data written, and min, average and max for this session. The session numbers
    and the energy total are collected from every snapshot, also while another tab or the tray is
    showing, so they are right when the tab is opened. The program list is measured by the service
-   only while this tab is open. Shares $, store, sendWs, tf, deg, GPU_LIMITS and limitsOf with main.js. */
+   only while this tab is open. Shares $, store, sendWs, tf and deg with main.js; rules.js judges the readings. */
 
 var Insights = (() => {   // var, so a failure while loading this file cannot break the typeof checks in main.js
   let active = false, last = null, procKey = store.get("insproc", "cpu"), askedProcs = false, askedNet = false, askedAt = 0;
@@ -54,17 +54,8 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   }
 
   /* ---- network speed history (last 5 minutes), kept from every snapshot ---- */
-  const VIRTUAL = /vmware|virtualbox|hyper-v|vethernet|openvpn|wireguard|tap-|loopback|bluetooth|wan miniport/i;
   const netHist = [];
   const NET_KEEP = 300;
-  function netRates(s) {
-    let d = 0, u = 0;
-    for (const h of s.hardware ?? []) {
-      if (h.type !== "Network" || VIRTUAL.test(h.name)) continue;
-      for (const x of h.sensors) { if (x.name === "Download Speed") d += x.value || 0; else if (x.name === "Upload Speed") u += x.value || 0; }
-    }
-    return { d, u };
-  }
   const rate = (b) => (b >= 1e6 ? (b / 1e6).toFixed(b >= 1e7 ? 0 : 1) + " MB/s" : Math.round(b / 1e3) + " KB/s");
 
   /** Called for every snapshot. */
@@ -78,12 +69,12 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
       const wh = (p.w * dt) / 3600;
       sess.wh += wh; day.wh += wh; sess.secs += dt;
       if (p.estimated) sess.est = true;
-      for (const l of limitsOf(s.gpu?.throttleMask)) { sess.limitSec[l.bit] = (sess.limitSec[l.bit] ?? 0) + dt; day.limitSec[l.bit] = (day.limitSec[l.bit] ?? 0) + dt; }
+      for (const l of Rules.gpuLimits(s.gpu?.throttleMask)) { sess.limitSec[l.bit] = (sess.limitSec[l.bit] ?? 0) + dt; day.limitSec[l.bit] = (day.limitSec[l.bit] ?? 0) + dt; }
       if (day.date !== dayKey()) day = { date: dayKey(), wh, limitSec: {}, disk: {} };
       if (now - savedAt > 30000) saveDay();
     }
     markDrives(s);
-    netHist.push(netRates(s)); if (netHist.length > NET_KEEP) netHist.shift();
+    netHist.push(Rules.netRates(s)); if (netHist.length > NET_KEEP) netHist.shift();
     const st = sess.stats;
     add(st.cpuTemp, s.cpu?.tempC); add(st.gpuTemp, s.gpu?.tempC); add(st.cpuLoad, s.cpu?.load); add(st.gpuLoad, s.gpu?.load);
     add(st.gpuPower, s.gpu?.powerW); add(st.ram, s.ram?.usedGB);
@@ -91,23 +82,9 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   }
 
   /* ---- drives ---- */
-  /** Health and totals of each drive, taken from its SMART sensors. */
-  function drives(s) {
-    return (s.hardware ?? []).filter((h) => h.type === "Storage").map((h, i) => {
-      const v = (type, name) => h.sensors.find((x) => x.type === type && x.name === name)?.value ?? null;
-      return {
-        key: i + " " + h.name, name: h.name,
-        life: v("Level", "Life"), spare: v("Level", "Available Spare"), spareMin: v("Level", "Available Spare Threshold"),
-        written: v("Data", "Data Written"), read: v("Data", "Data Read"),
-        hours: v("Factor", "Power On Hours"), cycles: v("Factor", "Power On Count"),
-        temp: v("Temperature", "Composite Temperature") ?? v("Temperature", "Temperature #1"), tempWarn: v("Temperature", "Warning Temperature"),
-      };
-    });
-  }
-
   /** Remembers where each drive's write counter stood at the start of the session and of the day. */
   function markDrives(s) {
-    for (const d of drives(s)) {
+    for (const d of Rules.drives(s)) {
       if (d.written == null) continue;
       sess.disk[d.key] ??= d.written;
       if (day.disk[d.key] == null) { day.disk[d.key] = d.written; saveDay(); }
@@ -175,14 +152,14 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   }
 
   function paintLimits(s) {
-    const now = limitsOf(s.gpu?.throttleMask);
+    const now = Rules.gpuLimits(s.gpu?.throttleMask);
     const worst = now[0];
     $("insLimitState").textContent = s.gpu?.throttleMask == null ? "Not available" : worst ? worst.label : "No limit";
     $("insLimitNow").textContent = s.gpu?.throttleMask == null
       ? "This needs an NVIDIA GPU with its driver, and a sensor service that is as new as this app."
       : worst ? worst.text : "The GPU is running without being held back right now.";
     // Only the limits that happened are listed, so the table is not a wall of zeros.
-    const hit = GPU_LIMITS.filter((l) => (sess.limitSec[l.bit] ?? 0) > 0 || (day.limitSec[l.bit] ?? 0) > 0);
+    const hit = Rules.GPU_LIMITS.filter((l) => (sess.limitSec[l.bit] ?? 0) > 0 || (day.limitSec[l.bit] ?? 0) > 0);
     const wrap = $("insLimits");
     wrap.replaceChildren(row(["LIMIT", "THIS SESSION", "TODAY"], true),
       ...(hit.length ? hit.map((l) => { const x = row([l.name, clock(sess.limitSec[l.bit] ?? 0), clock(day.limitSec[l.bit] ?? 0)]); x.title = l.text; return x; })
@@ -208,8 +185,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
 
   function paintLimitsCard(s) {
     const L = s.limits, bars = $("insPLBars"), mode = { 1: 1, 2: 2, 3: 3 }[s.powerMode] ?? 0;
-    const names = { 1: "Quiet", 2: "Balanced", 3: "Performance", 224: "Custom", 255: "Custom" };
-    $("insPLMode").textContent = s.powerMode ? "Power mode: " + (names[s.powerMode] ?? "--") : "";
+    $("insPLMode").textContent = s.powerMode ? "Power mode: " + (Rules.powerMode(s.powerMode) ?? "--") : "";
     if (!L) {
       const old = askedAt && Date.now() - askedAt > 12000;
       bars.replaceChildren(el("li", "empty", old ? "No data. The sensor service that is running is older than this app and cannot read the limits." : "Reading the limits..."));
@@ -240,7 +216,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     } else wrap.replaceChildren(el("p", "note", modes ? "This laptop does not list limits per mode." : "Reading..."));
 
     $("insPLNote").textContent = "These limits come from the laptop firmware (CPU) and the NVIDIA driver (GPU). LOQ Monitor only reads them. Change the power mode with Fn+Q or in Lenovo Vantage. When power sits at its limit the chip is held back, which is normal under heavy load."
-      + (s.powerMode === 224 || s.powerMode === 255 ? " Custom mode uses your own values, so the table shows only the defaults of the other modes." : "");
+      + (Rules.powerMode(s.powerMode) === "Custom" ? " Custom mode uses your own values, so the table shows only the defaults of the other modes." : "");
   }
 
   /* ---- network card ---- */
@@ -268,7 +244,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
     const cs = getComputedStyle(document.documentElement);
     const cyan = cs.getPropertyValue("--accent-secondary").trim(), pink = cs.getPropertyValue("--accent-primary").trim(), grid = cs.getPropertyValue("--divider").trim(), muted = cs.getPropertyValue("--text-muted").trim();
-    const peak = Math.max(1e5, ...netHist.map((p) => Math.max(p.d, p.u)));
+    const peak = Math.max(1e5, ...netHist.map((p) => Math.max(p.down, p.up)));
     const top = niceTop(peak);
     const L = 58, R = 4, T = 8, B = 4, pw = w - L - R, ph = h - T - B;
     g.font = "11px " + (cs.getPropertyValue("--font-mono").trim() || "monospace"); g.textBaseline = "middle"; g.lineWidth = 1;
@@ -279,14 +255,14 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
     }
     const x = (i) => L + (pw * i) / (NET_KEEP - 1), y = (v) => T + ph * (1 - Math.min(1, v / top));
     const off = NET_KEEP - netHist.length;
-    for (const [key, color, fill] of [["u", pink, false], ["d", cyan, true]]) {
+    for (const [key, color, fill] of [["up", pink, false], ["down", cyan, true]]) {
       if (!netHist.length) break;
       g.beginPath();
       netHist.forEach((p, i) => (i ? g.lineTo(x(i + off), y(p[key])) : g.moveTo(x(i + off), y(p[key]))));
       g.strokeStyle = color; g.lineWidth = 1.5; g.stroke();
       if (fill) { g.lineTo(x(netHist.length - 1 + off), T + ph); g.lineTo(x(off), T + ph); g.closePath(); g.globalAlpha = 0.15; g.fillStyle = color; g.fill(); g.globalAlpha = 1; }
     }
-    const peakD = Math.max(0, ...netHist.map((p) => p.d)), peakU = Math.max(0, ...netHist.map((p) => p.u));
+    const peakD = Math.max(0, ...netHist.map((p) => p.down)), peakU = Math.max(0, ...netHist.map((p) => p.up));
     $("insNetCap").textContent = `last ${netHist.length < 60 ? netHist.length + " s" : Math.floor(netHist.length / 60) + " min"} \u00B7 peak down ${rate(peakD)} \u00B7 peak up ${rate(peakU)}`;
     cv.setAttribute("aria-label", "Download and upload speed. " + $("insNetCap").textContent);
   }
@@ -302,9 +278,9 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   }
 
   function paintNetwork(s) {
-    const r = netRates(s);
-    $("insDown").textContent = rate(r.d); $("insUp").textContent = rate(r.u);
-    $("insDown").title = ((r.d * 8) / 1e6).toFixed(1) + " Mbps"; $("insUp").title = ((r.u * 8) / 1e6).toFixed(1) + " Mbps";
+    const r = Rules.netRates(s);
+    $("insDown").textContent = rate(r.down); $("insUp").textContent = rate(r.up);
+    $("insDown").title = ((r.down * 8) / 1e6).toFixed(1) + " Mbps"; $("insUp").title = ((r.up * 8) / 1e6).toFixed(1) + " Mbps";
     paintNetChart();
     $("insNetMask").textContent = netMask ? "SHOW NETWORK NAME AND ADDRESSES" : "HIDE NETWORK NAME AND ADDRESSES";
 
@@ -350,13 +326,14 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   const moved = (mb) => (mb >= 1048576 ? (mb / 1048576).toFixed(1) + " TB" : mb >= 1024 ? (mb / 1024).toFixed(1) + " GB" : mb.toFixed(mb < 10 ? 1 : 0) + " MB");
   const speed = (v) => (v < 0.005 ? "0" : v < 10 ? v.toFixed(2) : v.toFixed(0)) + " MB/s";
 
-  /** The worst thing the drive reports about itself comes first. */
+  /** The words for what the rules found on a drive. */
   function driveState(d) {
-    if (d.spare != null && d.spareMin != null && d.spare <= d.spareMin) return { level: "hot", label: "Replace soon" };
-    if (d.life != null && d.life <= 0) return { level: "hot", label: "Past rated life" };
-    if (d.temp != null && d.tempWarn != null && d.temp >= d.tempWarn) return { level: "hot", label: "Too hot" };
-    if (d.life != null && d.life <= 20) return { level: "warn", label: "Wearing out" };
-    return d.life == null ? { level: "", label: "No wear data" } : { level: "ok", label: "Healthy" };
+    const { level, reason, value } = Rules.driveCondition(d);
+    const label = reason === "spare" ? "Replace soon"
+      : reason === "life" ? (level === "warn" ? "Wearing out" : value <= 0 ? "Past rated life" : "Replace soon")
+      : reason === "temp" ? (level === "hot" ? "Too hot" : "Warm")
+      : reason === "unknown" ? "No wear data" : "Healthy";
+    return { level, label };
   }
 
   function driveBox(d) {
@@ -382,7 +359,7 @@ var Insights = (() => {   // var, so a failure while loading this file cannot br
   }
 
   function paintStorage(s) {
-    const list = drives(s);
+    const list = Rules.drives(s);
     $("insDiskState").textContent = list.length ? list.length + (list.length === 1 ? " drive" : " drives") : "";
     $("insDrives").replaceChildren(...(list.length ? list.map(driveBox) : [el("p", "note", "No drive reports its health.")]));
 

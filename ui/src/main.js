@@ -11,11 +11,11 @@ const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
 const hist = { cpu: [], gpu: [] };
 const fmt = (v, d = 0) => (v == null ? "--" : Number(v).toFixed(d));
-const tempClass = (t) => (t == null ? "" : t >= CFG.hot ? "hot" : t >= CFG.warn ? "warn" : "ok");
+const tempClass = (t) => Rules.temp(t, CFG);
 const css = (name) => getComputedStyle(root).getPropertyValue(name).trim();
 
 /* ---------- preferences (theme, FX) and limits ---------- */
-const DEFAULTS = { warn: 75, hot: 90, spot: 95, hold: 10 }; // °C, °C, °C, seconds
+const DEFAULTS = { ...Rules.LIMITS, hold: 10 }; // °C, °C, °C, seconds
 const CFG = { ...DEFAULTS };
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch { return d; } },
@@ -129,7 +129,7 @@ const Pins = (() => {
         const [hn, type, ...rest] = k.split("|"), name = rest.join("|");
         const h = (s.hardware ?? []).find((z) => z.name === hn);
         const x = h?.sensors.find((z) => z.type === type && z.name === name);
-        if (x) out.push({ key: k, hw: h.name, x });
+        if (x) out.push({ key: k, hw: h.name, source: h, x });
       }
       return out;
     },
@@ -184,10 +184,8 @@ function setTemp(el, tagEl, t) {
   tagEl.textContent = c === "hot" ? "HOT" : c === "warn" ? "WARM" : c === "ok" ? "NORMAL" : "--";
   tagEl.className = "tag " + c;
 }
-/* status of a "how full" reading: RAM, video memory, drive space. Battery has its own rule. */
-const capState = (p) => (p >= 90 ? "hot" : p >= 80 ? "warn" : "ok");
-const batState = (p) => (p < 15 ? "hot" : p < 30 ? "warn" : "good");
-const ssdState = (t) => (t == null ? "" : t >= 80 ? "hot" : t >= 70 ? "warn" : "ok");
+/* The rules call a normal battery "ok"; its meter and chip have their own green. */
+const batState = (p) => { const level = Rules.battery(p); return level === "ok" ? "good" : level; };
 const CAP_LABEL = { ok: "OK", warn: "HIGH", hot: "CRITICAL" };
 const BAT_LABEL = { good: "OK", warn: "LOW", hot: "CRITICAL" };
 function setMeter(barId, pct, state = "load") {
@@ -195,18 +193,8 @@ function setMeter(barId, pct, state = "load") {
   bar.style.transform = `scaleX(${Math.max(0, Math.min(100, pct ?? 0)) / 100})`;
   bar.parentElement.className = "meter " + (state === "load" ? "load" : "st-" + state);
 }
-/* Why the NVIDIA GPU is held back. Each entry is a bit of the throttle mask from the service, worst first. */
-const GPU_LIMITS = [
-  { bit: 0x40, label: "HEAT LIMIT", level: "hot", name: "Hardware heat limit", text: "The GPU hardware is cutting its speed because it is too hot. Check the vents, the fans and the power mode." },
-  { bit: 0x20, label: "HEAT LIMIT", level: "hot", name: "Heat limit", text: "The GPU is slowing down to cool off. Check the vents and fans, or use a higher power mode." },
-  { bit: 0x80, label: "POWER BRAKE", level: "warn", name: "Power brake", text: "The charger or battery cannot give the GPU enough power, so it slows down. Check that the charger fits the laptop." },
-  { bit: 0x8, label: "SLOWDOWN", level: "warn", name: "Hardware slowdown", text: "The GPU hardware is slowing itself down because of heat or power. If it lasts, check the cooling and the charger." },
-  { bit: 0x4, label: "POWER LIMIT", level: "info", name: "Power limit", text: "The GPU is held back by its power limit. This is normal under heavy load on a laptop." },
-];
-const limitsOf = (mask) => GPU_LIMITS.filter((l) => (mask ?? 0) & l.bit);
-
 function setLimit(el, mask) {
-  const worst = limitsOf(mask)[0];
+  const worst = Rules.gpuLimits(mask)[0];
   el.hidden = !worst;
   if (!worst) return;
   el.textContent = worst.label; el.className = "tag limit " + worst.level; el.title = worst.text;
@@ -298,24 +286,22 @@ function push(series, v) {
 }
 
 function logLines(s) {
+  // The log keeps to what is urgent: memory only when nearly full, and one line for the GPU temperatures.
+  const found = Rules.findings(s, CFG);
+  const of = (part) => found.find((f) => f.part === part);
   const out = [];
-  const add = (lv, msg) => out.push([lv, msg]);
-  if (s.cpu.tempC >= CFG.hot) add("CRIT", `cpu.temp ${tdeg(s.cpu.tempC)}, near thermal limit`);
-  else if (s.cpu.tempC >= CFG.warn) add("WARN", `cpu.temp ${tdeg(s.cpu.tempC)}`);
-  if (s.gpu.hotspotC >= CFG.spot) add("CRIT", `gpu.hotspot ${tdeg(s.gpu.hotspotC)}`);
-  else if (s.gpu.tempC >= CFG.hot) add("CRIT", `gpu.temp ${tdeg(s.gpu.tempC)}`);
-  else if (s.gpu.tempC >= CFG.warn) add("WARN", `gpu.temp ${tdeg(s.gpu.tempC)}`);
-  const vp = s.gpu.vramTotalMB ? (s.gpu.vramUsedMB / s.gpu.vramTotalMB) * 100 : 0;
-  if (vp >= 90) add("WARN", `vram ${fmt(vp)}% used`);
-  if (s.ram.loadPct >= 90) add("WARN", `ram ${fmt(s.ram.loadPct)}% used`);
-  s.storage.forEach((d) => {
-    const st = ssdState(d.tempC);
-    if (st === "hot") add("CRIT", `ssd ${d.name} ${tdeg(d.tempC)}`); else if (st === "warn") add("WARN", `ssd ${d.name} ${tdeg(d.tempC)}`);
-    if ((d.usedPct ?? 0) >= 90) add("WARN", `ssd ${d.name} ${fmt(d.usedPct)}% full`);
-  });
-  if (s.battery && batState(s.battery.levelPct) !== "good") add(batState(s.battery.levelPct) === "hot" ? "CRIT" : "WARN", `battery ${fmt(s.battery.levelPct)}%`);
-  if (!out.length) add("OK", "all sensors within normal range");
-  add("INFO", "ec.wmi link established");
+  const add = (level, msg) => out.push([level === "hot" ? "CRIT" : "WARN", msg]);
+  const cpu = of("cpu"), gpu = of("gpu"), spot = of("hotspot");
+  if (cpu) add(cpu.level, `cpu.temp ${tdeg(cpu.value)}${cpu.level === "hot" ? ", near thermal limit" : ""}`);
+  if (spot) add(spot.level, `gpu.hotspot ${tdeg(spot.value)}`);
+  else if (gpu) add(gpu.level, `gpu.temp ${tdeg(gpu.value)}`);
+  for (const part of ["vram", "ram"]) { const f = of(part); if (f?.level === "hot") add("warn", `${part} ${fmt(f.value)}% used`); }
+  const DRIVE = { temp: (f) => tdeg(f.value), fill: (f) => `${fmt(f.value)}% full`, life: (f) => `${fmt(f.value)}% life left`, spare: () => "spare blocks low" };
+  for (const f of found) if (f.part === "drive") add(f.level, `ssd ${f.name} ${DRIVE[f.kind](f)}`);
+  const bat = of("battery");
+  if (bat) add(bat.level, `battery ${fmt(bat.value)}%`);
+  if (!out.length) out.push(["OK", "all sensors within normal range"]);
+  out.push(["INFO", "ec.wmi link established"]);
   return out;
 }
 
@@ -325,26 +311,21 @@ function updateMini(s) {
   $("mCpuL").textContent = fmt(s.cpu.load) + "%";
   $("mGpuL").textContent = fmt(s.gpu.load) + "%";
   $("mRam").textContent = fmt(s.ram.loadPct) + "%";
-  $("mMode").textContent = MODES[s.powerMode] ?? "--";
+  $("mMode").textContent = modeLabel(s.powerMode);
 }
 
 /* One line that says whether anything needs attention, so the answer does not hide in the log. */
 function summaryOf(s) {
-  const hot = [], watch = [];
-  const temp = (label, v, warn, crit) => { if (v == null) return; if (v >= crit) hot.push(`${label} ${tf(v)}\u00B0`); else if (v >= warn) watch.push(`${label} ${tf(v)}\u00B0`); };
-  temp("CPU", s.cpu.tempC, CFG.warn, CFG.hot); temp("GPU", s.gpu.tempC, CFG.warn, CFG.hot);
-  if (s.gpu.hotspotC != null && s.gpu.hotspotC >= CFG.spot) hot.push(`GPU hotspot ${tf(s.gpu.hotspotC)}\u00B0`);
-  const cap = (label, p) => { const st = capState(p); if (st === "hot") hot.push(`${label} ${fmt(p)}%`); else if (st === "warn") watch.push(`${label} ${fmt(p)}%`); };
-  cap("RAM", s.ram.loadPct);
-  if (s.gpu.vramTotalMB) cap("VRAM", (s.gpu.vramUsedMB / s.gpu.vramTotalMB) * 100);
-  s.storage.forEach((d) => {
-    const st = ssdState(d.tempC);
-    if (st === "hot") hot.push(`SSD ${tf(d.tempC)}\u00B0`); else if (st === "warn") watch.push(`SSD ${tf(d.tempC)}\u00B0`);
-    if ((d.usedPct ?? 0) >= 90) watch.push(`SSD ${fmt(d.usedPct)}% full`);
-  });
-  const slowed = limitsOf(s.gpu.throttleMask).filter((l) => l.level !== "info")[0];
-  if (slowed) (slowed.level === "hot" ? hot : watch).push("GPU slowed (" + slowed.label.toLowerCase() + ")");
-  if (s.battery) { const b = batState(s.battery.levelPct); if (b === "hot") hot.push(`Battery ${fmt(s.battery.levelPct)}%`); else if (b === "warn") watch.push(`Battery ${fmt(s.battery.levelPct)}%`); }
+  const NAME = { cpu: "CPU", gpu: "GPU", hotspot: "GPU hotspot", ram: "RAM", vram: "VRAM", battery: "Battery" };
+  const DRIVE = { temp: (f) => `${tf(f.value)}\u00B0`, fill: (f) => `${fmt(f.value)}% full`, life: (f) => `${fmt(f.value)}% life left`, spare: () => "spare blocks low" };
+  const say = (f) => {
+    if (f.part === "drive") return "SSD " + DRIVE[f.kind](f);
+    if (f.part === "gpuLimit") return "GPU slowed (" + f.limit.label.toLowerCase() + ")";
+    const temperature = f.part === "cpu" || f.part === "gpu" || f.part === "hotspot";
+    return NAME[f.part] + " " + (temperature ? tf(f.value) + "\u00B0" : fmt(f.value) + "%");
+  };
+  const found = Rules.findings(s, CFG);
+  const hot = found.filter((f) => f.level === "hot").map(say), watch = found.filter((f) => f.level === "warn").map(say);
   const parts = [];
   if (hot.length) parts.push("Hot or critical: " + hot.join(", "));
   if (watch.length) parts.push("Watch: " + watch.join(", "));
@@ -359,7 +340,7 @@ function renderSummary(s) {
   $("sumText").title = text;     // the full message, in case it is clipped to two lines
 }
 
-const MODES = { 1: "QUIET", 2: "BALANCED", 3: "PERFORMANCE", 224: "CUSTOM", 255: "CUSTOM" };
+const modeLabel = (code) => Rules.powerMode(code)?.toUpperCase() ?? "--";
 
 function render(s) {
   lastRendered = s;
@@ -386,7 +367,7 @@ function render(s) {
   setDd("cpuFan", cpu.fanRpm != null ? cpu.fanRpm + " rpm" : "--");
   setDd("cpuPower", cpu.powerW != null ? fmt(cpu.powerW, 1) + " W" : "--");
   setDd("cpuClock", cpu.clockMHz != null ? fmt(cpu.clockMHz) + " MHz" : "--");
-  $("mode").textContent = MODES[s.powerMode] ?? "--";
+  $("mode").textContent = modeLabel(s.powerMode);
   const cores = $("cores");
   if (cores.children.length !== cpu.coreLoads.length) {
     cores.replaceChildren(...cpu.coreLoads.map(() => document.createElement("i")));
@@ -398,7 +379,8 @@ function render(s) {
   setTemp($("gpuTemp"), $("gpuTag"), gpu.tempC);
   setMeter("gpuLoadBar", gpu.load);
   setDd("gpuLoad", fmt(gpu.load) + "%");
-  setDd("gpuHot", tdeg(gpu.hotspotC), gpu.hotspotC >= CFG.spot ? "hot" : gpu.hotspotC >= CFG.hot ? "warn" : "");
+  const spot = Rules.hotspot(gpu.hotspotC, CFG);
+  setDd("gpuHot", tdeg(gpu.hotspotC), spot === "ok" ? "" : spot);
   setDd("gpuPower", fmt(gpu.powerW) + " W");
   setDd("gpuFan", gpu.fanRpm != null ? gpu.fanRpm + " rpm" : "--");
   setDd("gpuClock", fmt(gpu.coreClockMHz) + " MHz");
@@ -411,12 +393,11 @@ function render(s) {
 
   // RAM / VRAM
   setBig("ramV", fmt(ram.usedGB, 1), `GB · ${fmt(ram.loadPct)}%`);
-  const rs = capState(ram.loadPct);
+  const rs = Rules.capacity(ram.loadPct);
   setMeter("ramBar", ram.loadPct, rs); setChip($("ramTag"), rs, CAP_LABEL);
   $("ramSub").textContent = `free ${fmt(ram.availableGB, 1)} GB`;
-  const vp = gpu.vramTotalMB ? (gpu.vramUsedMB / gpu.vramTotalMB) * 100 : 0;
   setBig("vramV", fmt(gpu.vramUsedMB / 1024, 1), `/ ${fmt(gpu.vramTotalMB / 1024, 1)} GB`);
-  const vs = capState(vp);
+  const vp = Rules.vramPct(gpu), vs = Rules.capacity(vp);
   setMeter("vramBar", vp, vs); setChip($("vramTag"), vs, CAP_LABEL);
   $("vramSub").textContent = `free ${fmt((gpu.vramTotalMB - gpu.vramUsedMB) / 1024, 1)} GB · ${fmt(gpu.memClockMHz)} MHz`;
 
@@ -437,7 +418,7 @@ function render(s) {
   }
 
   // Storage
-  $("storage").replaceChildren(...s.storage.map(diskCard));
+  $("storage").replaceChildren(...Rules.drives(s).map(diskCard));
 
   renderFavs(s);
 
@@ -455,13 +436,14 @@ function diskCard(d) {
   const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
   const hd = mk("div", "hd");
   const n = mk("span", "n", d.name.replace(/\s*(SSD|\d+GB)\s*/g, " ").trim()); n.title = d.name;
-  hd.append(n, mk("span", "t " + ssdState(d.tempC), tdeg(d.tempC)));
-  const us = capState(d.usedPct ?? 0);
+  hd.append(n, mk("span", "t " + Rules.driveTemp(d.temp, d.tempWarn), tdeg(d.temp)));
+  const us = Rules.driveFill(d.fill);
   const meter = mk("div", "meter st-" + us); const bar = document.createElement("i");
-  bar.style.transform = `scaleX(${Math.min(100, d.usedPct ?? 0) / 100})`; meter.append(bar);
+  bar.style.transform = `scaleX(${Math.min(100, d.fill ?? 0) / 100})`; meter.append(bar);
   const line = (label, valueEl, chip) => { const l = mk("div", "ln"); const lab = mk("span", null, label); if (chip) lab.append(chip); l.append(lab, valueEl); return l; };
-  const life = mk("b", d.lifePct != null && d.lifePct <= 80 ? "warn" : "", fmt(d.lifePct) + "%");
-  const used = mk("b", (d.usedPct ?? 0) >= 90 ? "hot" : "", fmt(d.usedPct) + "%");
+  const lifeLevel = Rules.driveLife(d.life), full = Rules.driveIssues(d).some((x) => x.kind === "fill");
+  const life = mk("b", lifeLevel === "ok" ? "" : lifeLevel, fmt(d.life) + "%");
+  const used = mk("b", full ? "warn" : "", fmt(d.fill) + "%");
   const io = mk("b", "", `${fmt(d.readMBs, 1)} / ${fmt(d.writeMBs, 1)} MB/s`);
   const usedChip = us === "ok" ? null : mk("span", "tag " + us, CAP_LABEL[us]);
   el.append(hd, meter, line("USED", used, usedChip), line("LIFE LEFT", life), line("R / W", io));
