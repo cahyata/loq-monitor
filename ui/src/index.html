@@ -23,10 +23,10 @@
     <img src="icon.png" alt="" width="16" height="16">
     <span class="ttl">LOQ//NET</span><span class="path">// HARDWARE MONITOR</span>
     <span class="status" role="group" aria-label="Status">
-      <span class="st" title="Connection to the sensor service, the background program that reads the sensors">SERVICE <b id="link">OFFLINE</b></span>
-      <span class="st mode" title="Lenovo power mode (Fn+Q)">POWER MODE <b id="mode">--</b></span>
-      <span class="st" id="alertsOff" hidden title="Desktop notifications are off. Turn them on in Settings">ALERTS <b>OFF</b></span>
-      <span class="st clock" id="clock" title="Time">--:--:--</span>
+      <span class="st" tabindex="0" data-tauri-drag-region="deep" title="Connection to the sensor service, the background program that reads the sensors">SERVICE <b id="link">OFFLINE</b></span>
+      <span class="st mode" tabindex="0" data-tauri-drag-region="deep" title="Lenovo power mode (Fn+Q)">POWER MODE <b id="mode">--</b></span>
+      <span class="st" tabindex="0" data-tauri-drag-region="deep" id="alertsOff" hidden title="Desktop notifications are off. Turn them on in Settings">ALERTS <b>OFF</b></span>
+      <span class="st clock" tabindex="0" data-tauri-drag-region="deep" id="clock" title="Time">--:--:--</span>
     </span>
     <span class="wc">
       <button id="wMin" aria-label="Minimize" title="Minimize">_</button>
@@ -85,7 +85,7 @@
       <div id="summary"><span class="tag ok" id="sumTag">--</span><span id="sumText">Waiting for data</span></div>
       <span class="seg" id="rangeSeg" role="group" aria-label="Temperature history range"><span class="seglab">HISTORY</span><button data-r="60" aria-pressed="false">1 MIN</button><button data-r="600" aria-pressed="false">10 MIN</button><button data-r="3600" aria-pressed="false">1 HOUR</button></span>
     </div>
-    <main id="overview" aria-labelledby="tabOverview">
+    <main id="overview" role="tabpanel" aria-labelledby="tabOverview">
       <section class="panel pink" id="cpu">
         <div class="ph"><h2 class="ptit">CPU</h2><span class="dim" id="cpuName"></span></div>
         <div class="hero"><span class="big" id="cpuTemp">--</span><span class="unit u-deg">°C</span><span class="tag" id="cpuTag" title="CPU temperature status. Limits are in Settings.">--</span></div>
@@ -93,11 +93,11 @@
         <canvas id="cpuChart" height="96" role="img" aria-label="CPU temperature history"></canvas>
         <div class="cap" id="cpuCap"></div>
         <dl>
-          <div><dt title="CPU fan speed, read from the laptop embedded controller">FAN</dt><dd id="cpuFan">--</dd></div>
-          <div><dt title="Average effective core clock. Boost is normal under load">CLOCK</dt><dd id="cpuClock">--</dd></div>
-          <div><dt title="CPU package power draw in watts (needs the PawnIO driver)">POWER</dt><dd id="cpuPower">--</dd></div>
+          <div><dt tabindex="0" title="CPU fan speed, read from the laptop embedded controller">FAN</dt><dd id="cpuFan">--</dd></div>
+          <div><dt tabindex="0" title="Average effective core clock. Boost is normal under load">CLOCK</dt><dd id="cpuClock">--</dd></div>
+          <div><dt tabindex="0" title="CPU package power draw in watts (needs the PawnIO driver)">POWER</dt><dd id="cpuPower">--</dd></div>
         </dl>
-        <div class="lab" title="Load of each processor thread">PER-THREAD LOAD</div>
+        <div class="lab" tabindex="0" title="Load of each processor thread">PER-THREAD LOAD</div>
         <div class="cores" id="cores" aria-hidden="true"></div>
       </section>
 
@@ -108,14 +108,14 @@
         <canvas id="gpuChart" height="96" role="img" aria-label="GPU temperature history"></canvas>
         <div class="cap" id="gpuCap"></div>
         <dl>
-          <div><dt title="Hottest point on the GPU die. Usually 5 to 15 degrees above the core temperature">HOTSPOT</dt><dd id="gpuHot">--</dd></div>
-          <div><dt title="GPU board power draw in watts">POWER</dt><dd id="gpuPower">--</dd></div>
-          <div><dt title="GPU fan speed">FAN</dt><dd id="gpuFan">--</dd></div>
-          <div><dt title="GPU core clock">CLOCK</dt><dd id="gpuClock">--</dd></div>
-          <div><dt title="Video memory temperature">VRAM°</dt><dd id="gpuVt">--</dd></div>
-          <div><dt title="Video memory clock">MEM CLK</dt><dd id="gpuMem">--</dd></div>
-          <div><dt title="Data the GPU receives from the system over the PCIe bus">PCIE RX</dt><dd id="gpuRx">--</dd></div>
-          <div><dt title="Data the GPU sends to the system over the PCIe bus">PCIE TX</dt><dd id="gpuTx">--</dd></div>
+          <div><dt tabindex="0" title="Hottest point on the GPU die. Usually 5 to 15 degrees above the core temperature">HOTSPOT</dt><dd id="gpuHot">--</dd></div>
+          <div><dt tabindex="0" title="GPU board power draw in watts">POWER</dt><dd id="gpuPower">--</dd></div>
+          <div><dt tabindex="0" title="GPU fan speed">FAN</dt><dd id="gpuFan">--</dd></div>
+          <div><dt tabindex="0" title="GPU core clock">CLOCK</dt><dd id="gpuClock">--</dd></div>
+          <div><dt tabindex="0" title="Video memory temperature">VRAM°</dt><dd id="gpuVt">--</dd></div>
+          <div><dt tabindex="0" title="Video memory clock">MEM CLK</dt><dd id="gpuMem">--</dd></div>
+          <div><dt tabindex="0" title="Data the GPU receives from the system over the PCIe bus">PCIE RX</dt><dd id="gpuRx">--</dd></div>
+          <div><dt tabindex="0" title="Data the GPU sends to the system over the PCIe bus">PCIE TX</dt><dd id="gpuTx">--</dd></div>
         </dl>
       </section>
 
@@ -285,7 +285,7 @@
           <section class="panel mini yellow">
             <div class="ph"><h2 class="ptit">WHAT TO SHOW</h2><span class="dim" id="ovCount"></span></div>
             <div class="presets" id="ovPresets"><span class="seglab">PRESET</span>
-              <button data-p="minimal">MINIMAL</button><button data-p="gaming">GAMING</button><button data-p="full">FULL</button><button data-p="none">CLEAR</button></div>
+              <button data-p="minimal">MINIMAL</button><button data-p="gaming">GAMING</button><button data-p="full">FULL</button><button data-p="none">CLEAR</button><button type="button" id="ovUndo" hidden>UNDO</button></div>
             <div id="ovMetrics"></div>
             <h3 class="sub">ORDER ON THE OVERLAY</h3>
             <ol id="ovOrder" class="ovorder" aria-label="Order of the readings"></ol>
@@ -311,14 +311,14 @@
               <h3 class="sub">LOOK</h3>
               <label><span>Layout</span><select id="ovLayout"><option value="vertical">Vertical list</option><option value="horizontal">Horizontal bar</option></select></label>
               <label><span>Background</span><select id="ovBg"><option value="panel">Panel</option><option value="none">None, text only</option></select></label>
-              <label><span>Size <output id="ovScaleV"></output></span><input id="ovScale" type="range" min="70" max="200" step="5"></label>
-              <label><span>Opacity <output id="ovOpacityV"></output></span><input id="ovOpacity" type="range" min="30" max="100" step="5"></label>
+              <label for="ovScale"><span>Size <output id="ovScaleV"></output></span><input id="ovScale" type="range" min="70" max="200" step="5"></label>
+              <label for="ovOpacity"><span>Opacity <output id="ovOpacityV"></output></span><input id="ovOpacity" type="range" min="30" max="100" step="5"></label>
               <label><span>Show labels</span><input id="ovLabels" type="checkbox" checked></label>
               <h3 class="sub">STYLE</h3>
               <label><span>Accent color</span><select id="ovAccent"><option value="cyan">Cyan</option><option value="pink">Pink</option><option value="green">Green</option><option value="yellow">Yellow</option><option value="white">White</option><option value="none">None</option></select></label>
               <label><span>Font</span><select id="ovFont"><option value="mono">Monospace</option><option value="sans">Sans serif</option><option value="display">Display</option></select></label>
               <label><span>Spacing</span><select id="ovSpacing"><option value="tight">Tight</option><option value="normal">Normal</option><option value="roomy">Roomy</option></select></label>
-              <label><span>Corner radius <output id="ovRadiusV"></output></span><input id="ovRadius" type="range" min="0" max="24" step="2"></label>
+              <label for="ovRadius"><span>Corner radius <output id="ovRadiusV"></output></span><input id="ovRadius" type="range" min="0" max="24" step="2"></label>
               <label><span>Status colors<small>Yellow when warm, pink when hot</small></span><input id="ovStatus" type="checkbox" checked></label>
             </div>
           </section>
@@ -378,6 +378,7 @@
   <script src="pages.js"></script>
   <script src="link.js"></script>
   <script src="main.js"></script>
+  <script src="focustip.js"></script>
   <script src="help.js"></script>
   <script src="detail.js"></script>
   <script src="overview.js"></script>

@@ -17,6 +17,11 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ### Fixed
 
+- The Size, Opacity and Corner radius sliders of the Overlay tab have names for screen readers.
+- Reset session on the Insights tab asks for a second click, and a preset on the Overlay tab can be undone.
+- A warm or hot value shows a mark beside its color on the drive cards, the GPU hotspot, the Detailed tab, mini mode and the overlay.
+- The explanations that appeared only under the mouse also appear when reached with the keyboard.
+- The tabs follow the arrow keys, Home and End, and Overview is announced as a tab panel.
 - A program that connected to the sensor service and stopped reading could stop the sensor updates for the app, the overlay and the tray. Such a client is now disconnected after 10 seconds and does not hold up the others.
 - The tooltip of the Overlay tab named key 5. The key is 7.
 - The RAM status tag was cut off in a narrow window.

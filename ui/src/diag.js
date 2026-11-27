@@ -87,12 +87,7 @@
     wrap.replaceChildren(line("heatrow", ["STARTED", "SENSOR", "PEAK", "LIMIT", "LASTED", "POWER MODE"], true), ...rows);
   }
 
-  let armed = null;
-  function disarm() { clearTimeout(armed); armed = null; $("diagHeatClear").textContent = "CLEAR HISTORY"; }
-  $("diagHeatClear").onclick = () => {
-    if (!armed) { $("diagHeatClear").textContent = "CLICK AGAIN TO CLEAR"; armed = setTimeout(disarm, 4000); return; }
-    disarm(); log = []; for (const k of Object.keys(live)) delete live[k]; showAll = false; save(); paintHeat();
-  };
+  confirmTwice($("diagHeatClear"), "CLICK AGAIN TO CLEAR", () => { log = []; for (const k of Object.keys(live)) delete live[k]; showAll = false; save(); paintHeat(); });
   $("diagHeatMore").onclick = () => { showAll = !showAll; paintHeat(); };
 
   /* ---- Windows problems ---- */

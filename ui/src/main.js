@@ -41,6 +41,18 @@ function cycleTheme() {
   toast("Theme: " + THEME_LABEL[themePref()]);
 }
 
+/** A button that throws something away acts on the second click. The first one asks, for four seconds. */
+function confirmTwice(button, question, action) {
+  const label = button.textContent;
+  let armed = null;
+  const disarm = () => { clearTimeout(armed); armed = null; button.textContent = label; };
+  button.onclick = () => {
+    if (!armed) { button.textContent = question; armed = setTimeout(disarm, 4000); return; }
+    disarm();
+    action();
+  };
+}
+
 /* a short message for actions that no longer have a visible button (keyboard shortcuts) */
 let toastTimer = null;
 function toast(msg) {

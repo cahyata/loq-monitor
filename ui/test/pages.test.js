@@ -10,11 +10,12 @@ const { createPages, PAGE_LIST } = require("../src/pages.js");
 
 /** Pages on made-up elements, with the calls to every added page written to `log`. */
 function setup({ saved, add = ["overview", "insights", "care"] } = {}) {
+  let focused = null;
   const elements = new Map(), kept = new Map(saved ? [["tab", saved]] : []), log = [];
   const element = (id) => {
     if (!elements.has(id)) {
       const classes = new Set(), attributes = {};
-      elements.set(id, { hidden: false, title: "", scrollTop: 99, attributes, setAttribute: (k, v) => { attributes[k] = v; },
+      elements.set(id, { hidden: false, title: "", scrollTop: 99, attributes, setAttribute: (k, v) => { attributes[k] = v; }, focus: () => { focused = id; },
         classList: { toggle: (c, on) => (on ? classes.add(c) : classes.delete(c)), contains: (c) => classes.has(c) } });
     }
     return elements.get(id);
@@ -24,7 +25,9 @@ function setup({ saved, add = ["overview", "insights", "care"] } = {}) {
   const hooks = (id) => Object.fromEntries(["show", "hide", "collect", "draw"].map((h) => [h, (s) => log.push(`${id}.${h}${s ? " " + s.n : ""}`)]));
   for (const id of add) pages.add(id, hooks(id));
   const take = () => log.splice(0);
-  return { pages, element, kept, state, take, hooks };
+  /** Presses a key on a tab and says whether the browser's own action was stopped. */
+  const press = (tab, key, extra = {}) => { let stopped = false; element(tab).onkeydown({ key, preventDefault: () => { stopped = true; }, ...extra }); return stopped; };
+  return { pages, element, kept, state, take, hooks, press, focused: () => focused };
 }
 
 test("the first page is open when none was saved, and an unknown saved page counts as none", () => {
@@ -114,6 +117,34 @@ test("each tab names its own key in its tooltip, with a note when given", () => 
   assert.equal(element("tabOverlay").title, "Game overlay (key 7), showing");
 });
 
+test("only the open tab is in the Tab order", () => {
+  const { pages, element } = setup();
+  pages.show("care");
+  assert.deepEqual(PAGE_LIST.map((p) => element(p.tab).tabIndex), [-1, -1, -1, -1, -1, 0, -1]);
+});
+
+test("arrow keys, Home and End move along the tabs, open them and go round", () => {
+  const { press, kept, focused } = setup();
+  const at = () => [kept.get("tab"), focused()];
+  press("tabOverview", "ArrowRight");
+  assert.deepEqual(at(), ["insights", "tabInsights"]);
+  press("tabOverview", "ArrowLeft");
+  assert.deepEqual(at(), ["overlay", "tabOverlay"]);
+  press("tabOverlay", "ArrowRight");
+  assert.deepEqual(at(), ["overview", "tabOverview"]);
+  press("tabOverview", "End");
+  assert.deepEqual(at(), ["overlay", "tabOverlay"]);
+  press("tabOverlay", "Home");
+  assert.deepEqual(at(), ["overview", "tabOverview"]);
+});
+
+test("other keys on a tab are left to the browser and the app", () => {
+  const { press, focused } = setup();
+  assert.equal(press("tabOverview", "Enter"), false);
+  assert.equal(press("tabOverview", "ArrowRight", { altKey: true }), false);
+  assert.equal(focused(), null);
+});
+
 test("an unknown page cannot be added", () => {
   const { pages } = setup();
   assert.throws(() => pages.add("nonsense", {}), /unknown page/);
@@ -123,5 +154,5 @@ test("index.html has a tab and a panel for every page, in the same order", () =>
   const html = readFileSync(join(__dirname, "../src/index.html"), "utf8");
   const tabs = [...html.matchAll(/<button id="(tab\w+)"[^>]*aria-controls="(\w+)"/g)].map((m) => [m[1], m[2]]);
   assert.deepEqual(tabs, PAGE_LIST.map((p) => [p.tab, p.panel]));
-  for (const p of PAGE_LIST) assert.ok(html.includes(` id="${p.panel}"`), p.panel);
+  for (const p of PAGE_LIST) assert.match(html, new RegExp(` id="${p.panel}" role="tabpanel"`), p.panel);
 });

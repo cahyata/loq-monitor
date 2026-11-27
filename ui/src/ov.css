@@ -37,3 +37,7 @@
 .ov .x.warn { color: var(--highlight); }
 .ov .x.hot { color: var(--accent-primary); }
 .ov.plain .x.ok, .ov.plain .x.warn, .ov.plain .x.hot { color: var(--text-strong); }
+/* A warm or hot value also carries a mark, so the color is not the only sign. Without status colors there are no marks. */
+.ov:not(.plain) .x.warn::before { content: "\25B2" / "warning "; }
+.ov:not(.plain) .x.hot::before { content: "\203C" / "critical "; }
+.ov:not(.plain) .x:is(.warn, .hot)::before { display: inline-block; margin-right: .3em; font-size: .75em; vertical-align: middle; }

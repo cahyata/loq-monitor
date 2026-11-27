@@ -395,7 +395,7 @@
   document.querySelectorAll("#insProcSeg button").forEach((b) => { b.onclick = () => setKey(b.dataset.k); });
   setKey(procKey in FORMATS ? procKey : "cpu");
   $("insNetMask").onclick = () => { netMask = !netMask; store.set("insmask", netMask ? "on" : "off"); if (last) paintNetwork(last); };
-  $("insReset").onclick = () => { sess = fresh(); if (last) { markDrives(last); paint(); } };
+  confirmTwice($("insReset"), "CLICK AGAIN TO RESET", () => { sess = fresh(); if (last) { markDrives(last); paint(); } });
   $("insTariff").onclick = () => $("btnSettings").click();
   addEventListener("beforeunload", saveDay);
 

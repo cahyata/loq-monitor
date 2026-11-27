@@ -42,6 +42,7 @@ function createPages({ element, store, visible }) {
       element(p.panel).hidden = !open;
       tab.classList.toggle("on", open);
       tab.setAttribute("aria-selected", String(open));
+      tab.tabIndex = open ? 0 : -1;   // Tab reaches the open tab, the arrow keys the others
     }
   }
 
@@ -64,7 +65,22 @@ function createPages({ element, store, visible }) {
     draw();
   }
 
-  for (const p of PAGE_LIST) { element(p.tab).onclick = () => show(p.id); note(p.id); }
+  /** The keys of a tab list: left and right go round, Home and End jump to the ends. The tab reached is opened. */
+  function move(e, at) {
+    const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: PAGE_LIST.length - 1 }[e.key];
+    if (to === undefined || e.ctrlKey || e.altKey || e.metaKey) return;
+    e.preventDefault();
+    const next = PAGE_LIST[(to + PAGE_LIST.length) % PAGE_LIST.length];
+    show(next.id);
+    element(next.tab).focus();
+  }
+
+  PAGE_LIST.forEach((p, at) => {
+    const tab = element(p.tab);
+    tab.onclick = () => show(p.id);
+    tab.onkeydown = (e) => move(e, at);
+    note(p.id);
+  });
   mark();
 
   return {

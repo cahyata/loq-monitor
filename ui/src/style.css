@@ -579,3 +579,13 @@ dialog#settings { scroll-padding-bottom: 64px; }
 select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-secondary); outline-offset: 1px; }
 /* CPU and GPU stay side by side down to the smallest window; the narrower cards use fewer columns. */
 @media (min-width: 721px) and (max-width: 940px) { #gpu dl { grid-template-columns: repeat(3, 1fr); } .disks { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } .vrow { gap: 4px 6px; } #overview .v { font-size: 22px; white-space: nowrap; } #overview .v small { margin-left: 2px; } }
+
+/* ---------- a level is never told by color alone ---------- */
+.disk .t.warn::before, .disk .ln b.warn::before, #overview dd.warn::before, .srow .val.warn::before, #miniview .mv.warn::before { content: "\25B2" / "warning "; }
+.disk .t.hot::before, .disk .ln b.hot::before, #overview dd.hot::before, .srow .val.hot::before, #miniview .mv.hot::before { content: "\203C" / "critical "; }
+:is(.disk .t, .disk .ln b, #overview dd, .srow .val, #miniview .mv):is(.warn, .hot)::before { display: inline-block; margin-right: .3em; font: normal 700 11px var(--font-mono); vertical-align: middle; }
+
+/* ---------- explanations reached with the keyboard (focustip.js) ---------- */
+#focustip { position: fixed; z-index: 60; max-width: min(320px, calc(100vw - 24px)); padding: 6px 10px; font: 12px/1.5 var(--font-mono); white-space: pre-line; pointer-events: none;
+  color: var(--text-strong); background: var(--surface-raised); border: 1px solid var(--accent-secondary); box-shadow: 0 4px 14px rgb(0 0 0 / .35); }
+#focustip[hidden] { display: none; }

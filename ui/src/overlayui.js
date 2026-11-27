@@ -34,11 +34,11 @@ const OverlayUI = (() => {
       const btn = (text, label, disabled, fn) => {
         const b = document.createElement("button"); b.type = "button"; b.textContent = text; b.setAttribute("aria-label", label + " " + (m?.label ?? id)); b.disabled = disabled; b.onclick = fn; return b;
       };
-      const move = (d) => { const a = cfg.metrics, j = i + d; [a[i], a[j]] = [a[j], a[i]]; save(); list.children[j]?.querySelector("button:not(:disabled)")?.focus(); };
+      const move = (d) => { forgetUndo(); const a = cfg.metrics, j = i + d; [a[i], a[j]] = [a[j], a[i]]; save(); list.children[j]?.querySelector("button:not(:disabled)")?.focus(); };
       li.append(name,
         btn("▲", "Move up", i === 0, () => move(-1)),
         btn("▼", "Move down", i === cfg.metrics.length - 1, () => move(1)),
-        btn("✕", "Remove", false, () => { cfg.metrics.splice(i, 1); buildMetrics(); save(); }));
+        btn("✕", "Remove", false, () => { forgetUndo(); cfg.metrics.splice(i, 1); buildMetrics(); save(); }));
       return li;
     }));
   }
@@ -84,6 +84,7 @@ const OverlayUI = (() => {
         const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = cfg.metrics.includes(m.id);
         cb.onchange = () => {
           // New readings go to the end. The order list changes the order.
+          forgetUndo();
           cfg.metrics = cb.checked ? [...cfg.metrics.filter((id) => id !== m.id), m.id] : cfg.metrics.filter((id) => id !== m.id);
           save();
         };
@@ -128,9 +129,26 @@ const OverlayUI = (() => {
   bind("ovOpacity", (e) => { cfg.opacity = +e.value; $("ovOpacityV").textContent = cfg.opacity + "%"; });
   bind("ovLabels", (e) => { cfg.labels = e.checked; }, "change");
 
-  document.querySelectorAll("#ovPresets button").forEach((b) => {
-    b.onclick = () => { cfg.metrics = b.dataset.p === "none" ? [] : [...OvMetrics.PRESETS[b.dataset.p]]; buildMetrics(); save(); };
+  /* A preset replaces the chosen readings and their order. UNDO brings back what was there before the first
+     preset, until a reading is changed by hand. */
+  let undo = null;
+  function forgetUndo() { undo = null; $("ovUndo").hidden = true; }
+  const choose = (metrics) => { cfg.metrics = metrics; buildMetrics(); save(); };
+  document.querySelectorAll("#ovPresets button[data-p]").forEach((b) => {
+    b.onclick = () => {
+      undo ??= [...cfg.metrics];
+      choose(b.dataset.p === "none" ? [] : [...OvMetrics.PRESETS[b.dataset.p]]);
+      $("ovUndo").hidden = false;
+      msg("Preset applied. UNDO brings back your own choice.");
+    };
   });
+  $("ovUndo").onclick = () => {
+    if (!undo) return;
+    choose(undo);
+    forgetUndo();
+    msg("Your own choice is back.");
+    document.querySelector("#ovPresets button[data-p]").focus();   // the button that had the focus is gone
+  };
 
   $("ovToggle").onclick = () => {
     if (!invoke) { msg("The overlay needs the desktop app."); return; }
