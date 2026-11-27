@@ -6,6 +6,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ### Changed
 
+- Reset min/max on the Detailed tab shows "--" in both columns until the new values arrive, then fades them in.
 - Every page judges a reading by the same rules.
 - SSD remaining life is a warning at 20 % or less and critical at 10 % or less. The drive card no longer turns yellow at 80 %.
 - An SSD temperature is a warning at 70 °C and critical at 80 °C, or earlier at the warning temperature of the drive. Care and Insights follow the same limits.
@@ -18,6 +19,9 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 - A program that connected to the sensor service and stopped reading could stop the sensor updates for the app, the overlay and the tray. Such a client is now disconnected after 10 seconds and does not hold up the others.
 - The tooltip of the Overlay tab named key 5. The key is 7.
+- The RAM status tag was cut off in a narrow window.
+- Mini mode showed a scrollbar.
+- The system log reported a Lenovo controller link also when no controller answered.
 - Insights no longer blames an old sensor service alone when no power limits arrive: the laptop may not report them.
 
 ## [0.5.0] - 2026-11-26

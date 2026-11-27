@@ -146,6 +146,14 @@ dd.warn { color: var(--highlight); } dd.hot { color: var(--accent-primary); }
 .srow .val { color: var(--text-strong); font-weight: bold; }
 .srow .val.warn { color: var(--highlight); } .srow .val.hot { color: var(--accent-primary); }
 .srow .mm { color: var(--text-muted); }
+/* Reset min/max: the dashes appear, then the new values arrive lit and settle. Each plays once. */
+#dtree.resetting .srow:not(.head) .mm { color: var(--accent-secondary); animation: mmDashes .35s ease-out; }
+#dtree.restored .srow:not(.head) .mm { animation: mmValues .8s ease-out; }
+@keyframes mmDashes { from { opacity: 0; transform: translateY(-5px); } }
+@keyframes mmValues { from { opacity: 0; transform: translateY(5px); color: var(--accent-secondary); } 45% { opacity: 1; transform: none; color: var(--accent-secondary); } }
+@media (prefers-reduced-motion: reduce) { #dtree .srow .mm { animation: none !important; } }
+html.nofx #dtree .srow .mm { animation: none !important; }
+.dtools button:disabled { cursor: default; color: var(--accent-secondary); border-color: var(--accent-secondary); }
 .srow:not(.head):hover { background: var(--surface-hover); cursor: help; }
 .hw > summary[title], .grp h4[title], .srow.head span[title] { cursor: help; }
 .hw > summary { cursor: pointer; }
@@ -192,8 +200,8 @@ dialog#settings .btns button.go { background: var(--accent-secondary); color: va
 
 #miniview { display: none; }
 html.mini #app > :not(#miniview) { display: none; }
-html.mini #miniview { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: baseline; padding: 4px 2px; }
-html.mini #app { padding: 6px 10px; }
+html.mini #miniview { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: baseline; padding: 2px; }
+html.mini #app { padding: 4px 10px; }
 html.mini #toolbar { display: none; }
 html.mini #scroller { scrollbar-gutter: auto; }
 html.mini #titlebar .path { display: none; }
@@ -287,7 +295,7 @@ dialog#settings input[type="checkbox"] { width: auto; }
 #cpu, #gpu { display: flex; flex-direction: column; }
 #gpu dl { margin-top: auto; }
 .lab { color: var(--text-muted); font-size: 12px; letter-spacing: 1px; margin-top: 12px; }
-.vrow { display: flex; align-items: center; gap: 10px; }
+.vrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
 .vrow .tag { margin-left: 0; }
 #ramSub, #vramSub, #batSub, #batRate { color: var(--text); font-size: 12px; }
 .disk .ln .tag { margin-left: 6px; font-size: 11px; padding: 0 5px; }
@@ -570,4 +578,4 @@ dialog#settings { scroll-padding-bottom: 64px; }
 
 select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent-secondary); outline-offset: 1px; }
 /* CPU and GPU stay side by side down to the smallest window; the narrower cards use fewer columns. */
-@media (min-width: 721px) and (max-width: 940px) { #gpu dl { grid-template-columns: repeat(3, 1fr); } .disks { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } .vrow { gap: 6px; } #overview .v { font-size: 22px; white-space: nowrap; } #overview .v small { margin-left: 2px; } }
+@media (min-width: 721px) and (max-width: 940px) { #gpu dl { grid-template-columns: repeat(3, 1fr); } .disks { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } .vrow { gap: 4px 6px; } #overview .v { font-size: 22px; white-space: nowrap; } #overview .v small { margin-left: 2px; } }

@@ -17,7 +17,7 @@ const Detail = (() => {
     TimeSpan: "Time", Noise: "Noise", Humidity: "Humidity", Conductivity: "Conductivity" };
 
   const open = new Set(["Favorites", "Lenovo embedded controller", "ACPI thermal zones"]); // expanded sections survive refreshes
-  let sig = "", last = null;
+  let sig = "", last = null, resetting = false;
   let sort = store.get("dsort", "default"), hideNet = store.get("dhide", "on") === "on";
   const idleNet = (h) => h.type === "Network" && (Rules.isVirtualAdapter(h.name) || h.sensors.every((x) => !x.value));
   const shown = (s) => s.hardware.filter((h) => !(hideNet && idleNet(h)));
@@ -93,8 +93,8 @@ const Detail = (() => {
         const c = Rules.sensor(x.source ?? h, x, CFG);
         r.children[1].textContent = fmtSensor(x.type, x.value);
         r.children[1].className = "val" + (c && c !== "ok" ? " " + c : "");
-        r.children[2].textContent = fmtSensor(x.type, x.min);
-        r.children[3].textContent = fmtSensor(x.type, x.max);
+        r.children[2].textContent = resetting ? "--" : fmtSensor(x.type, x.min);
+        r.children[3].textContent = resetting ? "--" : fmtSensor(x.type, x.max);
         r._v = x.value ?? -Infinity;
       });
       if (sort === "value") {
@@ -109,7 +109,26 @@ const Detail = (() => {
   $("dhide").checked = hideNet;
   $("dsort").onchange = () => { sort = $("dsort").value; store.set("dsort", sort); sig = ""; if (last) refresh(last); };
   $("dhide").onchange = () => { hideNet = $("dhide").checked; store.set("dhide", hideNet ? "on" : "off"); sig = ""; if (last) refresh(last); };
-  $("dreset").onclick = () => { Link.command("reset-minmax"); const b = $("dreset"); b.textContent = "RESET DONE"; setTimeout(() => { b.textContent = "RESET MIN/MAX"; }, 1500); };
+  /* The service restarts the minimum and maximum at its next reading. Until that reading must have arrived, the two
+     columns show "--", then the new values fade in, so the button visibly does something. */
+  const RESET_BLANK_MS = 1300;   // one reading every 1000 ms, plus the time to take it
+  $("dreset").onclick = () => {
+    const button = $("dreset"), tree = $("dtree");
+    const label = (text, ms) => { button.textContent = text; setTimeout(() => { button.textContent = "RESET MIN/MAX"; button.disabled = false; }, ms); };
+    button.disabled = true;
+    if (!Link.command("reset-minmax")) { label("NOT CONNECTED", 1500); return; }
+    button.textContent = "RESETTING...";
+    resetting = true;
+    tree.classList.remove("restored"); tree.classList.add("resetting");
+    if (last) refresh(last);
+    setTimeout(() => {
+      resetting = false;
+      tree.classList.replace("resetting", "restored");
+      if (last) refresh(last);
+      label("RESET DONE", 1200);
+      setTimeout(() => tree.classList.remove("restored"), 900);   // so a section opened later does not play it
+    }, RESET_BLANK_MS);
+  };
   $("dfilter").oninput = () => { if (last) refresh(last); };
   $("dexp").onclick = () => { document.querySelectorAll("#dtree details").forEach((d) => (d.open = true)); };
   $("dcol").onclick = () => { document.querySelectorAll("#dtree details").forEach((d) => (d.open = false)); };

@@ -149,7 +149,7 @@ function logLines(s) {
   const bat = of("battery");
   if (bat) add(bat.level, `battery ${fmt(bat.value)}%`);
   if (!out.length) out.push(["OK", "all sensors within normal range"]);
-  out.push(["INFO", "ec.wmi link established"]);
+  if (s.hardware?.some((h) => h.type === "Lenovo")) out.push(["INFO", "ec.wmi link established"]);   // only when the Lenovo controller answers
   return out;
 }
 
