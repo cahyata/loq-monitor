@@ -299,45 +299,8 @@ sealed class SensorReader : IDisposable
         return new PowerLimits(cpuLong, cpuShort, cpuPeak, cpuTemp, gpuW, gpuTemp);
     }
 
-    static float? Val(IHardware hw, SensorType t, string name) =>
-        hw.Sensors.FirstOrDefault(s => s.SensorType == t && s.Name == name)?.Value;
-
-    static float? MBs(float? v) => v.HasValue ? MathF.Round(v.Value / 1_000_000f, 1) : null;
-
-    static float? Round(float? v) => v.HasValue ? MathF.Round(v.Value, 1) : null;
-
-    /// Every LHM sensor, grouped by hardware, for the Detailed tab.
-    List<HwInfo> AllHardware()
-    {
-        var list = new List<HwInfo>();
-        void Add(IHardware hw, string name)
-        {
-            var sensors = hw.Sensors
-                .Select(x => new SensorInfo(x.SensorType.ToString(), x.Name, x.Value, x.Min, x.Max)).ToArray();
-            if (sensors.Length > 0) list.Add(new HwInfo(name, hw.HardwareType.ToString(), sensors));
-            foreach (var sub in hw.SubHardware) Add(sub, name + " / " + sub.Name);
-        }
-        foreach (var hw in _pc.Hardware) Add(hw, hw.Name);
-
-        var acpi = AcpiZones();
-        if (acpi.Length > 0) list.Insert(0, new HwInfo("ACPI thermal zones", "Acpi", acpi));
-        var ec = new List<SensorInfo>();
-        void Ec(string type, string name, float? v) { if (v is > 0) ec.Add(Track(type, name, v.Value)); }
-        Ec("Temperature", "CPU", Feature(CpuTemp)); Ec("Temperature", "GPU", Feature(GpuTemp));
-        Ec("Fan", "CPU fan", Feature(CpuFan)); Ec("Fan", "GPU fan", Feature(GpuFan));
-        if (ec.Count > 0) list.Insert(0, new HwInfo("Lenovo embedded controller", "Lenovo", ec.ToArray()));
-        return list;
-    }
-
-    // Min and max since start for sensors LHM does not own.
-    readonly Dictionary<string, (float Min, float Max)> _range = new();
-    SensorInfo Track(string type, string name, float v)
-    {
-        var key = type + "|" + name;
-        var r = _range.TryGetValue(key, out var old) ? (Math.Min(old.Min, v), Math.Max(old.Max, v)) : (v, v);
-        _range[key] = r;
-        return new SensorInfo(type, name, v, r.Item1, r.Item2);
-    }
+    // Minimum and maximum since start for the Lenovo and ACPI values, which LHM does not own.
+    readonly MinMax _range = new();
 
     /// ACPI thermal zones (tenths of a kelvin), the same source HWMonitor shows as \_TZ.TZxx.
     SensorInfo[] AcpiZones() => _acpi.Get();
@@ -351,7 +314,7 @@ sealed class SensorReader : IDisposable
             {
                 var name = Convert.ToString(m["InstanceName"]) ?? "zone";
                 name = name.Split((char)92).Last().Replace("_0", "");
-                return Track("Temperature", name, MathF.Round(Convert.ToInt32(m["CurrentTemperature"]) / 10f - 273.15f, 1));
+                return _range.Track("Temperature", name, MathF.Round(Convert.ToInt32(m["CurrentTemperature"]) / 10f - 273.15f, 1));
             }).ToArray();
         }
         catch { return []; }
@@ -372,81 +335,29 @@ sealed class SensorReader : IDisposable
         _range.Clear();
     }
 
+    /// <summary>Reads the hardware once. <see cref="SnapshotBuilder"/> decides what the snapshot says.</summary>
     public Snapshot Read()
     {
         if (_resetMinMax) ApplyMinMaxReset();
         _features.Clear();
         foreach (var hw in _pc.Hardware) { hw.Update(); foreach (var sub in hw.SubHardware) sub.Update(); }
 
-        var cpu = _pc.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Cpu);
-        var gpu = HardwarePick.Gpu(_pc.Hardware);
-        var mem = _pc.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Memory && h.Name == "Total Memory");
-        var bat = _pc.Hardware.FirstOrDefault(h => h.HardwareType == HardwareType.Battery);
-
-        // CPU temp: Lenovo EC first (works with Memory Integrity on), LHM (AMD Tctl, Intel package) as fallback.
-        float? cpuTemp = Feature(CpuTemp);
-        if (cpuTemp is null or <= 0) cpuTemp = HardwarePick.Positive(cpu, SensorType.Temperature, "Core (Tctl/Tdie)", "CPU Package");
-
-        float? gpuTemp = gpu is null ? null : Val(gpu, SensorType.Temperature, "GPU Core");
-        gpuTemp ??= Feature(GpuTemp);
-
-        var cpuLoads = HardwarePick.ThreadLoads(cpu).Select(s => Round(s.Value) ?? 0).ToArray();
-
-        var storage = _pc.Hardware.Where(h => h.HardwareType == HardwareType.Storage).Select(h => new StorageInfo(
-            h.Name,
-            Round(Val(h, SensorType.Temperature, "Composite Temperature") ?? Val(h, SensorType.Temperature, "Temperature #1")),
-            Round(Val(h, SensorType.Load, "Used Space")),
-            Round(Val(h, SensorType.Level, "Life")),
-            MBs(Val(h, SensorType.Throughput, "Read Rate")),
-            MBs(Val(h, SensorType.Throughput, "Write Rate")),
-            Round(Val(h, SensorType.Load, "Total Activity")))).ToArray();
-
-        float? designed = bat is null ? null : Val(bat, SensorType.Energy, "Designed Capacity");
-        float? full = bat is null ? null : Val(bat, SensorType.Energy, "Fully-Charged Capacity");
-
-        return new Snapshot(
+        return SnapshotBuilder.Build(new Readings(
             Ts: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-            Cpu: new CpuInfo(
-                cpu?.Name, Round(cpu is null ? null : Val(cpu, SensorType.Load, "CPU Total")),
-                Round(cpuTemp), Feature(CpuFan),
-                // Average effective clock from LHM (needs PawnIO); Windows counters as fallback.
-                Round(cpu is null ? null : Val(cpu, SensorType.Clock, "Cores (Average Effective)")) ?? CpuClockMHz(),
-                Round(HardwarePick.Positive(cpu, SensorType.Power, "Package", "CPU Package")), cpuLoads),   // AMD, Intel
-            Gpu: new GpuInfo(
-                gpu?.Name,
-                Round(gpu is null ? null : Val(gpu, SensorType.Load, "GPU Core")),
-                Round(gpuTemp),
-                Round(gpu is null ? null : Val(gpu, SensorType.Temperature, "GPU Hot Spot")),
-                Round(gpu is null ? null : Val(gpu, SensorType.Temperature, "GPU Memory Junction")),
-                Feature(GpuFan),
-                Round(gpu is null ? null : Val(gpu, SensorType.Power, "GPU Package")),
-                Round(gpu is null ? null : Val(gpu, SensorType.Clock, "GPU Core")),
-                Round(gpu is null ? null : Val(gpu, SensorType.Clock, "GPU Memory")),
-                Round(gpu is null ? null : Val(gpu, SensorType.SmallData, "GPU Memory Used")),
-                Round(gpu is null ? null : Val(gpu, SensorType.SmallData, "GPU Memory Total")),
-                MBs(gpu is null ? null : Val(gpu, SensorType.Throughput, "GPU PCIe Rx")),
-                MBs(gpu is null ? null : Val(gpu, SensorType.Throughput, "GPU PCIe Tx")),
-                gpu is null ? null : _nvml.ThrottleMask()),
-            Ram: new RamInfo(
-                Round(mem is null ? null : Val(mem, SensorType.Load, "Memory")),
-                Round(mem is null ? null : Val(mem, SensorType.Data, "Memory Used")),
-                Round(mem is null ? null : Val(mem, SensorType.Data, "Memory Available"))),
-            Storage: storage,
-            Battery: bat is null ? null : new BatteryInfo(
-                Round(Val(bat, SensorType.Level, "Charge Level")),
-                Round(BatteryNow()?.RateW ?? Val(bat, SensorType.Power, "Charge/Discharge Rate")),
-                Round(Val(bat, SensorType.Level, "Degradation Level")),
-                Round(designed / 1000), Round(full / 1000), BatteryNow()?.AcOnline, BatteryNow()?.Charging),
+            Hardware: _pc.Hardware.Select(Copy).ToArray(),
+            EcCpuTemp: Feature(CpuTemp), EcGpuTemp: Feature(GpuTemp), EcCpuFan: Feature(CpuFan), EcGpuFan: Feature(GpuFan),
             PowerMode: PowerMode(),
-            Limits: LimitsDemand.Wanted ? _limits.Get() : null,
-            Hardware: AllHardware());
+            AcpiZones: AcpiZones(),
+            CounterClockMHz: CpuClockMHz, BatteryNow: BatteryNow, ThrottleMask: _nvml.ThrottleMask,
+            Limits: LimitsDemand.Wanted ? _limits.Get() : null), _range);
     }
 
-    /// <summary>
-    /// Battery power in watts: positive while charging, negative while discharging, 0 when idle on AC.
-    /// Windows reports it in milliwatts through root\WMI BatteryStatus. LibreHardwareMonitor leaves its
-    /// rate sensor empty while the battery discharges on this machine, so this is the primary source.
-    /// </summary>
+    static HardwareData Copy(IHardware hw) => new(
+        hw.HardwareType, hw.Name,
+        hw.Sensors.Select(x => new SensorData(x.SensorType, x.Name, x.Index, x.Value, x.Min, x.Max)).ToArray(),
+        hw.SubHardware.Select(Copy).ToArray());
+
+    /// <summary>The battery power and charger state Windows reports in root\WMI BatteryStatus, in milliwatts.</summary>
     BatteryPower? BatteryNow() => _batteryRate.Get();
 
     static BatteryPower? ReadBatteryRateW()
@@ -472,17 +383,3 @@ sealed class SensorReader : IDisposable
 
     public void Dispose() { try { _pc.Close(); } catch { } _featureArgs?.Dispose(); _nvml.Dispose(); _other?.Dispose(); _zone?.Dispose(); _cpuFreq?.Dispose(); _cpuPerf?.Dispose(); }
 }
-
-record Snapshot(long Ts, CpuInfo Cpu, GpuInfo Gpu, RamInfo Ram, StorageInfo[] Storage, BatteryInfo? Battery, int? PowerMode, List<HwInfo> Hardware, FpsInfo? Fps = null, ProcessInfo? Processes = null, NetworkInfo? Network = null, PowerLimits? Limits = null);
-record HwInfo(string Name, string Type, SensorInfo[] Sensors);
-record SensorInfo(string Type, string Name, float? Value, float? Min, float? Max);
-record CpuInfo(string? Name, float? Load, float? TempC, int? FanRpm, float? ClockMHz, float? PowerW, float[] CoreLoads);
-record GpuInfo(string? Name, float? Load, float? TempC, float? HotspotC, float? VramTempC, int? FanRpm,
-               float? PowerW, float? CoreClockMHz, float? MemClockMHz, float? VramUsedMB, float? VramTotalMB,
-               float? PcieRxMBs, float? PcieTxMBs, int? ThrottleMask = null);
-record RamInfo(float? LoadPct, float? UsedGB, float? AvailableGB);
-record StorageInfo(string Name, float? TempC, float? UsedPct, float? LifePct, float? ReadMBs, float? WriteMBs, float? ActivityPct);
-record BatteryInfo(float? LevelPct, float? RateW, float? DegradationPct, float? DesignedWh, float? FullWh, bool? AcOnline = null, bool? Charging = null);
-record BatteryPower(float RateW, bool? AcOnline, bool? Charging);
-/// <summary>Limits in watts and degrees: the CPU from the Lenovo firmware, the GPU from the NVIDIA driver.</summary>
-record PowerLimits(int? CpuSustainedW, int? CpuShortW, int? CpuPeakW, int? CpuTempC, int? GpuW, int? GpuTempC);

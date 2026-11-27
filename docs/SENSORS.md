@@ -107,7 +107,7 @@ The Overview summary lists every row above. The system log leaves out the GPU ho
 
 1. Run `SensorProbe` as administrator. It prints every LHM sensor, the WMI class list, the `LENOVO_GAMEZONE_DATA` getters and `GetFeatureValue` probes.
 2. Run it again under load, for example during a game, and compare the two outputs.
-3. Add the read to `SensorReader.Read()` and the field to the records in `SensorService/Program.cs`, then update this document and `CHANGELOG.md`.
+3. Add the read to `SensorReader` and `Readings`, the choice of sensor to `SnapshotBuilder.cs` with a test, and the field to the records in `SensorService/Snapshot.cs`. Then update this document and `CHANGELOG.md`.
 
 ## References
 

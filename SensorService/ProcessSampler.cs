@@ -181,8 +181,3 @@ sealed class ProcessSampler : IOnDemand, IDisposable
 
     public void Dispose() { lock (_gate) { _timer?.Dispose(); _timer = null; _disk?.Dispose(); _disk = null; } }
 }
-
-record ProcRow(string Name, int Count, float Value);
-/// <summary>Data a program moves to and from the drives now (MB/s) and since the list was opened (MB).</summary>
-record DiskRow(string Name, int Count, float ReadMBs, float WriteMBs, double ReadMB, double WrittenMB);
-record ProcessInfo(ProcRow[] Cpu, ProcRow[] MemMB, ProcRow[] Gpu, DiskRow[]? Disk);

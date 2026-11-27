@@ -1,0 +1,1266 @@
+{
+ "hardware": [
+  {
+   "type": "Motherboard",
+   "name": "Lenovo LNVNB161216",
+   "sensors": [],
+   "sub": []
+  },
+  {
+   "type": "Cpu",
+   "name": "AMD Ryzen 7 7435HS",
+   "sensors": [
+    {
+     "type": "Load",
+     "name": "CPU Core #1",
+     "index": 2,
+     "value": 56.25,
+     "min": 56.25,
+     "max": 64.06
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #2",
+     "index": 3,
+     "value": 14.06,
+     "min": 9.38,
+     "max": 14.06
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #3",
+     "index": 4,
+     "value": 75,
+     "min": 75,
+     "max": 75
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #4",
+     "index": 5,
+     "value": 45.31,
+     "min": 45.31,
+     "max": 57.81
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #5",
+     "index": 6,
+     "value": 9.38,
+     "min": 9.38,
+     "max": 14.06
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #6",
+     "index": 7,
+     "value": 10.94,
+     "min": 10.94,
+     "max": 15.62
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #7",
+     "index": 8,
+     "value": 20.31,
+     "min": 7.81,
+     "max": 20.31
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #8",
+     "index": 9,
+     "value": 10.94,
+     "min": 10.94,
+     "max": 18.75
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #9",
+     "index": 10,
+     "value": 1.56,
+     "min": 1.56,
+     "max": 7.81
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #10",
+     "index": 11,
+     "value": 6.25,
+     "min": 6.25,
+     "max": 10.94
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #11",
+     "index": 12,
+     "value": 20.31,
+     "min": 17.19,
+     "max": 20.31
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #12",
+     "index": 13,
+     "value": 12.5,
+     "min": 12.5,
+     "max": 14.06
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #13",
+     "index": 14,
+     "value": 6.25,
+     "min": 6.25,
+     "max": 17.19
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #14",
+     "index": 15,
+     "value": 10.94,
+     "min": 6.25,
+     "max": 10.94
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #15",
+     "index": 16,
+     "value": 7.81,
+     "min": 7.81,
+     "max": 17.19
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core #16",
+     "index": 17,
+     "value": 10.94,
+     "min": 10.94,
+     "max": 21.88
+    },
+    {
+     "type": "Load",
+     "name": "CPU Total",
+     "index": 0,
+     "value": 19.92,
+     "min": 19.92,
+     "max": 23.44
+    },
+    {
+     "type": "Load",
+     "name": "CPU Core Max",
+     "index": 1,
+     "value": 75,
+     "min": 75,
+     "max": 75
+    },
+    {
+     "type": "Power",
+     "name": "Package",
+     "index": 0,
+     "value": 28.642416,
+     "min": 28.642416,
+     "max": 28.999397
+    },
+    {
+     "type": "Clock",
+     "name": "Cores (Average)",
+     "index": 1,
+     "value": 3044,
+     "min": 2238,
+     "max": 3044
+    },
+    {
+     "type": "Clock",
+     "name": "Cores (Average Effective)",
+     "index": 2,
+     "value": 691,
+     "min": 691,
+     "max": 691
+    },
+    {
+     "type": "Clock",
+     "name": "Core #1",
+     "index": 3,
+     "value": 3726,
+     "min": 3483,
+     "max": 3726
+    },
+    {
+     "type": "Clock",
+     "name": "Core #1 (Effective)",
+     "index": 4,
+     "value": 1259,
+     "min": 1028.5,
+     "max": 1259
+    },
+    {
+     "type": "Factor",
+     "name": "Core #1",
+     "index": 0,
+     "value": 43,
+     "min": 43,
+     "max": 43.25
+    },
+    {
+     "type": "Power",
+     "name": "Core #1 (SMU)",
+     "index": 1,
+     "value": 3.2673438,
+     "min": 2.8055558,
+     "max": 3.2673438
+    },
+    {
+     "type": "Voltage",
+     "name": "Core #1 VID",
+     "index": 2,
+     "value": 0.16875,
+     "min": 0.16875,
+     "max": 0.1875
+    },
+    {
+     "type": "Clock",
+     "name": "Core #2",
+     "index": 5,
+     "value": 2772,
+     "min": 1222,
+     "max": 2772
+    },
+    {
+     "type": "Clock",
+     "name": "Core #2 (Effective)",
+     "index": 6,
+     "value": 1232.5,
+     "min": 1232.5,
+     "max": 1339.5
+    },
+    {
+     "type": "Factor",
+     "name": "Core #2",
+     "index": 1,
+     "value": 43,
+     "min": 19.222221,
+     "max": 43
+    },
+    {
+     "type": "Power",
+     "name": "Core #2 (SMU)",
+     "index": 2,
+     "value": 3.9343855,
+     "min": 3.9343855,
+     "max": 3.937118
+    },
+    {
+     "type": "Voltage",
+     "name": "Core #2 VID",
+     "index": 3,
+     "value": 0.16875,
+     "min": 0.16875,
+     "max": 0.175
+    },
+    {
+     "type": "Clock",
+     "name": "Core #3",
+     "index": 7,
+     "value": 1290,
+     "min": 1276,
+     "max": 1290
+    },
+    {
+     "type": "Clock",
+     "name": "Core #3 (Effective)",
+     "index": 8,
+     "value": 280.5,
+     "min": 280.5,
+     "max": 404.5
+    },
+    {
+     "type": "Factor",
+     "name": "Core #3",
+     "index": 2,
+     "value": 19.11111,
+     "min": 19.11111,
+     "max": 19.222221
+    },
+    {
+     "type": "Power",
+     "name": "Core #3 (SMU)",
+     "index": 3,
+     "value": 1.0133406,
+     "min": 1.0133406,
+     "max": 1.3799323
+    },
+    {
+     "type": "Voltage",
+     "name": "Core #3 VID",
+     "index": 4,
+     "value": 0.16875,
+     "min": 0.16875,
+     "max": 0.1875
+    },
+    {
+     "type": "Clock",
+     "name": "Core #4",
+     "index": 9,
+     "value": 4292,
+     "min": 1907,
+     "max": 4292
+    },
+    {
+     "type": "Clock",
+     "name": "Core #4 (Effective)",
+     "index": 10,
+     "value": 921.5,
+     "min": 881,
+     "max": 921.5
+    },
+    {
+     "type": "Factor",
+     "name": "Core #4",
+     "index": 3,
+     "value": 43,
+     "min": 19.11111,
+     "max": 43
+    },
+    {
+     "type": "Power",
+     "name": "Core #4 (SMU)",
+     "index": 4,
+     "value": 2.7696462,
+     "min": 2.5355203,
+     "max": 2.7696462
+    },
+    {
+     "type": "Voltage",
+     "name": "Core #4 VID",
+     "index": 5,
+     "value": 0.16875,
+     "min": 0.16875,
+     "max": 0.175
+    },
+    {
+     "type": "Clock",
+     "name": "Core #5",
+     "index": 11,
+     "value": 3499,
+     "min": 1355,
+     "max": 3499
+    },
+    {
+     "type": "Clock",
+     "name": "Core #5 (Effective)",
+     "index": 12,
+     "value": 320.5,
+     "min": 320.5,
+     "max": 333
+    },
+    {
+     "type": "Factor",
+     "name": "Core #5",
+     "index": 4,
+     "value": 43,
+     "min": 19.11111,
+     "max": 43
+    },
+    {
+     "type": "Power",
+     "name": "Core #5 (SMU)",
+     "index": 5,
+     "value": 1.1591274,
+     "min": 1.1591274,
+     "max": 1.2637697
+    },
+    {
+     "type": "Voltage",
+     "name": "Core #5 VID",
+     "index": 6,
+     "value": 0.16875,
+     "min": 0.16875,
+     "max": 0.175
+    },
+    {
+     "type": "Clock",
+     "name": "Core #6",
+     "index": 13,
+     "value": 4292,
+     "min": 4292,
+     "max": 4292
+    },
+    {
+     "type": "Clock",
+     "name": "Core #6 (Effective)",
+     "index": 14,
+     "value": 841.5,
+     "min": 808.5,
+     "max": 841.5
+    },
+    {
+     "type": "Factor",
+     "name": "Core #6",
+     "index": 5,
+     "value": 43,
+     "min": 43,
+     "max": 43
+    },
+    {
+     "type": "Power",
+     "name": "Core #6 (SMU)",
+     "index": 6,
+     "value": 2.484885,
+     "min": 2.484885,
+     "max": 2.5384867
+    },
+    {
+     "type": "Voltage",
+     "name": "Core #6 VID",
+     "index": 7,
+     "value": 0.175,
+     "min": 0.175,
+     "max": 0.18125
+    },
+    {
+     "type": "Clock",
+     "name": "Core #7",
+     "index": 15,
+     "value": 1540,
+     "min": 1540,
+     "max": 3109
+    },
+    {
+     "type": "Clock",
+     "name": "Core #7 (Effective)",
+     "index": 16,
+     "value": 331.5,
+     "min": 312.5,
+     "max": 331.5
+    },
+    {
+     "type": "Factor",
+     "name": "Core #7",
+     "index": 6,
+     "value": 19.11111,
+     "min": 19.11111,
+     "max": 43
+    },
+    {
+     "type": "Power",
+     "name": "Core #7 (SMU)",
+     "index": 7,
+     "value": 1.2529951,
+     "min": 1.191243,
+     "max": 1.2529951
+    },
+    {
+     "type": "Voltage",
+     "name": "Core #7 VID",
+     "index": 8,
+     "value": 0.175,
+     "min": 0.175,
+     "max": 0.18125
+    },
+    {
+     "type": "Clock",
+     "name": "Core #8",
+     "index": 17,
+     "value": 2943,
+     "min": 1264,
+     "max": 2943
+    },
+    {
+     "type": "Clock",
+     "name": "Core #8 (Effective)",
+     "index": 18,
+     "value": 341,
+     "min": 341,
+     "max": 422
+    },
+    {
+     "type": "Factor",
+     "name": "Core #8",
+     "index": 7,
+     "value": 43,
+     "min": 19.11111,
+     "max": 43
+    },
+    {
+     "type": "Power",
+     "name": "Core #8 (SMU)",
+     "index": 8,
+     "value": 1.4504154,
+     "min": 1.4504154,
+     "max": 1.5051771
+    },
+    {
+     "type": "Voltage",
+     "name": "Core #8 VID",
+     "index": 9,
+     "value": 0.175,
+     "min": 0.175,
+     "max": 0.18125
+    },
+    {
+     "type": "Temperature",
+     "name": "Core (Tctl/Tdie)",
+     "index": 2,
+     "value": 78.50001,
+     "min": 78.50001,
+     "max": 79
+    },
+    {
+     "type": "Clock",
+     "name": "Bus Speed",
+     "index": 0,
+     "value": 99.80998,
+     "min": 99.80989,
+     "max": 99.80998
+    }
+   ],
+   "sub": []
+  },
+  {
+   "type": "Memory",
+   "name": "Virtual Memory",
+   "sensors": [
+    {
+     "type": "Data",
+     "name": "Memory Used",
+     "index": 2,
+     "value": 36.57204,
+     "min": 36.57204,
+     "max": 36.593483
+    },
+    {
+     "type": "Data",
+     "name": "Memory Available",
+     "index": 3,
+     "value": 1.699028,
+     "min": 1.6775856,
+     "max": 1.699028
+    },
+    {
+     "type": "Load",
+     "name": "Memory",
+     "index": 1,
+     "value": 95.56054,
+     "min": 95.56054,
+     "max": 95.61657
+    }
+   ],
+   "sub": []
+  },
+  {
+   "type": "Memory",
+   "name": "Total Memory",
+   "sensors": [
+    {
+     "type": "Data",
+     "name": "Memory Used",
+     "index": 0,
+     "value": 27.14489,
+     "min": 27.14489,
+     "max": 27.14745
+    },
+    {
+     "type": "Data",
+     "name": "Memory Available",
+     "index": 1,
+     "value": 0.5472107,
+     "min": 0.54465103,
+     "max": 0.5472107
+    },
+    {
+     "type": "Load",
+     "name": "Memory",
+     "index": 0,
+     "value": 98.02395,
+     "min": 98.02395,
+     "max": 98.03319
+    }
+   ],
+   "sub": []
+  },
+  {
+   "type": "GpuNvidia",
+   "name": "NVIDIA GeForce RTX 4060 Laptop GPU",
+   "sensors": [
+    {
+     "type": "Temperature",
+     "name": "GPU Core",
+     "index": 0,
+     "value": 63,
+     "min": 63,
+     "max": 65
+    },
+    {
+     "type": "Clock",
+     "name": "GPU Core",
+     "index": 0,
+     "value": 2595,
+     "min": 2595,
+     "max": 2595
+    },
+    {
+     "type": "Clock",
+     "name": "GPU Memory",
+     "index": 4,
+     "value": 8000.982,
+     "min": 8000.982,
+     "max": 8000.982
+    },
+    {
+     "type": "Load",
+     "name": "GPU Core",
+     "index": 0,
+     "value": 40,
+     "min": 24,
+     "max": 40
+    },
+    {
+     "type": "Load",
+     "name": "GPU Memory Controller",
+     "index": 1,
+     "value": 17,
+     "min": 9,
+     "max": 17
+    },
+    {
+     "type": "Load",
+     "name": "GPU Video Engine",
+     "index": 2,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Load",
+     "name": "GPU Bus",
+     "index": 3,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Voltage",
+     "name": "GPU Core Voltage",
+     "index": 0,
+     "value": 1.01,
+     "min": 1.01,
+     "max": 1.01
+    },
+    {
+     "type": "SmallData",
+     "name": "D3D Dedicated Memory Used",
+     "index": 3,
+     "value": 6697.6016,
+     "min": 6697.6016,
+     "max": 6697.6016
+    },
+    {
+     "type": "SmallData",
+     "name": "D3D Shared Memory Used",
+     "index": 4,
+     "value": 194.58594,
+     "min": 194.58594,
+     "max": 194.58594
+    },
+    {
+     "type": "Load",
+     "name": "D3D 3D",
+     "index": 5,
+     "value": 97.61748,
+     "min": 91.11146,
+     "max": 97.61748
+    },
+    {
+     "type": "Load",
+     "name": "D3D Overlay",
+     "index": 13,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Load",
+     "name": "D3D Video Decode",
+     "index": 16,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Load",
+     "name": "D3D Copy",
+     "index": 6,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Load",
+     "name": "D3D Copy",
+     "index": 7,
+     "value": 0.004976363,
+     "min": 0.004976363,
+     "max": 0.014432017
+    },
+    {
+     "type": "Load",
+     "name": "D3D Security",
+     "index": 14,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Load",
+     "name": "D3D Video Encode",
+     "index": 17,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Load",
+     "name": "D3D Optical Flow Accelerator 0",
+     "index": 12,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Load",
+     "name": "D3D VR",
+     "index": 15,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Load",
+     "name": "D3D Copy",
+     "index": 8,
+     "value": 0,
+     "min": 0,
+     "max": 0.12395705
+    },
+    {
+     "type": "Load",
+     "name": "D3D Copy",
+     "index": 9,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Load",
+     "name": "D3D Copy",
+     "index": 10,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Load",
+     "name": "D3D Copy",
+     "index": 11,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Temperature",
+     "name": "GPU Hot Spot",
+     "index": 2,
+     "value": 70.09375,
+     "min": 70.09375,
+     "max": 74.65625
+    },
+    {
+     "type": "Temperature",
+     "name": "GPU Memory Junction",
+     "index": 3,
+     "value": 64,
+     "min": 62,
+     "max": 64
+    },
+    {
+     "type": "SmallData",
+     "name": "GPU Memory Total",
+     "index": 2,
+     "value": 8188,
+     "min": 8188,
+     "max": 8188
+    },
+    {
+     "type": "SmallData",
+     "name": "GPU Memory Free",
+     "index": 0,
+     "value": 1268,
+     "min": 1268,
+     "max": 1268
+    },
+    {
+     "type": "SmallData",
+     "name": "GPU Memory Used",
+     "index": 1,
+     "value": 6919,
+     "min": 6919,
+     "max": 6919
+    },
+    {
+     "type": "Load",
+     "name": "GPU Memory",
+     "index": 3,
+     "value": 84.502945,
+     "min": 84.502945,
+     "max": 84.502945
+    },
+    {
+     "type": "Power",
+     "name": "GPU Package",
+     "index": 0,
+     "value": 52.833,
+     "min": 52.833,
+     "max": 54.581
+    },
+    {
+     "type": "Throughput",
+     "name": "GPU PCIe Rx",
+     "index": 0,
+     "value": 43549696,
+     "min": 29699072,
+     "max": 43549696
+    },
+    {
+     "type": "Throughput",
+     "name": "GPU PCIe Tx",
+     "index": 1,
+     "value": 23699456,
+     "min": 14199808,
+     "max": 23699456
+    }
+   ],
+   "sub": []
+  },
+  {
+   "type": "Storage",
+   "name": "PNY CS2241 500GB SSD",
+   "sensors": [
+    {
+     "type": "Temperature",
+     "name": "Composite Temperature",
+     "index": 0,
+     "value": 58,
+     "min": 58,
+     "max": 58
+    },
+    {
+     "type": "Temperature",
+     "name": "Temperature #1",
+     "index": 1,
+     "value": 57.850006,
+     "min": 57.850006,
+     "max": 57.850006
+    },
+    {
+     "type": "Temperature",
+     "name": "Warning Temperature",
+     "index": 10,
+     "value": 82,
+     "min": 82,
+     "max": 82
+    },
+    {
+     "type": "Temperature",
+     "name": "Critical Temperature",
+     "index": 11,
+     "value": 84,
+     "min": 84,
+     "max": 84
+    },
+    {
+     "type": "Level",
+     "name": "Life",
+     "index": 20,
+     "value": 91,
+     "min": 91,
+     "max": 91
+    },
+    {
+     "type": "Data",
+     "name": "Data Read",
+     "index": 21,
+     "value": 10000,
+     "min": 10000,
+     "max": 10000
+    },
+    {
+     "type": "Data",
+     "name": "Data Written",
+     "index": 22,
+     "value": 8000,
+     "min": 8000,
+     "max": 8000
+    },
+    {
+     "type": "Factor",
+     "name": "Power On Count",
+     "index": 23,
+     "value": 500,
+     "min": 500,
+     "max": 500
+    },
+    {
+     "type": "Factor",
+     "name": "Power On Hours",
+     "index": 24,
+     "value": 1000,
+     "min": 1000,
+     "max": 1000
+    },
+    {
+     "type": "Load",
+     "name": "Used Space",
+     "index": 30,
+     "value": 89.791504,
+     "min": 89.791504,
+     "max": 89.791504
+    },
+    {
+     "type": "Data",
+     "name": "Free Space",
+     "index": 31,
+     "value": 50,
+     "min": 50,
+     "max": 50
+    },
+    {
+     "type": "Data",
+     "name": "Total Space",
+     "index": 32,
+     "value": 500,
+     "min": 500,
+     "max": 500
+    },
+    {
+     "type": "Load",
+     "name": "Read Activity",
+     "index": 51,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Load",
+     "name": "Write Activity",
+     "index": 52,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Load",
+     "name": "Total Activity",
+     "index": 53,
+     "value": 0,
+     "min": 0,
+     "max": 0.10143206
+    },
+    {
+     "type": "Throughput",
+     "name": "Read Rate",
+     "index": 54,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Throughput",
+     "name": "Write Rate",
+     "index": 55,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Level",
+     "name": "Available Spare",
+     "index": 100,
+     "value": 100,
+     "min": 100,
+     "max": 100
+    },
+    {
+     "type": "Level",
+     "name": "Available Spare Threshold",
+     "index": 101,
+     "value": 5,
+     "min": 5,
+     "max": 5
+    },
+    {
+     "type": "Level",
+     "name": "Percentage Used",
+     "index": 102,
+     "value": 9,
+     "min": 9,
+     "max": 9
+    }
+   ],
+   "sub": []
+  },
+  {
+   "type": "Storage",
+   "name": "Micron MTFDKCD512QFM-1BD1AABLA",
+   "sensors": [
+    {
+     "type": "Temperature",
+     "name": "Composite Temperature",
+     "index": 0,
+     "value": 55,
+     "min": 55,
+     "max": 55
+    },
+    {
+     "type": "Temperature",
+     "name": "Temperature #1",
+     "index": 1,
+     "value": 54.850006,
+     "min": 54.850006,
+     "max": 54.850006
+    },
+    {
+     "type": "Temperature",
+     "name": "Warning Temperature",
+     "index": 10,
+     "value": 86,
+     "min": 86,
+     "max": 86
+    },
+    {
+     "type": "Temperature",
+     "name": "Critical Temperature",
+     "index": 11,
+     "value": 89,
+     "min": 89,
+     "max": 89
+    },
+    {
+     "type": "Level",
+     "name": "Life",
+     "index": 20,
+     "value": 79,
+     "min": 79,
+     "max": 79
+    },
+    {
+     "type": "Data",
+     "name": "Data Read",
+     "index": 21,
+     "value": 10000,
+     "min": 10000,
+     "max": 10000
+    },
+    {
+     "type": "Data",
+     "name": "Data Written",
+     "index": 22,
+     "value": 8000,
+     "min": 8000,
+     "max": 8000
+    },
+    {
+     "type": "Factor",
+     "name": "Power On Count",
+     "index": 23,
+     "value": 500,
+     "min": 500,
+     "max": 500
+    },
+    {
+     "type": "Factor",
+     "name": "Power On Hours",
+     "index": 24,
+     "value": 1000,
+     "min": 1000,
+     "max": 1000
+    },
+    {
+     "type": "Load",
+     "name": "Used Space",
+     "index": 30,
+     "value": 95.32109,
+     "min": 95.32109,
+     "max": 95.32109
+    },
+    {
+     "type": "Data",
+     "name": "Free Space",
+     "index": 31,
+     "value": 50,
+     "min": 50,
+     "max": 50
+    },
+    {
+     "type": "Data",
+     "name": "Total Space",
+     "index": 32,
+     "value": 500,
+     "min": 500,
+     "max": 500
+    },
+    {
+     "type": "Load",
+     "name": "Read Activity",
+     "index": 51,
+     "value": 0.052710544,
+     "min": 0,
+     "max": 0.052710544
+    },
+    {
+     "type": "Load",
+     "name": "Write Activity",
+     "index": 52,
+     "value": 0.26456267,
+     "min": 0,
+     "max": 0.26456267
+    },
+    {
+     "type": "Load",
+     "name": "Total Activity",
+     "index": 53,
+     "value": 0.5165266,
+     "min": 0.0029673802,
+     "max": 0.5165266
+    },
+    {
+     "type": "Throughput",
+     "name": "Read Rate",
+     "index": 54,
+     "value": 66867.57,
+     "min": 0,
+     "max": 66867.57
+    },
+    {
+     "type": "Throughput",
+     "name": "Write Rate",
+     "index": 55,
+     "value": 242394.95,
+     "min": 0,
+     "max": 242394.95
+    },
+    {
+     "type": "Level",
+     "name": "Available Spare",
+     "index": 100,
+     "value": 100,
+     "min": 100,
+     "max": 100
+    },
+    {
+     "type": "Level",
+     "name": "Available Spare Threshold",
+     "index": 101,
+     "value": 5,
+     "min": 5,
+     "max": 5
+    },
+    {
+     "type": "Level",
+     "name": "Percentage Used",
+     "index": 102,
+     "value": 21,
+     "min": 21,
+     "max": 21
+    }
+   ],
+   "sub": []
+  },
+  {
+   "type": "Battery",
+   "name": "L23D4PK4",
+   "sensors": [
+    {
+     "type": "Energy",
+     "name": "Designed Capacity",
+     "index": 0,
+     "value": 60000
+    },
+    {
+     "type": "Energy",
+     "name": "Fully-Charged Capacity",
+     "index": 1,
+     "value": 54440
+    },
+    {
+     "type": "Level",
+     "name": "Degradation Level",
+     "index": 1,
+     "value": 9.26667
+    },
+    {
+     "type": "Energy",
+     "name": "Remaining Capacity",
+     "index": 2,
+     "value": 53190,
+     "min": 53190,
+     "max": 53190
+    },
+    {
+     "type": "Level",
+     "name": "Charge Level",
+     "index": 0,
+     "value": 97.703896,
+     "min": 97.703896,
+     "max": 97.703896
+    },
+    {
+     "type": "Voltage",
+     "name": "Voltage",
+     "index": 0,
+     "value": 17.177,
+     "min": 17.177,
+     "max": 17.177
+    },
+    {
+     "type": "Current",
+     "name": "Charge/Discharge Current",
+     "index": 0,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    },
+    {
+     "type": "Power",
+     "name": "Charge/Discharge Rate",
+     "index": 0,
+     "value": 0,
+     "min": 0,
+     "max": 0
+    }
+   ],
+   "sub": []
+  }
+ ],
+ "ecCpuTemp": 79,
+ "ecGpuTemp": 68,
+ "ecCpuFan": 3700,
+ "ecGpuFan": 4000,
+ "powerMode": 2,
+ "acpiZones": [
+  {
+   "type": "Temperature",
+   "name": "TZ01",
+   "value": 86.1,
+   "min": 86.1,
+   "max": 86.1
+  }
+ ],
+ "batteryNow": {
+  "rateW": 0,
+  "acOnline": true,
+  "charging": false
+ },
+ "throttleMask": 0,
+ "counterClockMHz": 1917
+}

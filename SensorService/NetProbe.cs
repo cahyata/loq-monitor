@@ -171,7 +171,3 @@ static class Wifi
         finally { WlanFreeMemory(data); }
     }
 }
-
-record WifiInfo(string Ssid, int SignalPct, int RxMbps, int TxMbps, string Standard, int? Channel, string? Band);
-record PingInfo(string Ip, int? RttMs, float? AvgMs, float? JitterMs, float LossPct);
-record NetworkInfo(string? Adapter, WifiInfo? Wifi, PingInfo? Gateway, PingInfo? Dns);

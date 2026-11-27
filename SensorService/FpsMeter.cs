@@ -199,5 +199,3 @@ sealed class FpsMeter : IOnDemand, IDisposable
         catch (Exception e) { Log("job object failed: " + e.Message); }
     }
 }
-
-record FpsInfo(string? Process, float? Fps, float? FrameMs, float? Low1Fps);

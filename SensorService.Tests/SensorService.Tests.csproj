@@ -11,8 +11,13 @@
        service itself, whose manifest asks for administrator rights. -->
   <ItemGroup>
     <Compile Include="..\SensorService\ClientSession.cs" Link="Source\ClientSession.cs" />
+    <Compile Include="..\SensorService\Snapshot.cs" Link="Source\Snapshot.cs" />
+    <Compile Include="..\SensorService\SnapshotBuilder.cs" Link="Source\SnapshotBuilder.cs" />
+    <None Include="Fixtures\**" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
+    <!-- The same version as the service, for its hardware and sensor types. -->
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
