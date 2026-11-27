@@ -29,7 +29,7 @@ The split exists because the Lenovo WMI calls and the LibreHardwareMonitor (LHM)
 
 `SensorReader` opens LHM for CPU, GPU, memory, storage, battery, motherboard, controllers and network adapters. `HardwarePick.cs` holds the rules that differ between laptops: which GPU to show, the order of the processor threads and the sensor names on AMD and Intel. A value that is not a finite number is written as null. It keeps two WMI objects: `LENOVO_OTHER_METHOD` for the Lenovo fan and temperature reads, and `LENOVO_GAMEZONE_DATA` for the power mode. It also reads the ACPI thermal zones (`MSAcpi_ThermalZoneTemperature`). `Read()` updates every hardware item, maps the main sensors to the typed records, and lists every sensor in `hardware` for the Detailed tab. CPU clock and package power need the PawnIO driver (see `docs/SENSORS.md`); without it the clock falls back to Windows performance counters.
 
-A `PeriodicTimer` calls `Read()` every 1000 ms. The service serializes the result with camelCase names, omits null fields, and sends it to every connected client. `HttpListener` binds to `127.0.0.1` only and answers 403 to any request whose `Origin` header is not in the allowlist.
+A `PeriodicTimer` calls `Read()` every 1000 ms. The service serializes the result with camelCase names, omits null fields, and posts it to every connected client. Each connection has its own `ClientSession` (`ClientSession.cs`): it handles the commands, releases the on-demand data when the client leaves, and sends on its own, so the sensor loop never waits for a client. A slow client gets only the newest snapshot, and one whose send takes longer than 10 seconds is disconnected. The frame rate, program ranking, network probe and power limits all implement `IOnDemand`. `HttpListener` binds to `127.0.0.1` only and answers 403 to any request whose `Origin` header is not in the allowlist.
 
 ### Game overlay
 
@@ -131,4 +131,8 @@ npx tauri build --debug --no-bundle
 
 # development with live reload
 npm run dev
+
+# tests
+npm test
+dotnet test ..\SensorService.Tests
 ```

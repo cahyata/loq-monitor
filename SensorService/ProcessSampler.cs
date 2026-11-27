@@ -11,7 +11,7 @@ using System.Text.RegularExpressions;
 /// three seconds.
 /// Instances of one program (for example the many processes of a browser) are added together.
 /// </summary>
-sealed class ProcessSampler : IDisposable
+sealed class ProcessSampler : IOnDemand, IDisposable
 {
     const int EveryMs = 3000, Top = 5, TopDisk = 8;
     static readonly Regex EngineName = new(@"^pid_(\d+)_.*_engtype_(\w+)$", RegexOptions.Compiled);

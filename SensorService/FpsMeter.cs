@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 /// game, so anti-cheat systems have nothing to object to. It starts when the first client asks for
 /// frame data and stops when the last one lets go, because tracing has a small cost.
 /// </summary>
-sealed class FpsMeter : IDisposable
+sealed class FpsMeter : IOnDemand, IDisposable
 {
     const string SessionName = "LOQMonitorFps";
     const int KeepMs = 6000;      // how much frame history to keep

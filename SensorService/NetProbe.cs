@@ -12,7 +12,7 @@ using System.Text;
 /// (the router) and to the DNS server of the same connection. It never contacts a host the machine
 /// does not already use. It runs only while a client has asked for it and then every two seconds.
 /// </summary>
-sealed class NetProbe : IDisposable
+sealed class NetProbe : IOnDemand, IDisposable
 {
     const int EveryMs = 2000, Keep = 30, TimeoutMs = 1000;
 

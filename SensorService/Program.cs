@@ -39,7 +39,10 @@ var reader = new SensorReader();
 var fps = new FpsMeter();
 var procs = new ProcessSampler();
 var net = new NetProbe();
-var clients = new ConcurrentDictionary<WebSocket, byte>();
+var clients = new ConcurrentDictionary<ClientSession, byte>();
+// What a client can ask for with "<name>-on" and release with "<name>-off".
+var onDemand = new Dictionary<string, IOnDemand> { ["fps"] = fps, ["procs"] = procs, ["net"] = net, ["limits"] = reader.LimitsDemand };
+var sendLimit = TimeSpan.FromSeconds(10);
 string latestJson = "{}";
 string? systemJson = null;      // the System page data, read once because it takes a second or two
 var systemGate = new object();
@@ -66,7 +69,11 @@ try
         fps.Tick();
         var snap = reader.Read() with { Fps = fps.Current(), Processes = procs.Current, Network = net.Current };
         latestJson = JsonSerializer.Serialize(snap, jsonOptions);
-        if (!clients.IsEmpty) await Broadcast(latestJson);
+        if (!clients.IsEmpty)
+        {
+            var bytes = Encoding.UTF8.GetBytes(latestJson);
+            foreach (var client in clients.Keys) client.Post(bytes);   // queued only: the sensor loop never waits for a client
+        }
     }
     while (await timer.WaitForNextTickAsync(cts.Token));
 }
@@ -101,41 +108,12 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
         if (ctx.Request.IsWebSocketRequest && path == "/ws")
         {
             var wsCtx = await ctx.AcceptWebSocketAsync(null);
-            var ws = wsCtx.WebSocket;
-            clients[ws] = 0;
-            await Send(ws, latestJson);
-            var buf = new byte[256];
-            var wantsFps = false;
-            var wantsProcs = false;
-            var wantsNet = false;
-            var wantsLimits = false;
-            try
-            {
-                while (ws.State == WebSocketState.Open && !ct.IsCancellationRequested)
-                {
-                    var r = await ws.ReceiveAsync(buf, ct);
-                    if (r.MessageType == WebSocketMessageType.Close) break;
-                    if (r.MessageType != WebSocketMessageType.Text || !r.EndOfMessage) continue;
-                    // Commands: restart min and max tracking, and ask for or release frame rate data.
-                    // None of them touches hardware settings.
-                    var command = Encoding.UTF8.GetString(buf, 0, r.Count);
-                    switch (command)
-                    {
-                        case "reset-minmax": reader.RequestMinMaxReset(); break;
-                        case "fps-on": if (!wantsFps) { wantsFps = true; fps.Acquire(); } break;
-                        case "fps-off": if (wantsFps) { wantsFps = false; fps.Release(); } break;
-                        case "procs-on": if (!wantsProcs) { wantsProcs = true; procs.Acquire(); } break;
-                        case "procs-off": if (wantsProcs) { wantsProcs = false; procs.Release(); } break;
-                        case "net-on": if (!wantsNet) { wantsNet = true; net.Acquire(); } break;
-                        case "net-off": if (wantsNet) { wantsNet = false; net.Release(); } break;
-                        case "limits-on": if (!wantsLimits) { wantsLimits = true; reader.WantLimits(true); } break;
-                        case "limits-off": if (wantsLimits) { wantsLimits = false; reader.WantLimits(false); } break;
-                    }
-                }
-            }
-            finally { if (wantsFps) fps.Release(); if (wantsProcs) procs.Release(); if (wantsNet) net.Release(); if (wantsLimits) reader.WantLimits(false); }
-            clients.TryRemove(ws, out _);
-            ws.Dispose();
+            using var ws = wsCtx.WebSocket;
+            var session = new ClientSession(ws, onDemand, reader.RequestMinMaxReset, sendLimit);
+            session.Post(Encoding.UTF8.GetBytes(latestJson));          // the latest snapshot on connect
+            clients[session] = 0;
+            try { await session.Run(ct); }
+            finally { clients.TryRemove(session, out _); }
         }
         else if (path == "/system")
         {
@@ -180,20 +158,6 @@ async Task Handle(HttpListenerContext ctx, CancellationToken ct)
     }
     catch { try { ctx.Response.Abort(); } catch { } }
 }
-
-async Task Broadcast(string json)
-{
-    foreach (var ws in clients.Keys)
-    {
-        try { await Send(ws, json); }
-        catch { clients.TryRemove(ws, out _); }
-    }
-}
-
-static Task Send(WebSocket ws, string json) =>
-    ws.State == WebSocketState.Open
-        ? ws.SendAsync(Encoding.UTF8.GetBytes(json), WebSocketMessageType.Text, true, CancellationToken.None)
-        : Task.CompletedTask;
 
 // ============================================================================
 
@@ -320,14 +284,8 @@ sealed class SensorReader : IDisposable
     // Lenovo capability IDs, the values of the active power mode (the FF suffix). Read only.
     const int CpuShortTermW = 0x0101FF00, CpuLongTermW = 0x0102FF00, CpuPeakW = 0x0103FF00, CpuTempLimitC = 0x0104FF00;
     readonly Throttled<PowerLimits?> _limits;
-    int _limitsWanted;
-
-    /// <summary>Asks for the limits to be read (true) or lets go (false). They are read only while someone shows them.</summary>
-    public void WantLimits(bool want)
-    {
-        if (want) Interlocked.Increment(ref _limitsWanted);
-        else if (Volatile.Read(ref _limitsWanted) > 0) Interlocked.Decrement(ref _limitsWanted);
-    }
+    /// <summary>The limits are read only while a client shows them.</summary>
+    public DemandCount LimitsDemand { get; } = new();
 
     PowerLimits? ReadLimits()
     {
@@ -480,7 +438,7 @@ sealed class SensorReader : IDisposable
                 Round(Val(bat, SensorType.Level, "Degradation Level")),
                 Round(designed / 1000), Round(full / 1000), BatteryNow()?.AcOnline, BatteryNow()?.Charging),
             PowerMode: PowerMode(),
-            Limits: Volatile.Read(ref _limitsWanted) > 0 ? _limits.Get() : null,
+            Limits: LimitsDemand.Wanted ? _limits.Get() : null,
             Hardware: AllHardware());
     }
 

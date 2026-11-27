@@ -16,6 +16,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 
 ### Fixed
 
+- A program that connected to the sensor service and stopped reading could stop the sensor updates for the app, the overlay and the tray. Such a client is now disconnected after 10 seconds and does not hold up the others.
 - The tooltip of the Overlay tab named key 5. The key is 7.
 - Insights no longer blames an old sensor service alone when no power limits arrive: the laptop may not report them.
 
