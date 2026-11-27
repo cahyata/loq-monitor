@@ -21,7 +21,7 @@ function setup({ saved, add = ["overview", "insights", "care"] } = {}) {
   };
   const state = { seen: true };
   const pages = createPages({ element, store: { get: (k, d) => kept.get(k) ?? d, set: (k, v) => kept.set(k, v) }, visible: () => state.seen });
-  const hooks = (id) => Object.fromEntries(["show", "hide", "collect", "draw", "connected"].map((h) => [h, (s) => log.push(`${id}.${h}${s ? " " + s.n : ""}`)]));
+  const hooks = (id) => Object.fromEntries(["show", "hide", "collect", "draw"].map((h) => [h, (s) => log.push(`${id}.${h}${s ? " " + s.n : ""}`)]));
   for (const id of add) pages.add(id, hooks(id));
   const take = () => log.splice(0);
   return { pages, element, kept, state, take, hooks };
@@ -99,13 +99,6 @@ test("a page that fails does not stop the others", (t) => {
   assert.deepEqual(seen, ["care"]);
   assert.equal(errors.mock.callCount(), 1);
   take();
-});
-
-test("a new connection is told to every page", () => {
-  const { pages, take } = setup();
-  take();
-  pages.connected();
-  assert.deepEqual(take(), ["overview.connected", "insights.connected", "care.connected"]);
 });
 
 test("number keys follow the tab order", () => {

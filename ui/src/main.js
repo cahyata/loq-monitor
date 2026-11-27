@@ -3,7 +3,6 @@
 // Copyright (c) 2026 cahyata
 "use strict";
 
-const WS_URL = "ws://127.0.0.1:47821/ws";
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -198,6 +197,7 @@ function renderSummary(s) {
 const modeLabel = (code) => Rules.powerMode(code)?.toUpperCase() ?? "--";
 
 /* ---------- every snapshot ---------- */
+const Link = createLink({ WebSocket, fetch: (url) => fetch(url), setTimeout: (run, ms) => setTimeout(run, ms), clearTimeout: (id) => clearTimeout(id) });
 let miniOn = false, lastSnapshot = null;
 const Pages = createPages({ element: $, store, visible: () => !document.hidden && !miniOn });
 
@@ -222,8 +222,8 @@ function redraw() {
   Pages.draw();
 }
 
-/* ---------- WebSocket + auto-reconnect, offline screen ---------- */
-let retry = 0, ws = null, retryTimer = null, offlineTimer = null;
+/* ---------- connection state, offline screen ---------- */
+let offlineTimer = null;
 function showOffline(show) {
   const was = !$("offline").hidden;
   $("offline").hidden = !show;
@@ -239,18 +239,8 @@ function setLink(on) {
   if (on) { clearTimeout(offlineTimer); offlineTimer = null; showOffline(false); }
   else if (!offlineTimer) offlineTimer = setTimeout(() => showOffline(true), 3000); // brief drops stay quiet; reconnect attempts must not restart this timer
 }
-function connect() {
-  clearTimeout(retryTimer);
-  ws = new WebSocket(WS_URL);
-  const mine = ws;
-  ws.onopen = () => { retry = 0; setLink(true); Pages.connected(); };
-  ws.onmessage = (e) => { try { receive(JSON.parse(e.data)); } catch (err) { console.error(err); } };
-  ws.onclose = () => { if (mine !== ws) return; setLink(false); retryTimer = setTimeout(connect, Math.min(5000, 1000 + retry++ * 500)); };
-  ws.onerror = () => mine.close();
-}
-function sendWs(msg) { try { if (ws && ws.readyState === 1) ws.send(msg); } catch { /* connection closing */ } }
-connect();
-$("btnRetry").onclick = () => { $("offlineMsg").textContent = "Trying now…"; try { ws.onclose = null; ws.close(); } catch { /* already closed */ } connect(); };
+Link.start({ onSnapshot: receive, onState: setLink });
+$("btnRetry").onclick = () => { $("offlineMsg").textContent = "Trying now…"; Link.retry(); };
 $("btnStart").onclick = () => {
   if (!invoke) { $("offlineMsg").textContent = "Starting the service needs the desktop app."; return; }
   $("offlineMsg").textContent = "Starting the service…";

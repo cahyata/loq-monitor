@@ -4,6 +4,10 @@ A read-only view of the health of one laptop's hardware.
 
 ## Language
 
+**Sensor service**:
+The background program that reads the hardware and sends each **Snapshot**.
+_Avoid_: Backend, server, daemon
+
 **Page**:
 One of the views of the main window, opened by its tab or number key.
 _Avoid_: Tab (that is the button), screen, view

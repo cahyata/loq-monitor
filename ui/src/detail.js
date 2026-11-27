@@ -109,7 +109,7 @@ const Detail = (() => {
   $("dhide").checked = hideNet;
   $("dsort").onchange = () => { sort = $("dsort").value; store.set("dsort", sort); sig = ""; if (last) refresh(last); };
   $("dhide").onchange = () => { hideNet = $("dhide").checked; store.set("dhide", hideNet ? "on" : "off"); sig = ""; if (last) refresh(last); };
-  $("dreset").onclick = () => { sendWs("reset-minmax"); const b = $("dreset"); b.textContent = "RESET DONE"; setTimeout(() => { b.textContent = "RESET MIN/MAX"; }, 1500); };
+  $("dreset").onclick = () => { Link.command("reset-minmax"); const b = $("dreset"); b.textContent = "RESET DONE"; setTimeout(() => { b.textContent = "RESET MIN/MAX"; }, 1500); };
   $("dfilter").oninput = () => { if (last) refresh(last); };
   $("dexp").onclick = () => { document.querySelectorAll("#dtree details").forEach((d) => (d.open = true)); };
   $("dcol").onclick = () => { document.querySelectorAll("#dtree details").forEach((d) => (d.open = false)); };

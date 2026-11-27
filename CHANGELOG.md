@@ -17,6 +17,7 @@ This file follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [
 ### Fixed
 
 - The tooltip of the Overlay tab named key 5. The key is 7.
+- Insights no longer blames an old sensor service alone when no power limits arrive: the laptop may not report them.
 
 ## [0.5.0] - 2026-11-26
 

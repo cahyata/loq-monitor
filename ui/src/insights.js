@@ -6,10 +6,10 @@
    why the GPU is being held back, drive health and data written, and min, average and max for this session. The session numbers
    and the energy total are collected from every snapshot, also while another tab or the tray is
    showing, so they are right when the tab is opened. The program list is measured by the service
-   only while this tab is open. Shares $, store, sendWs, tf and deg with main.js; rules.js judges the readings. */
+   only while this tab is open. Shares $, store, Link, tf and deg with main.js; rules.js judges the readings. */
 
 (() => {
-  let active = false, last = null, procKey = store.get("insproc", "cpu"), askedProcs = false, askedNet = false, askedAt = 0;
+  let active = false, last = null, procKey = store.get("insproc", "cpu");
   let prevAt = 0;
 
   /** One bucket of statistics per measured value. */
@@ -91,13 +91,11 @@
   }
 
   /* ---- what the service should measure ---- */
-  const wantNow = () => active && !document.hidden;
-  function syncProcs() {
-    const want = wantNow();
-    if (want !== askedProcs) { askedProcs = want; askedAt = Date.now(); sendWs(want ? "procs-on" : "procs-off"); }
-    if (want !== askedNet) { askedNet = want; sendWs(want ? "net-on" : "net-off"); sendWs(want ? "limits-on" : "limits-off"); }
+  function syncRequests() {
+    const want = active && !document.hidden;
+    for (const kind of ["procs", "net", "limits"]) Link.need(kind, want);
   }
-  document.addEventListener("visibilitychange", syncProcs);
+  document.addEventListener("visibilitychange", syncRequests);
 
   /* ---- drawing ---- */
   const FORMATS = {
@@ -112,8 +110,7 @@
     $("insProcNote").textContent = s?.processes ? "Updates every 3 s" : "";
     if (!s?.processes) {
       // An older sensor service ignores the request, so say so instead of waiting for ever.
-      const old = askedAt && Date.now() - askedAt > 12000;
-      list.replaceChildren(el("li", "empty", old
+      list.replaceChildren(el("li", "empty", Link.overdue("procs")
         ? "No data. The sensor service that is running is older than this app and cannot rank programs. Update LOQ Monitor, or restart the service from the new install."
         : "Measuring... the first numbers appear in a few seconds."));
       return;
@@ -170,7 +167,7 @@
   function loadModes() {
     if (modes || modesAsked) return;
     modesAsked = true;
-    fetch("http://127.0.0.1:47821/system").then((r) => r.json()).then((d) => { modes = d.powerModes ?? []; if (last) paintLimitsCard(last); }).catch(() => { modesAsked = false; });
+    Link.system().then((d) => { modes = d.powerModes ?? []; if (last) paintLimitsCard(last); }).catch(() => { modesAsked = false; });
   }
 
   function lbar(label, value, limit, text, kind) {
@@ -186,8 +183,7 @@
     const L = s.limits, bars = $("insPLBars"), mode = { 1: 1, 2: 2, 3: 3 }[s.powerMode] ?? 0;
     $("insPLMode").textContent = s.powerMode ? "Power mode: " + (Rules.powerMode(s.powerMode) ?? "--") : "";
     if (!L) {
-      const old = askedAt && Date.now() - askedAt > 12000;
-      bars.replaceChildren(el("li", "empty", old ? "No data. The sensor service that is running is older than this app and cannot read the limits." : "Reading the limits..."));
+      bars.replaceChildren(el("li", "empty", Link.overdue("limits") ? "No data. This laptop may not report its power limits, or the sensor service that is running is older than this app." : "Reading the limits..."));
     } else {
       const items = [];
       if (L.cpuSustainedW != null && s.cpu?.powerW != null)
@@ -285,9 +281,8 @@
 
     const n = s.network, wifi = $("insWifi"), ping = $("insPing"), vd = $("insNetVerdict");
     if (!n) {
-      const old = askedAt && Date.now() - askedAt > 12000;
       vd.textContent = ""; vd.className = "dim"; wifi.replaceChildren(); ping.replaceChildren();
-      $("insNetNote").textContent = old ? "No data. The sensor service that is running is older than this app and cannot measure the network." : "Measuring... the first numbers appear in a few seconds.";
+      $("insNetNote").textContent = Link.overdue("net") ? "No data. The sensor service that is running is older than this app and cannot measure the network." : "Measuring... the first numbers appear in a few seconds.";
       return;
     }
     const v = verdict(n);
@@ -365,8 +360,7 @@
     const wrap = $("insDiskProcs"), rows = s.processes?.disk;
     if (s.processes && rows === null) { wrap.replaceChildren(el("p", "note", "Windows did not allow measuring disk activity. The sensor service needs administrator rights.")); return; }
     if (!rows) {
-      const old = askedAt && Date.now() - askedAt > 12000;
-      wrap.replaceChildren(el("p", "note", old ? "No data. The sensor service that is running is older than this app. Update LOQ Monitor, or restart the service from the new install." : "Measuring... the first numbers appear in a few seconds."));
+      wrap.replaceChildren(el("p", "note", Link.overdue("procs") ? "No data. The sensor service that is running is older than this app. Update LOQ Monitor, or restart the service from the new install." : "Measuring... the first numbers appear in a few seconds."));
       return;
     }
     const line = (cells, head) => { const x = row(cells, head); x.classList.add("diskrow"); return x; };
@@ -406,11 +400,9 @@
   addEventListener("beforeunload", saveDay);
 
   Pages.add("insights", {
-    show() { active = true; syncProcs(); loadModes(); paint(); },
-    hide() { active = false; syncProcs(); },
+    show() { active = true; syncRequests(); loadModes(); paint(); },
+    hide() { active = false; syncRequests(); },
     collect,
     draw: paint,
-    /** After a reconnect the service has forgotten what this window asked for. */
-    connected() { askedProcs = false; askedNet = false; syncProcs(); },
   });
 })();

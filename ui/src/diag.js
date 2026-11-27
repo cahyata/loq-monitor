@@ -6,7 +6,7 @@
    Windows recorded in its Event Log, and the export of the recent sensor readings to a CSV file.
    The history and the readings are collected from every snapshot, also while another tab or the tray
    is showing. The Event Log is read by the service only when this tab asks for it.
-   Shares $, store, CFG, tf, tdeg, deg, conv, unit, modeLabel and invoke with main.js. */
+   Shares $, store, CFG, tf, tdeg, deg, conv, unit, modeLabel, Link and invoke with main.js. */
 
 (() => {
   let lastTs = 0, drawn = null;
@@ -96,7 +96,6 @@
   $("diagHeatMore").onclick = () => { showAll = !showAll; paintHeat(); };
 
   /* ---- Windows problems ---- */
-  const EVENTS_URL = "http://127.0.0.1:47821/events";
   const KINDS = [["hardware", "Hardware errors"], ["crash", "Blue screens and sudden shutdowns"], ["graphics", "Graphics driver errors"], ["drive", "Drive errors"]];
   let days = [7, 30, 90].includes(+store.get("evdays", "30")) ? +store.get("evdays", "30") : 30;
   let events = null, eventsFor = 0, eventsAt = 0, loading = false;
@@ -110,17 +109,14 @@
     $("diagEvRefresh").disabled = true;
     if (!events || eventsFor !== asked) say("Reading the Windows Event Log...");
     try {
-      const res = await fetch(EVENTS_URL + "?days=" + asked + (force ? "&refresh=1" : ""));
-      if (!res.ok) throw new Error("The service answered with HTTP " + res.status + ".");
-      events = await res.json(); eventsFor = asked; eventsAt = Date.now();
+      events = await Link.events(asked, force); eventsFor = asked; eventsAt = Date.now();
       say(events.failed?.length ? "Windows did not let the service read this log: " + events.failed.join(", ") + "." : "");
       paintEvents();
     } catch (e) {
-      // An older service has no /events and answers without permission for the app to read it, which looks like
-      // a network error. A live connection beside that error therefore means the service is older.
-      say(!(e instanceof TypeError) ? e.message : ws?.readyState === 1
-        ? "The sensor service that is running is older than this app and cannot read the Event Log. Update LOQ Monitor, or restart the service from the new install."
-        : "Could not reach the sensor service.");
+      say(e.reason === "older" ? "The sensor service that is running is older than this app and cannot read the Event Log. Update LOQ Monitor, or restart the service from the new install."
+        : e.reason === "unreachable" ? "Could not reach the sensor service."
+        : e.reason === "http" ? "The service answered with HTTP " + e.status + "."
+        : e.message);
       if (eventsFor !== asked) { events = null; paintEvents(); }
     } finally {
       loading = false; $("diagEvRefresh").disabled = false;

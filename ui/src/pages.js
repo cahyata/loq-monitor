@@ -10,7 +10,6 @@
      hide()      another page is open. Every page that is not open at the start is told once.
      collect(s)  every new snapshot, shown or not, for history and statistics
      draw(s)     paint the latest snapshot. Called only while the page is open and can be seen.
-     connected() the connection to the sensor service was made again
 
    After add, a page has been told either show or hide. Tests: ui/test/pages.test.js. */
 
@@ -85,7 +84,6 @@ function createPages({ element, store, visible }) {
       for (const id of added.keys()) call(id, "collect", s);
       draw();
     },
-    connected() { for (const id of added.keys()) call(id, "connected"); },
     /** The page a pressed key opens, or null. */
     byKey: (key) => (/^[1-9]$/.test(key) ? PAGE_LIST[key - 1]?.id ?? null : null),
   };

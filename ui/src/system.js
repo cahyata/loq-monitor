@@ -4,11 +4,10 @@
 "use strict";
 /* The SYSTEM tab: facts about the machine (device, firmware, Windows, processor, graphics, memory,
    drives, network, battery). The service reads them from Windows once and serves them at /system,
-   so this page asks when it is opened and again on REFRESH. A few values (uptime, memory in use,
+   so this page asks through the link when it is opened and again on REFRESH. A few values (uptime, memory in use,
    battery health) stay live from the sensor snapshot. Shares $ and store with main.js. */
 
 (() => {
-  const SYSTEM_URL = "http://127.0.0.1:47821/system";
   let data = null, last = null, fetchedAt = 0, loading = false;
   let mask = store.get("sysmask", "on") === "on", showVirtual = store.get("sysvirtual", "off") === "on";
 
@@ -164,9 +163,7 @@
     loading = true;
     if (!data) say("Reading system information...");
     try {
-      const res = await fetch(SYSTEM_URL + (force ? "?refresh=1" : ""));
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      data = await res.json(); fetchedAt = Date.now();
+      data = await Link.system(force); fetchedAt = Date.now();
       say(""); render();
     } catch (e) {
       say(data ? "Could not refresh: " + e.message : "Could not read the system information. Is the sensor service running? (" + e.message + ")");
